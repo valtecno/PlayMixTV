@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background_dark">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/brand_primary"
+        android:title="@string/app_name"
+        android:titleTextColor="@color/text_light" />
+
+    <!-- Pestañas de tipo de contenido -->
+    <LinearLayout
+        android:id="@+id/tabContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="4"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+
+        <TextView android:id="@+id/tabLive" style="@style/TabItem" android:text="@string/tab_live" />
+        <TextView android:id="@+id/tabMovies" style="@style/TabItem" android:text="@string/tab_movies" />
+        <TextView android:id="@+id/tabSeries" style="@style/TabItem" android:text="@string/tab_series" />
+        <TextView android:id="@+id/tabFavorites" style="@style/TabItem" android:text="@string/tab_favorites" />
+    </LinearLayout>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp">
+        <LinearLayout
+            android:id="@+id/categoryContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+    </HorizontalScrollView>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="40dp" />
+
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="40dp"
+        android:gravity="center"
+        android:textColor="@color/text_muted"
+        android:visibility="gone"
+        android:text="@string/empty_list" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerChannels"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="8dp" />
+
+</LinearLayout>

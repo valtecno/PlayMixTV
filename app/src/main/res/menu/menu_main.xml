@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_search"
+        android:title="@string/action_search"
+        android:icon="@android:drawable/ic_menu_search"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_multiscreen"
+        android:title="@string/action_multiscreen"
+        android:icon="@android:drawable/ic_menu_gallery"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_parental"
+        android:title="@string/action_parental"
+        android:icon="@android:drawable/ic_lock_lock"
+        app:showAsAction="never" />
+
+</menu>

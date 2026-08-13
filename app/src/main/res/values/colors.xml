@@ -1,0 +1,9 @@
+<resources>
+    <!-- 👇 Colores de tu marca: cámbialos por los tuyos -->
+    <color name="brand_primary">#0D47A1</color>
+    <color name="brand_primary_dark">#08306B</color>
+    <color name="brand_accent">#FF6D00</color>
+    <color name="background_dark">#0A0A0A</color>
+    <color name="text_light">#FFFFFF</color>
+    <color name="text_muted">#B0B0B0</color>
+</resources>

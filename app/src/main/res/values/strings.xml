@@ -1,0 +1,32 @@
+<resources>
+    <!-- Nombre de tu app -->
+    <string name="app_name">PlayMix TV</string>
+
+    <string name="login_title">Iniciar sesión</string>
+    <string name="hint_server">URL del servidor (http://midominio.com:8080)</string>
+    <string name="hint_username">Usuario</string>
+    <string name="hint_password">Contraseña</string>
+    <string name="btn_login">Conectar</string>
+    <string name="login_error">No se pudo conectar. Revisa tus datos.</string>
+    <string name="loading">Cargando…</string>
+    <string name="live_tv">TV en vivo</string>
+
+    <string name="tab_live">En vivo</string>
+    <string name="tab_movies">Películas</string>
+    <string name="tab_series">Series</string>
+    <string name="tab_favorites">Favoritos</string>
+    <string name="empty_list">No hay contenido para mostrar</string>
+
+    <string name="action_search">Buscar</string>
+    <string name="action_multiscreen">Multi-pantalla</string>
+    <string name="action_parental">Control parental</string>
+
+    <string name="search_hint">Buscar canales, películas o series…</string>
+    <string name="parental_title">Control parental</string>
+    <string name="parental_create_pin">Crear PIN</string>
+    <string name="parental_change_pin">Cambiar PIN</string>
+    <string name="parental_remove_pin">Quitar PIN</string>
+    <string name="parental_lock_category">Bloquear esta categoría</string>
+    <string name="multiscreen_title">Multi-pantalla</string>
+    <string name="multiscreen_pick">Elegir canal</string>
+</resources>
