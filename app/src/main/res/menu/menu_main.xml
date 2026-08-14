@@ -12,7 +12,7 @@
     <item
         android:id="@+id/action_multiscreen"
         android:title="@string/action_multiscreen"
-        android:icon="@android:drawable/ic_menu_gallery"
+        android:icon="@drawable/ic_multiscreen"
         app:iconTint="@color/text_light"
         app:showAsAction="ifRoom" />
 
@@ -21,6 +21,6 @@
         android:title="@string/action_parental"
         android:icon="@android:drawable/ic_lock_lock"
         app:iconTint="@color/text_light"
-        app:showAsAction="never" />
+        app:showAsAction="ifRoom" />
 
 </menu>
