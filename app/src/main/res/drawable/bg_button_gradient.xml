@@ -6,5 +6,5 @@
         android:angle="0"
         android:startColor="@color/brand_accent"
         android:endColor="@color/brand_primary" />
-    <corners android:radius="20dp" />
+    <corners android:radius="10dp" />
 </shape>

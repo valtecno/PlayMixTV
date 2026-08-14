@@ -1,9 +1,18 @@
 <resources>
-    <!-- 👇 Colores de tu marca: cámbialos por los tuyos -->
-    <color name="brand_primary">#0D47A1</color>
-    <color name="brand_primary_dark">#08306B</color>
-    <color name="brand_accent">#FF6D00</color>
-    <color name="background_dark">#0A0A0A</color>
+    <!-- Paleta "Streaming vibrante" — tomada de tu logo PlayMix TV -->
+    <color name="brand_primary">#FF3CAC</color>        <!-- rosa eléctrico -->
+    <color name="brand_primary_dark">#1A0B2E</color>   <!-- violeta profundo -->
+    <color name="brand_accent">#FF6A00</color>         <!-- naranja -->
+    <color name="brand_purple">#7B2FF7</color>         <!-- violeta acento -->
+
+    <color name="background_dark">#0A0A0F</color>      <!-- negro con base violeta -->
+    <color name="background_gradient_start">#241242</color>
+    <color name="background_gradient_end">#0A0A0F</color>
+
     <color name="text_light">#FFFFFF</color>
-    <color name="text_muted">#B0B0B0</color>
+    <color name="text_muted">#B8AED1</color>           <!-- lavanda apagado -->
+
+    <!-- Tarjetas "vidrio" translúcidas -->
+    <color name="glass_card">#14FFFFFF</color>          <!-- blanco 8% -->
+    <color name="glass_border">#26FFFFFF</color>         <!-- blanco 15% -->
 </resources>
