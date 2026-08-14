@@ -22,8 +22,8 @@ import retrofit2.Response
 private data class ServerOption(val label: String, val url: String)
 
 private val SERVERS = listOf(
-    ServerOption("XDPlayer", "http://xdplayer.tv:8080"),
-    ServerOption("MoonTools", "http://moontools.site:8080")
+    ServerOption("Sistema L", "http://xdplayer.tv:8080"),
+    ServerOption("Sistema XL", "http://moontools.site:8080")
 )
 
 class LoginActivity : AppCompatActivity() {
