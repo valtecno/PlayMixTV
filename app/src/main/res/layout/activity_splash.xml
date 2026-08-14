@@ -17,7 +17,7 @@
             android:id="@+id/ivLogoFallback"
             android:layout_width="140dp"
             android:layout_height="140dp"
-            android:src="@mipmap/ic_launcher"
+            android:src="@drawable/logo_playmix"
             android:contentDescription="@string/app_name"
             android:alpha="0" />
 
