@@ -8,9 +8,18 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@android:color/transparent"
-        android:title="@string/app_name"
-        android:titleTextColor="@color/text_light" />
+        android:background="@android:color/transparent">
+
+        <TextView
+            android:id="@+id/tvToolbarTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_light" />
+
+    </androidx.appcompat.widget.Toolbar>
 
     <!-- Pestañas de tipo de contenido -->
     <LinearLayout

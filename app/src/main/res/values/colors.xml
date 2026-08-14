@@ -13,6 +13,9 @@
     <color name="text_muted">#B8AED1</color>           <!-- lavanda apagado -->
 
     <!-- Tarjetas "vidrio" translúcidas -->
-    <color name="glass_card">#14FFFFFF</color>          <!-- blanco 8% -->
-    <color name="glass_border">#26FFFFFF</color>         <!-- blanco 15% -->
+    <color name="glass_card">#20FFFFFF</color>          <!-- blanco 12.5% -->
+    <color name="glass_border">#3DFFFFFF</color>         <!-- blanco 24% -->
+
+    <!-- Estrella de favoritos -->
+    <color name="star_active">#FFD24D</color>            <!-- dorado cálido -->
 </resources>

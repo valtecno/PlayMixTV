@@ -16,6 +16,7 @@ import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PinDialog
+import com.miiptv.app.util.applyBrandGradient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -44,6 +45,8 @@ class MainActivity : AppCompatActivity() {
         adapter = ContentAdapter(onClick = { item -> openItem(item) })
         binding.recyclerChannels.layoutManager = GridLayoutManager(this, 1)
         binding.recyclerChannels.adapter = adapter
+
+        binding.tvToolbarTitle.applyBrandGradient()
 
         binding.tabLive.setOnClickListener { selectTab(ContentType.LIVE) }
         binding.tabMovies.setOnClickListener { selectTab(ContentType.MOVIE) }
