@@ -3,6 +3,7 @@
     <string name="app_name">PlayMix TV</string>
 
     <string name="login_title">Iniciar sesión</string>
+    <string name="hint_choose_server">Elegí tu servidor</string>
     <string name="hint_server">URL del servidor (http://midominio.com:8080)</string>
     <string name="hint_username">Usuario</string>
     <string name="hint_password">Contraseña</string>
