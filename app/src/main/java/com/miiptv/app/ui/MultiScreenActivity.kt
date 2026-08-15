@@ -9,6 +9,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.miiptv.app.api.LiveStream
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityMultiscreenBinding
+import com.miiptv.app.util.PlayerFactory
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -34,7 +35,7 @@ class MultiScreenActivity : AppCompatActivity() {
         val slots = listOf(binding.slot0, binding.slot1, binding.slot2, binding.slot3)
 
         for (i in 0..3) {
-            val exo = ExoPlayer.Builder(this).build()
+            val exo = PlayerFactory.build(this, handleAudioFocus = false)
             playerViews[i].player = exo
             exo.volume = if (i == activeSlot) 1f else 0f
             players[i] = exo

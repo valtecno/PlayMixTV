@@ -8,38 +8,249 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@android:color/transparent">
+        android:background="@android:color/transparent"
+        android:title=""
+        android:titleTextColor="@color/text_light"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
 
-        <TextView
-            android:id="@+id/tvToolbarTitle"
+        <LinearLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_light" />
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/ivToolbarLogo"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginEnd="10dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/logo_playmix" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvToolbarTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_light" />
+
+                <TextView
+                    android:id="@+id/tvToolbarBy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="-2dp"
+                    android:text="@string/app_author"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.04"
+                    android:textColor="@color/text_muted" />
+            </LinearLayout>
+
+        </LinearLayout>
 
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- Pestañas de tipo de contenido -->
+    <!-- ===== Menú de secciones + saludo/vencimiento, todo en una sola línea ===== -->
     <LinearLayout
-        android:id="@+id/tabContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="4"
-        android:paddingTop="8dp"
-        android:paddingBottom="4dp">
+        android:gravity="center_vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp">
 
-        <TextView android:id="@+id/tabLive" style="@style/TabItem" android:text="@string/tab_live" />
-        <TextView android:id="@+id/tabMovies" style="@style/TabItem" android:text="@string/tab_movies" />
-        <TextView android:id="@+id/tabSeries" style="@style/TabItem" android:text="@string/tab_series" />
-        <TextView android:id="@+id/tabFavorites" style="@style/TabItem" android:text="@string/tab_favorites" />
+        <HorizontalScrollView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:requiresFadingEdge="horizontal"
+            android:fadingEdgeLength="24dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp">
+
+                <TextView android:id="@+id/navHome" style="@style/NavItem"
+                    android:text="@string/nav_home" android:drawableStart="@drawable/ic_home" />
+
+                <TextView android:id="@+id/navLive" style="@style/NavItem"
+                    android:text="@string/tab_live" android:drawableStart="@drawable/ic_live" />
+
+                <TextView android:id="@+id/navMovies" style="@style/NavItem"
+                    android:text="@string/tab_movies" android:drawableStart="@drawable/ic_movie" />
+
+                <TextView android:id="@+id/navSeries" style="@style/NavItem"
+                    android:text="@string/tab_series" android:drawableStart="@drawable/ic_series" />
+
+                <TextView android:id="@+id/navRadio" style="@style/NavItem"
+                    android:text="@string/nav_radio" android:drawableStart="@drawable/ic_radio" />
+
+                <TextView android:id="@+id/navPpv" style="@style/NavItem"
+                    android:text="@string/nav_ppv" android:drawableStart="@drawable/ic_ball" />
+
+                <TextView android:id="@+id/navFavorites" style="@style/NavItem"
+                    android:text="@string/tab_favorites" android:drawableStart="@drawable/ic_favorite" />
+
+                <TextView android:id="@+id/navKids" style="@style/NavItem"
+                    android:text="@string/nav_kids" android:drawableStart="@drawable/ic_kids" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Indica que el menú sigue hacia la derecha -->
+        <ImageView
+            android:id="@+id/navScrollHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_chevron_right"
+            android:contentDescription="@null"
+            android:alpha="0.6" />
+
+
     </LinearLayout>
 
-    <HorizontalScrollView
+    <!-- ===== Inicio: dos secciones lado a lado, un póster por vez ===== -->
+    <LinearLayout
+        android:id="@+id/homeSections"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <!-- Izquierda: Novedades -->
+        <LinearLayout
+            android:id="@+id/colNovedades"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvCarouselTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="6dp"
+                android:text="@string/carousel_title"
+                android:textColor="@color/text_light"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCarousel"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp" />
+        </LinearLayout>
+
+        <!-- Derecha: Agregado recientemente -->
+        <LinearLayout
+            android:id="@+id/colRecientes"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvRecentTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="6dp"
+                android:text="@string/section_recent"
+                android:textColor="@color/text_light"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerRecent"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ===== Buscador dedicado del perfil de niños ===== -->
+    <EditText
+        android:id="@+id/etKidsSearch"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_glass_card"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp"
+        android:hint="@string/kids_search_hint"
+        android:textColor="@color/text_light"
+        android:textColorHint="@color/text_muted"
+        android:textCursorDrawable="@null"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch"
+        android:visibility="gone" />
+
+    <!-- ===== Buscador propio de PPV ===== -->
+    <EditText
+        android:id="@+id/etPpvSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_glass_card"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp"
+        android:hint="@string/ppv_search_hint"
+        android:textColor="@color/text_light"
+        android:textColorHint="@color/text_muted"
+        android:textCursorDrawable="@null"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch"
+        android:visibility="gone" />
+
+    <!-- ===== Filtros por tipo dentro de Favoritos ===== -->
+    <HorizontalScrollView
+        android:id="@+id/favFilterScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+        <LinearLayout
+            android:id="@+id/favFilterContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+    </HorizontalScrollView>
+
+    <!-- ===== Categorías (secciones de catálogo) ===== -->
+    <HorizontalScrollView
+        android:id="@+id/categoryScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
         android:paddingTop="4dp"
         android:paddingBottom="8dp">
         <LinearLayout
@@ -50,6 +261,17 @@
             android:paddingStart="8dp"
             android:paddingEnd="8dp" />
     </HorizontalScrollView>
+
+    <TextView
+        android:id="@+id/tvSectionTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="6dp"
+        android:textColor="@color/text_light"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
 
     <ProgressBar
         android:id="@+id/progressBar"

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/switch_account"
+        android:textColor="@color/text_light"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvAccountsHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="14dp"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:id="@+id/accountsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <TextView
+        android:id="@+id/btnAddAccount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:paddingVertical="15dp"
+        android:text="@string/add_account"
+        android:textColor="@color/text_light"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:focusable="true"
+        android:clickable="true" />
+
+    <TextView
+        android:id="@+id/btnCloseAccounts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_option"
+        android:gravity="center"
+        android:paddingVertical="13dp"
+        android:text="@string/cancel"
+        android:textColor="@color/text_muted"
+        android:textSize="14sp"
+        android:focusable="true"
+        android:clickable="true" />
+
+</LinearLayout>

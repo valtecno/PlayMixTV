@@ -14,6 +14,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.miiptv.app.api.Session
+import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.databinding.ActivitySplashBinding
 
 /**
@@ -83,8 +84,13 @@ class SplashActivity : AppCompatActivity() {
         nameFade.startDelay = 250
         nameSlide.startDelay = 250
 
+        // El crédito entra último, más suave
+        val by = binding.tvSplashBy
+        val byFade = ObjectAnimator.ofFloat(by, View.ALPHA, 0f, 1f).setDuration(400)
+        byFade.startDelay = 600
+
         AnimatorSet().apply {
-            playTogether(logoFade, logoZoomX, logoZoomY, nameFade, nameSlide)
+            playTogether(logoFade, logoZoomX, logoZoomY, nameFade, nameSlide, byFade)
             interpolator = DecelerateInterpolator()
             start()
         }
@@ -95,7 +101,12 @@ class SplashActivity : AppCompatActivity() {
     private fun proceed() {
         if (proceeded) return
         proceeded = true
-        val next = if (Session.isLoggedIn(this)) MainActivity::class.java else LoginActivity::class.java
+        val next = when {
+            // Primera vez: elegir móvil o TV antes que nada
+            !DeviceMode.isChosen(this) -> DeviceModeActivity::class.java
+            Session.isLoggedIn(this) -> MainActivity::class.java
+            else -> LoginActivity::class.java
+        }
         startActivity(Intent(this, next))
         finish()
     }

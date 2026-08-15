@@ -28,6 +28,7 @@ class SeriesDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySeriesDetailBinding
     private var episodesBySeason: Map<String, List<Episode>> = emptyMap()
+    private var currentSeason: List<Episode> = emptyList()
     private lateinit var adapter: EpisodeAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,14 +79,33 @@ class SeriesDetailActivity : AppCompatActivity() {
     }
 
     private fun showSeason(season: String) {
-        adapter.submitList(episodesBySeason[season].orEmpty())
+        currentSeason = episodesBySeason[season].orEmpty()
+        adapter.submitList(currentSeason)
     }
 
+    /**
+     * Además del episodio elegido, se manda la temporada completa para que el
+     * reproductor pueda encadenar automáticamente con el siguiente capítulo.
+     */
     private fun playEpisode(episode: Episode) {
-        val url = Session.seriesEpisodeUrl(this, episode.id, episode.containerExtension ?: "mp4")
-        startActivity(Intent(this, PlayerActivity::class.java)
-            .putExtra(PlayerActivity.EXTRA_URL, url)
-            .putExtra(PlayerActivity.EXTRA_TITLE, episode.title ?: "Episodio"))
+        val urls = ArrayList(currentSeason.map {
+            Session.seriesEpisodeUrl(this, it.id, it.containerExtension ?: "mp4")
+        })
+        val titles = ArrayList(currentSeason.mapIndexed { i, ep ->
+            "E${ep.episodeNum ?: (i + 1)} — ${ep.title ?: "Episodio"}"
+        })
+        val index = currentSeason.indexOfFirst { it.id == episode.id }.coerceAtLeast(0)
+
+        startActivity(
+            Intent(this, PlayerActivity::class.java)
+                .putExtra(PlayerActivity.EXTRA_URL, urls.getOrElse(index) {
+                    Session.seriesEpisodeUrl(this, episode.id, episode.containerExtension ?: "mp4")
+                })
+                .putExtra(PlayerActivity.EXTRA_TITLE, titles.getOrElse(index) { episode.title ?: "Episodio" })
+                .putStringArrayListExtra(PlayerActivity.EXTRA_PLAYLIST_URLS, urls)
+                .putStringArrayListExtra(PlayerActivity.EXTRA_PLAYLIST_TITLES, titles)
+                .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, index)
+        )
     }
 }
 

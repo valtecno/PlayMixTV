@@ -18,4 +18,11 @@
 
     <!-- Estrella de favoritos -->
     <color name="star_active">#FFD24D</color>            <!-- dorado cálido -->
+
+    <!-- Fondo de los ítems del menú superior cuando NO están seleccionados -->
+    <color name="nav_inactive_bg">#59140626</color>      <!-- violeta muy oscuro, translúcido -->
+    <color name="dialog_bg">#1B1230</color>
+    <!-- Perfil de niños: verde, para distinguirlo del resto del menú -->
+    <color name="kids_green">#4BD97F</color>
+    <color name="kids_green_dim">#8A4BD97F</color>
 </resources>

@@ -9,7 +9,158 @@
         android:id="@+id/playerView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:use_controller="true" />
+        app:use_controller="true"
+        app:show_timeout="4000" />
+
+    <!-- ===== Barra superior propia: título, favorito, opciones ===== -->
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#B3000000"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="8dp">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_back"
+            android:contentDescription="@string/back" />
+
+        <TextView
+            android:id="@+id/tvNowPlaying"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="10dp"
+            android:maxLines="1"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:singleLine="true"
+            android:textColor="@color/text_light"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/btnFavorite"
+            style="@style/PlayerIcon"
+            android:src="@android:drawable/star_big_off"
+            android:contentDescription="@string/tab_favorites" />
+
+        <ImageView
+            android:id="@+id/btnAudio"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_audio"
+            android:contentDescription="@string/player_audio" />
+
+        <ImageView
+            android:id="@+id/btnSubtitles"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_subtitles"
+            android:contentDescription="@string/player_subtitles" />
+
+        <ImageView
+            android:id="@+id/btnQuality"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_quality"
+            android:contentDescription="@string/player_quality" />
+
+        <ImageView
+            android:id="@+id/btnAspect"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_multiscreen"
+            android:contentDescription="@string/setting_aspect" />
+
+        <ImageView
+            android:id="@+id/btnBuffer"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_buffer"
+            android:contentDescription="@string/setting_buffer" />
+
+        <ImageView
+            android:id="@+id/btnNext"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_next"
+            android:visibility="gone"
+            android:contentDescription="@string/player_next" />
+
+        <ImageView
+            android:id="@+id/btnLock"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_lock_open"
+            android:contentDescription="@string/player_lock" />
+
+    </LinearLayout>
+
+    <!-- ===== Botón para desbloquear, visible solo con la pantalla bloqueada ===== -->
+    <ImageView
+        android:id="@+id/btnUnlock"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="18dp"
+        android:padding="12dp"
+        android:background="#99000000"
+        android:src="@drawable/ic_lock_closed"
+        android:visibility="gone"
+        android:contentDescription="@string/player_unlock" />
+
+    <!-- ===== Aviso de siguiente episodio ===== -->
+    <LinearLayout
+        android:id="@+id/nextEpisodeBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="90dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_glass_card"
+        android:padding="14dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvNextCountdown"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_light"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp">
+
+            <TextView
+                android:id="@+id/btnPlayNextNow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="18dp"
+                android:paddingVertical="9dp"
+                android:text="@string/player_next"
+                android:textColor="@color/text_light"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:focusable="true"
+                android:clickable="true" />
+
+            <TextView
+                android:id="@+id/btnCancelNext"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/bg_option"
+                android:paddingHorizontal="18dp"
+                android:paddingVertical="9dp"
+                android:text="@string/cancel"
+                android:textColor="@color/text_light"
+                android:textSize="13sp"
+                android:focusable="true"
+                android:clickable="true" />
+        </LinearLayout>
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/progressBar"

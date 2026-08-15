@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@android:color/transparent"
+        android:title="@string/settings_title"
+        android:titleTextColor="@color/text_light"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- ===== Reproductor ===== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/settings_player" />
+
+            <LinearLayout android:id="@+id/rowBuffer" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_buffer" />
+                <TextView android:id="@+id/tvBuffer" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowAspect" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_aspect" />
+                <TextView android:id="@+id/tvAspect" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowReconnect" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_reconnect" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swReconnect"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowBackground" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_background" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swBackground"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowAutoNext" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_autoplay_next" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swAutoNext"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowScreenOn" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_screen_on" />
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swScreenOn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowDeviceMode" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_device_mode" />
+                <TextView android:id="@+id/tvDeviceMode" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowPersonalize" style="@style/SettingsRow">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setting_personalize"
+                        android:textColor="@color/text_light"
+                        android:textSize="15sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setting_personalize_desc"
+                        android:textColor="@color/text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/text_muted"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <!-- ===== Contenido ===== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/settings_content" />
+
+            <LinearLayout android:id="@+id/rowRefresh" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_refresh" />
+                <TextView android:id="@+id/tvCatalog" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowClearCache" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_clear_cache" />
+            </LinearLayout>
+
+            <!-- ===== Cuenta ===== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/settings_account" />
+
+            <LinearLayout style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_server" />
+                <TextView android:id="@+id/tvServer" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/rowSwitchAccount" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/switch_account" />
+                <TextView android:id="@+id/tvAccountCount" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <LinearLayout style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/hint_username" />
+                <TextView android:id="@+id/tvUser" style="@style/SettingsValue" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnLogout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:background="@drawable/bg_button_gradient"
+                android:textColor="@color/text_light"
+                android:text="@string/setting_logout" />
+
+            <TextView
+                android:id="@+id/tvVersion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="center"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

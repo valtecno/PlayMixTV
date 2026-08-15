@@ -1,6 +1,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
-    <style name="Theme.MiIPTV" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <!--
+      Variante OSCURA fija (antes era DayNight): con el sistema en modo claro,
+      toda vista sin color explícito heredaba texto oscuro y quedaba ilegible
+      sobre el fondo violeta/negro de la app.
+    -->
+    <style name="Theme.MiIPTV" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="android:alertDialogTheme">@style/AppDialog</item>
+        <item name="android:textColorPrimary">@color/text_light</item>
+        <item name="android:textColorSecondary">@color/text_muted</item>
+        <item name="android:textColorTertiary">@color/text_muted</item>
+        <item name="android:textColorHint">@color/text_muted</item>
+        <item name="android:editTextColor">@color/text_light</item>
+        <item name="colorOnSurface">@color/text_light</item>
+        <item name="colorOnBackground">@color/text_light</item>
+        <item name="android:colorBackground">@color/background_dark</item>
+        <item name="alertDialogTheme">@style/AppDialog</item>
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryDark">@color/brand_primary_dark</item>
         <item name="colorAccent">@color/brand_accent</item>
@@ -25,6 +40,199 @@
         <item name="android:focusable">true</item>
         <item name="android:clickable">true</item>
         <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
+    <!-- Diálogos: fondo oscuro acorde a la app, no el blanco por defecto -->
+    <style name="AppDialog" parent="Theme.MaterialComponents.Dialog.Alert">
+        <!-- Fondo oscuro con esquinas redondeadas, no el blanco por defecto -->
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:background">@android:color/transparent</item>
+
+        <!-- Todo el texto en blanco/lavanda para que contraste sobre el fondo oscuro -->
+        <item name="android:textColorPrimary">@color/text_light</item>
+        <item name="android:textColorSecondary">@color/text_muted</item>
+        <item name="android:textColorAlertDialogListItem">@color/text_light</item>
+        <item name="android:textColorHint">@color/text_muted</item>
+        <item name="android:editTextColor">@color/text_light</item>
+
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorAccent">@color/brand_primary</item>
+        <!--
+          Los diálogos de la app son android.app.AlertDialog (del sistema), no los
+          de Material: por eso los estilos Material de abajo no alcanzaban y los
+          botones seguían saliendo casi negros. Estos son los atributos que sí lee.
+        -->
+        <item name="android:colorAccent">@color/brand_primary</item>
+        <item name="android:buttonBarButtonStyle">@style/DialogButtonFramework</item>
+        <item name="android:textColor">@color/text_light</item>
+        <item name="colorOnSurface">@color/text_light</item>
+        <item name="android:colorBackground">@color/dialog_bg</item>
+
+        <!-- Los botones salían gris oscuro sobre fondo oscuro: ahora blancos y en negrita -->
+        <item name="buttonBarPositiveButtonStyle">@style/DialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/DialogButton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/DialogButton</item>
+    </style>
+
+    <!-- Botones de los diálogos del sistema: blancos y en negrita -->
+    <style name="DialogButtonFramework" parent="android:Widget.Material.Button.Borderless">
+        <item name="android:textColor">@color/text_light</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="DialogButton" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/text_light</item>
+        <item name="android:textStyle">bold</item>
+        <item name="rippleColor">@color/brand_primary</item>
+    </style>
+
+    <!-- Botones del reproductor -->
+    <style name="PlayerIcon">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:layout_marginHorizontal">1dp</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+
+    <!-- Pantalla Personalizar -->
+    <style name="SectionHint">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="StepperButton">
+        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:background">@drawable/bg_option</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/text_light</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+
+    <style name="RadioRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:background">@drawable/bg_option</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+
+    <style name="RadioDot">
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textColor">@color/text_muted</item>
+    </style>
+
+    <style name="RadioTexts">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:layout_marginStart">14dp</item>
+    </style>
+
+    <style name="RadioTitle">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/text_light</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="RadioDesc">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- Item de la barra de navegación superior -->
+    <style name="NavItem">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginHorizontal">3dp</item>
+        <item name="android:paddingHorizontal">14dp</item>
+        <item name="android:paddingVertical">10dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:drawablePadding">7dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:maxLines">1</item>
+    </style>
+
+    <!-- Chip de filtro del buscador -->
+    <style name="FilterChip">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:layout_marginHorizontal">4dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingVertical">8dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:background">@drawable/bg_chip_outline</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+
+    <!-- Ajustes del sistema -->
+    <style name="SettingsHeader">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">20dp</item>
+        <item name="android:layout_marginBottom">6dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:textColor">@color/brand_accent</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="SettingsRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:background">@drawable/bg_glass_card</item>
+        <item name="android:padding">16dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+    </style>
+
+    <style name="SettingsLabel">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textColor">@color/text_light</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="SettingsValue">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/text_muted</item>
+        <item name="android:textSize">14sp</item>
     </style>
 
 </resources>

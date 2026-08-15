@@ -1,0 +1,251 @@
+package com.miiptv.app.ui
+
+import android.app.AlertDialog
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import com.miiptv.app.R
+import com.miiptv.app.api.Session
+import com.miiptv.app.databinding.ActivitySettingsBinding
+import com.miiptv.app.databinding.DialogAccountsBinding
+import com.miiptv.app.databinding.ItemAccountBinding
+import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.Accounts
+import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.DeviceMode
+import com.miiptv.app.util.Servers
+import com.miiptv.app.util.PlayerPrefs
+
+/**
+ * Ajustes del sistema: opciones internas del reproductor, del catálogo y de la cuenta.
+ * Se abre con el ícono de engranaje de la barra superior.
+ */
+class SettingsActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivitySettingsBinding
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivitySettingsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.toolbar.setNavigationOnClickListener { finish() }
+
+        // ---------- Reproductor ----------
+        binding.rowBuffer.setOnClickListener { pickBuffer() }
+        binding.rowAspect.setOnClickListener { pickAspect() }
+
+        binding.swReconnect.isChecked = PlayerPrefs.getAutoReconnect(this)
+        binding.swReconnect.setOnCheckedChangeListener { _, checked ->
+            PlayerPrefs.setAutoReconnect(this, checked)
+        }
+        binding.rowReconnect.setOnClickListener { binding.swReconnect.toggle() }
+
+        binding.swBackground.isChecked = PlayerPrefs.getBackground(this)
+        binding.swBackground.setOnCheckedChangeListener { _, checked ->
+            PlayerPrefs.setBackground(this, checked)
+        }
+        binding.rowBackground.setOnClickListener { binding.swBackground.toggle() }
+
+        binding.swAutoNext.isChecked = PlayerPrefs.getAutoPlayNext(this)
+        binding.swAutoNext.setOnCheckedChangeListener { _, checked ->
+            PlayerPrefs.setAutoPlayNext(this, checked)
+        }
+        binding.rowAutoNext.setOnClickListener { binding.swAutoNext.toggle() }
+
+        binding.swScreenOn.isChecked = PlayerPrefs.getKeepScreenOn(this)
+        binding.swScreenOn.setOnCheckedChangeListener { _, checked ->
+            PlayerPrefs.setKeepScreenOn(this, checked)
+        }
+        binding.rowScreenOn.setOnClickListener { binding.swScreenOn.toggle() }
+
+        // ---------- Contenido ----------
+        binding.rowDeviceMode.setOnClickListener {
+            startActivity(
+                Intent(this, DeviceModeActivity::class.java)
+                    .putExtra(DeviceModeActivity.EXTRA_ONLY_CHANGE, true)
+            )
+        }
+
+        binding.rowPersonalize.setOnClickListener {
+            startActivity(Intent(this, PersonalizeActivity::class.java))
+        }
+
+        binding.rowRefresh.setOnClickListener { refreshCatalog() }
+        binding.rowClearCache.setOnClickListener { clearImageCache() }
+
+        // ---------- Cuenta ----------
+        binding.tvServer.text = Session.server(this)
+            .takeIf { it.isNotBlank() }
+            ?.let { Servers.labelFor(it) } ?: "—"
+        binding.tvUser.text = Session.username(this).ifBlank { "—" }
+        binding.rowSwitchAccount.setOnClickListener { switchAccount() }
+        binding.btnLogout.setOnClickListener { confirmLogout() }
+
+        binding.tvVersion.text = getString(R.string.settings_version, appVersion())
+
+        refreshLabels()
+    }
+
+    private fun refreshLabels() {
+        binding.tvDeviceMode.text = DeviceMode.label(this, DeviceMode.get(this))
+
+        val otras = Accounts.others(this).size
+        binding.tvAccountCount.text =
+            if (otras > 0) getString(R.string.accounts_available, otras) else getString(R.string.add_account)
+
+        binding.tvBuffer.text = PlayerPrefs.bufferLabel(this, PlayerPrefs.getBuffer(this))
+        binding.tvAspect.text = PlayerPrefs.aspectLabel(this, PlayerPrefs.getAspect(this))
+        binding.tvCatalog.text = if (Catalog.isEmpty) {
+            getString(R.string.catalog_empty)
+        } else {
+            getString(R.string.catalog_count, Catalog.live.size, Catalog.movies.size, Catalog.series.size)
+        }
+    }
+
+    /**
+     * Permite saltar entre la cuenta de Sistema L y la de Sistema XL sin volver
+     * a escribir la contraseña. Si no hay otra guardada, abre el login.
+     */
+    /**
+     * Diálogo propio (no el de lista pelada del sistema): muestra cada cuenta
+     * como tarjeta, marca la activa, y "Agregar otra cuenta" es un botón real
+     * con el degradado de la app, no un texto suelto.
+     */
+    private fun switchAccount() {
+        val vista = DialogAccountsBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this).setView(vista.root).create()
+
+        val activa = Accounts.getAll(this).firstOrNull {
+            it.serverUrl.removeSuffix("/") == Session.server(this).removeSuffix("/") &&
+                it.username == Session.username(this)
+        }
+        val todas = Accounts.getAll(this)
+
+        vista.tvAccountsHint.text = if (todas.size <= 1) {
+            getString(R.string.accounts_hint_single)
+        } else {
+            getString(R.string.accounts_hint_multi, todas.size)
+        }
+
+        todas.forEach { cuenta ->
+            val fila = ItemAccountBinding.inflate(layoutInflater, vista.accountsContainer, false)
+            fila.tvAccountUser.text = cuenta.username
+            fila.tvAccountServer.text = cuenta.serverLabel
+            fila.tvAccountAvatar.text = cuenta.username.take(1).uppercase()
+
+            val esActiva = cuenta == activa
+            if (esActiva) {
+                fila.tvAccountBadge.visibility = View.VISIBLE
+                fila.tvAccountBadge.text = getString(R.string.account_active)
+                fila.tvAccountBadge.background = Appearance.gradient(this, 14f)
+                fila.root.alpha = 1f
+            } else {
+                fila.tvAccountBadge.visibility = View.GONE
+                fila.root.alpha = 0.75f
+                fila.root.setOnClickListener {
+                    dialog.dismiss()
+                    useAccount(cuenta)
+                }
+            }
+            vista.accountsContainer.addView(fila.root)
+        }
+
+        vista.btnAddAccount.background = Appearance.gradient(this, 12f)
+        vista.btnAddAccount.setOnClickListener {
+            dialog.dismiss()
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
+        vista.btnCloseAccounts.setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
+    }
+
+    private fun useAccount(cuenta: Accounts.Account) {
+        Session.save(this, cuenta.serverUrl, cuenta.username, cuenta.password)
+        Catalog.clear()
+        Toast.makeText(
+            this, getString(R.string.account_switched, cuenta.serverLabel), Toast.LENGTH_SHORT
+        ).show()
+        startActivity(
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        )
+        finish()
+    }
+
+    private fun pickBuffer() {
+        val options = arrayOf(
+            PlayerPrefs.bufferLabel(this, PlayerPrefs.BUFFER_LOW),
+            PlayerPrefs.bufferLabel(this, PlayerPrefs.BUFFER_NORMAL),
+            PlayerPrefs.bufferLabel(this, PlayerPrefs.BUFFER_HIGH)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.setting_buffer)
+            .setSingleChoiceItems(options, PlayerPrefs.getBuffer(this)) { dialog, which ->
+                PlayerPrefs.setBuffer(this, which)
+                refreshLabels()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun pickAspect() {
+        val options = arrayOf(
+            PlayerPrefs.aspectLabel(this, PlayerPrefs.FIT),
+            PlayerPrefs.aspectLabel(this, PlayerPrefs.CROP),
+            PlayerPrefs.aspectLabel(this, PlayerPrefs.STRETCH)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.setting_aspect)
+            .setSingleChoiceItems(options, PlayerPrefs.getAspect(this)) { dialog, which ->
+                PlayerPrefs.setAspect(this, which)
+                refreshLabels()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun refreshCatalog() {
+        Toast.makeText(this, R.string.catalog_refreshing, Toast.LENGTH_SHORT).show()
+        Catalog.ensureLoaded(this, force = true) { stillLoading ->
+            if (!isFinishing && !isDestroyed && !stillLoading) {
+                refreshLabels()
+                Toast.makeText(this, R.string.catalog_refreshed, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun clearImageCache() {
+        // Solo se borra la caché en disco: apagar la instancia de Picasso la dejaría
+        // inutilizable para el resto de la app hasta reiniciarla.
+        runCatching { cacheDir.deleteRecursively() }
+        Toast.makeText(this, R.string.cache_cleared, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun confirmLogout() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.setting_logout)
+            .setMessage(R.string.logout_confirm)
+            .setPositiveButton(R.string.setting_logout) { _, _ ->
+                Session.logout(this)
+                Catalog.clear()
+                startActivity(
+                    Intent(this, LoginActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                )
+                finish()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun appVersion(): String = runCatching {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
+    }.getOrDefault("1.0")
+}

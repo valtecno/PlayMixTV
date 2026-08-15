@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@android:color/transparent"
+        android:title="@string/personalize_title"
+        android:titleTextColor="@color/text_light"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/personalize_subtitle"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
+
+            <!-- ==================== TEMA DE COLOR ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/color_theme" />
+            <TextView style="@style/SectionHint" android:text="@string/color_theme_hint" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_option"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tvSwatch"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:gravity="center"
+                        android:text="@string/aa"
+                        android:textColor="@color/text_light"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvPaletteName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_light"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/color_theme_desc"
+                            android:textColor="@color/text_muted"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvApplied"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="8dp"
+                        android:text="@string/applied"
+                        android:textColor="@color/text_light"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none"
+                    android:layout_marginTop="16dp">
+                    <LinearLayout
+                        android:id="@+id/colorContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+            </LinearLayout>
+
+            <!-- ==================== TAMAÑO DE SUBTÍTULOS ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/subtitle_size" />
+            <TextView android:id="@+id/tvSubtitleCurrent" style="@style/SectionHint" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_option"
+                android:padding="14dp">
+
+                <TextView
+                    android:id="@+id/tvSubtitlePreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#66000000"
+                    android:gravity="center"
+                    android:paddingVertical="26dp"
+                    android:text="@string/subtitle_preview"
+                    android:textColor="@color/text_light" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp">
+
+                    <TextView
+                        android:id="@+id/btnSubtitleMinus"
+                        style="@style/StepperButton"
+                        android:text="@string/minus" />
+
+                    <TextView
+                        android:id="@+id/tvSubtitleValue"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginHorizontal="10dp"
+                        android:background="@drawable/bg_option"
+                        android:gravity="center"
+                        android:paddingVertical="14dp"
+                        android:textColor="@color/text_light"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/btnSubtitlePlus"
+                        style="@style/StepperButton"
+                        android:text="@string/plus" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ==================== AL TOCAR UNA PELÍCULA ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/on_movie_click" />
+            <TextView style="@style/SectionHint" android:text="@string/on_movie_click_hint" />
+
+            <LinearLayout
+                android:id="@+id/optPlayDirect"
+                style="@style/RadioRow">
+
+                <TextView
+                    android:id="@+id/radioPlay"
+                    style="@style/RadioDot" />
+
+                <LinearLayout style="@style/RadioTexts">
+                    <TextView style="@style/RadioTitle" android:text="@string/play_direct" />
+                    <TextView style="@style/RadioDesc" android:text="@string/play_direct_desc" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/optShowDetails"
+                style="@style/RadioRow">
+
+                <TextView
+                    android:id="@+id/radioDetails"
+                    style="@style/RadioDot" />
+
+                <LinearLayout style="@style/RadioTexts">
+                    <TextView style="@style/RadioTitle" android:text="@string/show_details" />
+                    <TextView style="@style/RadioDesc" android:text="@string/show_details_desc" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ==================== VISTA DE SERIES ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/series_view" />
+            <TextView android:id="@+id/tvSeriesHint" style="@style/SectionHint" />
+
+            <LinearLayout
+                android:id="@+id/seriesGridOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+            <!-- ==================== VISTA DE PELÍCULAS ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/movies_view" />
+            <TextView android:id="@+id/tvMoviesHint" style="@style/SectionHint" />
+
+            <LinearLayout
+                android:id="@+id/moviesGridOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+            <!-- ==================== ICONO PERFIL DE NIÑOS ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/kids_icon" />
+            <TextView style="@style/SectionHint" android:text="@string/kids_icon_hint" />
+
+            <GridLayout
+                android:id="@+id/kidsIconGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="6" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="20dp"
+                android:text="@string/kids_pending"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:textStyle="italic" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

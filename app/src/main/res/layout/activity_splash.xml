@@ -33,6 +33,18 @@
             android:letterSpacing="0.05"
             android:alpha="0" />
 
+        <TextView
+            android:id="@+id/tvSplashBy"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="@string/app_author"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:letterSpacing="0.06"
+            android:alpha="0" />
+
     </LinearLayout>
 
     <!-- Se muestra automáticamente si existe res/raw/intro.mp4 -->

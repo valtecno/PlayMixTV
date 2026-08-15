@@ -3,16 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_search"
-        android:title="@string/action_search"
-        android:icon="@android:drawable/ic_menu_search"
-        app:iconTint="@color/text_light"
+        android:id="@+id/action_refresh"
+        android:title="@string/action_refresh"
+        android:icon="@drawable/ic_refresh"
+        app:iconTint="@color/star_active"
         app:showAsAction="ifRoom" />
 
     <item
-        android:id="@+id/action_multiscreen"
-        android:title="@string/action_multiscreen"
-        android:icon="@drawable/ic_multiscreen"
+        android:id="@+id/action_search"
+        android:title="@string/action_search"
+        android:icon="@drawable/ic_search"
         app:iconTint="@color/text_light"
         app:showAsAction="ifRoom" />
 
@@ -20,6 +20,20 @@
         android:id="@+id/action_parental"
         android:title="@string/action_parental"
         android:icon="@android:drawable/ic_lock_lock"
+        app:iconTint="@color/text_light"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_multi"
+        android:title="@string/nav_multi"
+        android:icon="@drawable/ic_multiscreen"
+        app:iconTint="@color/text_light"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_account"
+        android:title="@string/action_account"
+        android:icon="@drawable/ic_account"
         app:iconTint="@color/text_light"
         app:showAsAction="ifRoom" />
 

@@ -3,7 +3,7 @@
     <string name="app_name">PlayMix TV</string>
 
     <string name="login_title">Iniciar sesión</string>
-    <string name="hint_choose_server">Elegí tu servidor</string>
+    <string name="hint_choose_server">Elige tu servidor</string>
     <string name="hint_server">URL del servidor (http://midominio.com:8080)</string>
     <string name="hint_username">Usuario</string>
     <string name="hint_password">Contraseña</string>
@@ -12,7 +12,7 @@
     <string name="loading">Cargando…</string>
     <string name="live_tv">TV en vivo</string>
 
-    <string name="tab_live">En vivo</string>
+    <string name="tab_live">Canales</string>
     <string name="tab_movies">Películas</string>
     <string name="tab_series">Series</string>
     <string name="tab_favorites">Favoritos</string>
@@ -30,4 +30,176 @@
     <string name="parental_lock_category">Bloquear esta categoría</string>
     <string name="multiscreen_title">Multi-pantalla</string>
     <string name="multiscreen_pick">Elegir canal</string>
+
+    <!-- Carrusel de novedades -->
+    <string name="carousel_title">Novedades</string>
+
+    <!-- Buscador -->
+    <string name="filter_all">Todo</string>
+    <string name="search_type_to_start">Escribe al menos 2 letras para buscar</string>
+    <string name="search_loading_catalog">Cargando catálogo del servidor…</string>
+    <string name="search_no_results">Sin resultados para \"%1$s\"</string>
+    <plurals name="search_results">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
+
+    <!-- Navegación por secciones -->
+    <string name="nav_home">Inicio</string>
+    <string name="nav_multi">Multi</string>
+    <string name="nav_history">Historial</string>
+    <string name="kids_no_match">Nada coincide con esa búsqueda</string>
+    <string name="kids_search_hint">Buscar en el perfil de niños…</string>
+    <string name="setting_personalize">Personalizar apariencia</string>
+    <string name="setting_personalize_desc">Colores, subtítulos y vistas</string>
+    <string name="ppv_search_hint">Buscar equipo, liga, país o evento…</string>
+    <string name="fav_all">Todos</string>
+    <string name="fav_radios">Radios</string>
+    <string name="ppv_no_match">Nada coincide con esa búsqueda</string>
+    <string name="nav_ppv">PPV</string>
+    <string name="nav_radio">Radios</string>
+    <string name="nav_kids">Niños</string>
+    <string name="nav_kids_exit">Salir</string>
+    <string name="kids_mode_on">Perfil de niños activado: solo contenido apto para menores de 16</string>
+    <string name="kids_mode_off">Saliste del perfil de niños</string>
+    <string name="kids_mode_need_pin">Primero creá un PIN: hará falta para salir del perfil de niños</string>
+    <string name="kids_mode_blocked">Salí del perfil de niños para acceder a esto</string>
+    <string name="empty_kids">No se encontró contenido infantil en este servidor</string>
+    <string name="section_ppv">PPV Fútbol VIP</string>
+    <string name="section_radio">Radios del mundo</string>
+    <string name="empty_ppv">No se encontraron categorías de fútbol en este servidor</string>
+    <string name="empty_radio">No se encontraron emisoras para este país</string>
+    <string name="radio_loading">Buscando emisoras…</string>
+    <string name="switch_account">Cambiar de cuenta</string>
+    <string name="add_account">Agregar otra cuenta…</string>
+    <string name="account_switched">Cuenta cambiada a %1$s</string>
+    <string name="no_other_accounts">No hay otra cuenta guardada</string>
+    <string name="account_active">Activa</string>
+    <string name="accounts_hint_single">Todavía no tienes una segunda cuenta guardada</string>
+    <string name="accounts_hint_multi">%1$d cuentas guardadas · toca una para usarla</string>
+    <string name="accounts_available">%1$d guardada(s)</string>
+    <string name="action_refresh">Actualizar</string>
+    <string name="action_account">Cuenta</string>
+    <string name="greeting_morning">Buenos días</string>
+    <string name="greeting_afternoon">Buenas tardes</string>
+    <string name="greeting_night">Buenas noches</string>
+    <string name="section_recent">Agregados</string>
+    <string name="section_history">Continuar viendo</string>
+    <string name="empty_history">Todavía no has reproducido nada</string>
+    <string name="empty_favorites">No tienes favoritos guardados</string>
+    <string name="history_cleared">Historial borrado</string>
+    <string name="action_clear_history">Borrar historial</string>
+
+    <!-- Búsquedas recientes -->
+    <string name="recent_searches">Búsquedas recientes</string>
+    <string name="clear_all">Limpiar</string>
+    <string name="catalog_summary">Catálogo: %1$d películas · %2$d series · %3$d canales</string>
+
+    <!-- Personalizar -->
+    <string name="personalize_title">Personalizar</string>
+    <string name="personalize_subtitle">Ajusta la app a tu gusto</string>
+    <string name="nav_personalize">Personalizar</string>
+    <string name="color_theme">Tema de color</string>
+    <string name="color_theme_hint">Elige el color principal de la app</string>
+    <string name="color_theme_desc">Color de botones, foco y acentos</string>
+    <string name="applied">Aplicado</string>
+    <string name="aa">Aa</string>
+    <string name="subtitle_size">Tamaño de subtítulos</string>
+    <string name="subtitle_current">Actual: %1$d sp</string>
+    <string name="subtitle_value">%1$d sp</string>
+    <string name="subtitle_preview">Así se verán los subtítulos</string>
+    <string name="minus">−</string>
+    <string name="plus">+</string>
+    <string name="on_movie_click">Al tocar una película</string>
+    <string name="on_movie_click_hint">Elige qué ocurre al tocarla</string>
+    <string name="play_direct">Reproducir directo</string>
+    <string name="play_direct_desc">Entra al reproductor inmediatamente</string>
+    <string name="show_details">Ver detalles primero</string>
+    <string name="show_details_desc">Muestra la ficha con reparto, director, etc.</string>
+    <string name="series_view">Vista de series</string>
+    <string name="movies_view">Vista de películas</string>
+    <string name="grid_hint">%1$s: %2$d columnas por fila.</string>
+    <string name="grid_option">%1$d col.</string>
+    <string name="kids_icon">Icono para perfil de niños</string>
+    <string name="kids_icon_hint">Elige un emoji que represente al perfil infantil</string>
+    <string name="kids_pending">El perfil de niños se desarrollará más adelante; por ahora solo se guarda el ícono elegido.</string>
+
+    <!-- Ficha de película -->
+    <string name="movie_play">Reproducir</string>
+    <string name="movie_cast">Reparto</string>
+    <string name="movie_director">Director</string>
+    <string name="movie_plot">Sinopsis</string>
+    <string name="movie_no_info">Sin información adicional para este título</string>
+
+    <!-- Ajustes del sistema -->
+    <string name="settings_title">Ajustes del sistema</string>
+    <string name="settings_player">Reproductor</string>
+    <string name="settings_content">Contenido</string>
+    <string name="settings_account">Cuenta</string>
+    <string name="setting_buffer">Buffer</string>
+    <string name="setting_aspect">Relación de aspecto</string>
+    <string name="setting_reconnect">Reconectar automáticamente</string>
+    <string name="setting_screen_on">Mantener pantalla encendida</string>
+    <string name="setting_refresh">Actualizar catálogo</string>
+    <string name="setting_clear_cache">Vaciar caché de imágenes</string>
+    <string name="setting_server">Servidor</string>
+    <string name="setting_logout">Cerrar sesión</string>
+    <string name="settings_version">Versión %1$s</string>
+
+    <string name="buffer_low">Bajo (arranca rápido)</string>
+    <string name="buffer_normal">Normal</string>
+    <string name="buffer_high">Alto (conexión inestable)</string>
+    <string name="aspect_fit">Ajustar</string>
+    <string name="aspect_fill">Rellenar</string>
+    <string name="aspect_zoom">Zoom</string>
+    <string name="aspect_stretch">Estirar</string>
+
+    <string name="catalog_empty">Sin cargar</string>
+    <string name="catalog_count">%1$d canales · %2$d pelis · %3$d series</string>
+    <string name="catalog_refreshing">Actualizando catálogo…</string>
+    <string name="catalog_refreshed">Catálogo actualizado</string>
+    <string name="cache_cleared">Caché vaciada</string>
+    <string name="logout_confirm">Vas a volver a la pantalla de inicio de sesión. ¿Continuar?</string>
+    <!-- Reproductor -->
+    <string name="back">Volver</string>
+    <string name="cancel">Cancelar</string>
+    <string name="player_audio">Pista de audio</string>
+    <string name="player_subtitles">Subtítulos</string>
+    <string name="player_quality">Calidad de imagen</string>
+    <string name="player_lock">Bloquear pantalla</string>
+    <string name="player_unlock">Toca dos veces para desbloquear</string>
+    <string name="player_locked">Pantalla bloqueada</string>
+    <string name="player_unlocked">Pantalla desbloqueada</string>
+    <string name="player_next">Siguiente</string>
+    <string name="player_next_in">Siguiente episodio en %1$d s</string>
+    <string name="audio_unsupported">Este contenido trae audio %1$s y el aparato no puede decodificarlo. Prueba otra pista con el botón de audio.</string>
+    <string name="player_no_tracks">Este contenido no tiene pistas alternativas</string>
+    <string name="player_no_subtitles">Este contenido no trae subtítulos</string>
+    <string name="track_disabled">Desactivado</string>
+    <string name="track_auto">Automática</string>
+    <string name="fav_added">Agregado a favoritos</string>
+    <string name="fav_removed">Quitado de favoritos</string>
+    <string name="buffer_applied">Buffer: %1$s</string>
+    <!-- Selección de modo de pantalla -->
+    <string name="mode_title">¿Cómo vas a usar PlayMix TV?</string>
+    <string name="mode_subtitle">Elige según el aparato. Esto cambia cómo se distribuye el contenido en pantalla.</string>
+    <string name="mode_mobile">Móvil</string>
+    <string name="mode_mobile_desc">Celular o tablet. Las secciones del inicio se apilan una debajo de otra y las grillas usan menos columnas.</string>
+    <string name="mode_tv">TV</string>
+    <string name="mode_tv_desc">Android TV o pantalla grande con control remoto. Las secciones del inicio se muestran lado a lado.</string>
+    <string name="mode_continue">Continuar</string>
+    <string name="mode_changeable">Puedes cambiarlo cuando quieras desde Cuenta.</string>
+    <string name="setting_device_mode">Modo de pantalla</string>
+    <string name="app_author">by @valtecno</string>
+    <string name="setting_background">Seguir sonando en segundo plano</string>
+    <string name="playback_channel">Reproducción</string>
+    <string name="playback_channel_desc">Mantiene el audio sonando al salir de la app</string>
+    <string name="playback_playing">Reproduciendo</string>
+    <string name="playback_paused">En pausa</string>
+    <string name="playback_pause">Pausar</string>
+    <string name="playback_resume">Reanudar</string>
+    <string name="playback_stop">Detener</string>
+    <string name="setting_autoplay_next">Reproducir siguiente episodio</string>
+    <string name="player_error">No se pudo reproducir (%1$s)</string>
+
 </resources>

@@ -1,6 +1,7 @@
 package com.miiptv.app.api
 
 import android.content.Context
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -10,6 +11,24 @@ import retrofit2.converter.gson.GsonConverterFactory
  */
 object Session {
     private const val PREFS = "miiptv_prefs"
+
+    /**
+     * Agente que la app declara ante los servidores, tanto en la API como al
+     * reproducir. Algunos paneles filtran por este valor.
+     */
+    const val USER_AGENT = "PlayMix TV - VIP"
+
+    /** Cliente HTTP compartido, con el agente propio en todas las peticiones. */
+    val httpClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .header("User-Agent", USER_AGENT)
+                    .build()
+                chain.proceed(request)
+            }
+            .build()
+    }
 
     fun save(context: Context, server: String, username: String, password: String) {
         val clean = server.trim().removeSuffix("/")
@@ -40,6 +59,7 @@ object Session {
         val baseUrl = server(context) + "/"
         val retrofit = Retrofit.Builder()
             .baseUrl(baseUrl)
+            .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
         return retrofit.create(XtreamApi::class.java)

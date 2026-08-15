@@ -48,6 +48,14 @@ interface XtreamApi {
         @Query("category_id") categoryId: String? = null
     ): Call<List<VodStream>>
 
+    @GET("player_api.php")
+    fun getVodInfo(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_vod_info",
+        @Query("vod_id") vodId: Int
+    ): Call<VodInfoResponse>
+
     // ---- Series ----
     @GET("player_api.php")
     fun getSeriesCategories(

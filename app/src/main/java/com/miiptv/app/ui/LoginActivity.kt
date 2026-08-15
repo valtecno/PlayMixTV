@@ -10,48 +10,47 @@ import com.miiptv.app.R
 import com.miiptv.app.api.LoginResponse
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityLoginBinding
+import com.miiptv.app.util.Accounts
+import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.Servers
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-/**
- * Servidores propios precargados. El usuario final solo elige uno tocándolo
- * y completa usuario/contraseña — no necesita escribir ninguna URL.
- * Para agregar o cambiar servidores, editá esta lista.
- */
-private data class ServerOption(val label: String, val url: String)
-
-private val SERVERS = listOf(
-    ServerOption("Sistema L", "http://xdplayer.tv:8080"),
-    ServerOption("Sistema XL", "http://moontools.site:8080")
-)
-
 class LoginActivity : AppCompatActivity() {
 
+    companion object {
+        /** URL del servidor a preseleccionar al abrir (viene de "Cambiar de cuenta"). */
+        const val EXTRA_SERVER_URL = "extra_server_url"
+    }
+
     private lateinit var binding: ActivityLoginBinding
-    private var selectedServer = SERVERS[0]
+    private var selectedServer = Servers.default
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.chipServer1.text = SERVERS[0].label
-        binding.chipServer2.text = SERVERS[1].label
+        binding.chipServer1.text = Servers.all[0].label
+        binding.chipServer2.text = Servers.all[1].label
 
-        binding.chipServer1.setOnClickListener { selectServer(SERVERS[0]) }
-        binding.chipServer2.setOnClickListener { selectServer(SERVERS[1]) }
-        selectServer(SERVERS[0]) // primero seleccionado por defecto
+        binding.chipServer1.setOnClickListener { selectServer(Servers.all[0]) }
+        binding.chipServer2.setOnClickListener { selectServer(Servers.all[1]) }
+
+        // Si venimos de "Cambiar de cuenta", arrancamos en el servidor pedido
+        val preselect = intent.getStringExtra(EXTRA_SERVER_URL)
+        selectServer(preselect?.let { Servers.byUrl(it) } ?: Servers.default)
 
         binding.etUsername.setText(Session.username(this))
 
         binding.btnLogin.setOnClickListener { attemptLogin() }
     }
 
-    private fun selectServer(server: ServerOption) {
+    private fun selectServer(server: Servers.Server) {
         selectedServer = server
-        highlightChip(binding.chipServer1, server == SERVERS[0])
-        highlightChip(binding.chipServer2, server == SERVERS[1])
+        highlightChip(binding.chipServer1, server == Servers.all[0])
+        highlightChip(binding.chipServer2, server == Servers.all[1])
     }
 
     private fun highlightChip(chip: TextView, selected: Boolean) {
@@ -75,6 +74,9 @@ class LoginActivity : AppCompatActivity() {
                 setLoading(false)
                 val auth = response.body()?.userInfo?.auth
                 if (response.isSuccessful && auth == 1) {
+                    // Queda guardada para poder saltar entre Sistema L y XL sin re-escribirla
+                    Accounts.save(this@LoginActivity, selectedServer.url, user, pass)
+                    Catalog.clear()
                     startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                     finish()
                 } else {

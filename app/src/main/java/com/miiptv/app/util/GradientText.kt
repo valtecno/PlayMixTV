@@ -13,8 +13,9 @@ import com.miiptv.app.R
  * destacados, como el nombre de la app en la barra superior.
  */
 fun TextView.applyBrandGradient() {
-    val orange = ContextCompat.getColor(context, R.color.brand_accent)
-    val pink = ContextCompat.getColor(context, R.color.brand_primary)
+    val palette = Appearance.palette(context)
+    val orange = palette.start
+    val pink = palette.end
     val purple = ContextCompat.getColor(context, R.color.brand_purple)
 
     viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
