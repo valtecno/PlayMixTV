@@ -207,27 +207,8 @@
                 android:id="@+id/moviesGridOptions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-
-            <!-- ==================== ICONO PERFIL DE NIÑOS ==================== -->
-            <TextView style="@style/SettingsHeader" android:text="@string/kids_icon" />
-            <TextView style="@style/SectionHint" android:text="@string/kids_icon_hint" />
-
-            <GridLayout
-                android:id="@+id/kidsIconGrid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:columnCount="6" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="20dp"
-                android:text="@string/kids_pending"
-                android:textColor="@color/text_muted"
-                android:textSize="12sp"
-                android:textStyle="italic" />
+                android:orientation="horizontal"
+                android:layout_marginBottom="20dp" />
 
         </LinearLayout>
     </ScrollView>

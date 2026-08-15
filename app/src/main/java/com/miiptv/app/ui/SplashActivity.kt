@@ -32,6 +32,7 @@ class SplashActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         val binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

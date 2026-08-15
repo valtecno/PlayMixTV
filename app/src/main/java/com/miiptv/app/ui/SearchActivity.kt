@@ -18,6 +18,7 @@ import com.miiptv.app.databinding.ActivitySearchBinding
 import com.miiptv.app.databinding.ItemRecentQueryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.History
 import com.miiptv.app.util.RecentSearches
 import com.miiptv.app.util.Parental
@@ -51,6 +52,7 @@ class SearchActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivitySearchBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)

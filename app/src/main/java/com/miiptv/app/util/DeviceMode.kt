@@ -1,6 +1,8 @@
 package com.miiptv.app.util
 
+import android.app.Activity
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 
 /**
@@ -44,4 +46,16 @@ object DeviceMode {
     fun label(c: Context, mode: String): String =
         if (mode == TV) c.getString(com.miiptv.app.R.string.mode_tv)
         else c.getString(com.miiptv.app.R.string.mode_mobile)
+
+    /**
+     * Bloquea la pantalla en vertical cuando el modo es móvil (en TV no hace nada:
+     * el televisor ya es horizontal por naturaleza). Se usa en todas las pantallas
+     * salvo el reproductor, que es la única que debe poder pasar a horizontal
+     * (y lo hace automáticamente al reproducir, ver PlayerActivity).
+     */
+    fun lockPortraitIfMobile(activity: Activity) {
+        if (isMobile(activity)) {
+            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }
 }

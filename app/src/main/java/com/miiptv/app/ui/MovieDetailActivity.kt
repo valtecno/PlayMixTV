@@ -8,6 +8,7 @@ import com.miiptv.app.R
 import com.miiptv.app.api.*
 import com.miiptv.app.databinding.ActivityMovieDetailBinding
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.History
 import com.squareup.picasso.Picasso
@@ -34,6 +35,7 @@ class MovieDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityMovieDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)

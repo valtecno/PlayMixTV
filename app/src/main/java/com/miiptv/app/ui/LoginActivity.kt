@@ -12,6 +12,7 @@ import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityLoginBinding
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Servers
 import retrofit2.Call
 import retrofit2.Callback
@@ -29,6 +30,7 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

@@ -20,11 +20,12 @@ object PpvFilter {
     private val futbol = listOf(
         "futbol", "football", "soccer", "balompie",
         "liga", "laliga", "premier", "champions", "uefa", "europa league", "conference league",
-        "conmebol", "libertadores", "sudamericana", "recopa", "copa",
+        "conmebol", "libertadores", "sudamericana", "sudamericano", "recopa", "copa",
         "concacaf", "eliminatorias", "mundial", "fifa", "supercopa",
         "bundesliga", "serie a", "ligue 1", "eredivisie", "primeira", "calcio",
         "mls", "brasileirao", "brasileirão", "apertura", "clausura",
-        "seleccion", "selecciones", "amistoso", "clasico", "derbi", "derby"
+        "seleccion", "selecciones", "amistoso", "clasico", "derbi", "derby",
+        "chile primera", "primera division", "primera b"
     )
 
     /** Carpetas genéricas de eventos: entran salvo que sean de otro deporte. */
@@ -32,7 +33,8 @@ object PpvFilter {
 
     /** Si aparece alguna de estas, la categoría queda descartada. */
     private val otrosDeportes = listOf(
-        "americano", "nfl", "nba", "mlb", "nhl", "ufc", "mma", "boxeo", "boxing", "box ",
+        "futbol americano", "football americano", "american football",
+        "nfl", "nba", "mlb", "nhl", "ufc", "mma", "boxeo", "boxing", "box ",
         "tenis", "tennis", "atp", "wta", "golf", "f1", "formula", "nascar", "motogp", "moto gp",
         "beisbol", "béisbol", "baseball", "basket", "baloncesto", "voley", "volley", "rugby",
         "hockey", "wwe", "aew", "lucha", "ciclismo", "atletismo", "natacion", "esports", "e-sports",
@@ -42,7 +44,7 @@ object PpvFilter {
     )
 
     /** Quita acentos y pasa a minúsculas, para comparar sin sorpresas. */
-    private fun normalize(text: String): String =
+    fun normalize(text: String): String =
         Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
             .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
 

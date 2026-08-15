@@ -27,6 +27,7 @@ class DeviceModeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityDeviceModeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

@@ -15,6 +15,7 @@ import com.miiptv.app.api.Episode
 import com.miiptv.app.api.Session
 import com.miiptv.app.api.SeriesInfoResponse
 import com.miiptv.app.databinding.ActivitySeriesDetailBinding
+import com.miiptv.app.util.DeviceMode
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -33,6 +34,7 @@ class SeriesDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivitySeriesDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)

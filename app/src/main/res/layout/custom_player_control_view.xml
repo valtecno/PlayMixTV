@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Controles propios del reproductor (reemplaza el layout adaptativo por defecto
+  de Media3). La barra superior (título, favorito, audio, subtítulos, calidad,
+  candado, etc.) ya la maneja activity_player.xml, así que acá solo va lo que
+  Media3 necesita: fondo, barra de tiempo abajo, y la fila central de
+  retroceder / play-pausa / adelantar. Al ser una fila fija (sin la lógica de
+  "extra controls" que se puede reordenar según el ancho disponible), el botón
+  de adelantar queda SIEMPRE junto a los demás controles, nunca arriba.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:parentTag="android.widget.FrameLayout">
+
+    <View
+        android:id="@id/exo_controls_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#4D000000" />
+
+    <!-- ===== Fila central: retroceder · play/pausa · adelantar ===== -->
+    <LinearLayout
+        android:id="@id/exo_center_controls"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@android:color/transparent">
+
+        <ImageButton
+            android:id="@id/exo_rew"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="18dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/exo_styled_controls_rewind"
+            android:contentDescription="@string/player_rewind"
+            android:scaleType="fitCenter"
+            android:padding="8dp" />
+
+        <ImageButton
+            android:id="@id/exo_play_pause"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_marginHorizontal="18dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/exo_styled_controls_play"
+            android:contentDescription="@string/player_play_pause"
+            android:scaleType="fitCenter"
+            android:padding="8dp" />
+
+        <ImageButton
+            android:id="@id/exo_ffwd"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="18dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/exo_styled_controls_fastforward"
+            android:contentDescription="@string/player_fastforward"
+            android:scaleType="fitCenter"
+            android:padding="8dp" />
+
+    </LinearLayout>
+
+    <!-- ===== Barra de tiempo, siempre abajo, separada de la fila central ===== -->
+    <LinearLayout
+        android:id="@id/exo_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="#4D000000"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="6dp">
+
+        <LinearLayout
+            android:id="@id/exo_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@id/exo_position"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_light"
+                android:textSize="12sp"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" / "
+                android:textColor="@color/text_light"
+                android:textSize="12sp"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:id="@id/exo_duration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/text_light"
+                android:textSize="12sp"
+                android:includeFontPadding="false" />
+        </LinearLayout>
+
+        <androidx.media3.ui.DefaultTimeBar
+            android:id="@id/exo_progress"
+            android:layout_width="0dp"
+            android:layout_height="26dp"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            app:played_color="@color/star_active"
+            app:scrubber_color="@color/star_active"
+            app:unplayed_color="#4DFFFFFF"
+            app:buffered_color="#80FFFFFF" />
+
+    </LinearLayout>
+
+</merge>

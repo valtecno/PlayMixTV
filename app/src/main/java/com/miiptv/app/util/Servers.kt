@@ -26,4 +26,8 @@ object Servers {
         val clean = url.trim().removeSuffix("/")
         return all.firstOrNull { it.url.removeSuffix("/") == clean }
     }
+
+    /** Sistema conectado ahora mismo ("Sistema L", "Sistema XL" o null si es un servidor propio). */
+    fun currentLabel(context: android.content.Context): String? =
+        byUrl(com.miiptv.app.api.Session.server(context))?.label
 }

@@ -214,12 +214,4 @@ object Appearance {
             else -> "Ultra compacto"
         }
     }
-
-    // ---------------- Perfil de niños (icono; el perfil se desarrolla después) ----------------
-
-    val kidsIcons = listOf("👶", "🧒", "👧", "👦", "🦊", "🐶", "🐼", "🦁", "🐸", "🦄", "⭐", "🎈")
-
-    fun getKidsIcon(c: Context): String = prefs(c).getString("kids_icon", kidsIcons.first()) ?: kidsIcons.first()
-
-    fun setKidsIcon(c: Context, emoji: String) = prefs(c).edit().putString("kids_icon", emoji).apply()
 }

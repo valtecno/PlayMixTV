@@ -27,6 +27,7 @@ import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PpvFilter
 import com.miiptv.app.util.RadioCatalog
+import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PinDialog
 import com.miiptv.app.util.applyBrandGradient
 import retrofit2.Call
@@ -63,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -90,6 +92,11 @@ class MainActivity : AppCompatActivity() {
         applyKidsVisibility()
 
         selectSection(if (kidsMode) Section.LIVE else Section.HOME)
+        // Si la app abre directo en el perfil de niños (venía activo de antes),
+        // hay que avisar la regla igual que cuando se activa con el botón.
+        if (kidsMode) {
+            Toast.makeText(this, R.string.kids_mode_on, Toast.LENGTH_LONG).show()
+        }
     }
 
     // ---------------- Barra de navegación ----------------
@@ -412,7 +419,8 @@ class MainActivity : AppCompatActivity() {
                     )
                     binding.tvEmpty.visibility = View.VISIBLE
                 } else {
-                    loadContent(type, categories.first().categoryId)
+                    val elegida = preferredCategory(categories) ?: categories.first()
+                    loadContent(type, elegida.categoryId)
                 }
             }
 
@@ -422,6 +430,43 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
             }
         })
+    }
+
+    /**
+     * Carpeta/categoría que se abre sola al entrar a Canales, PPV o Películas,
+     * según el sistema conectado ahora mismo (Sistema L / Sistema XL). Estas
+     * carpetas existen con nombres distintos en cada panel:
+     *  - Canales: Sistema L trae "Cinema HD HQ", Sistema XL trae "Cinema Latino".
+     *  - PPV: Sistema L trae "PPV Futbol Sudamericano", Sistema XL trae "Chile Primera".
+     *  - Películas: Sistema XL trae "2026", Sistema L trae "VOD Estrenos".
+     * Si no se encuentra ninguna coincidencia (otro servidor, o el panel no la
+     * trae esta vez), se sigue abriendo la primera de la lista como antes.
+     */
+    private fun preferredCategory(list: List<Category>): Category? {
+        val sistema = Servers.currentLabel(this)
+        val candidatas: List<String> = when (section) {
+            Section.LIVE -> when (sistema) {
+                Servers.all[0].label -> listOf("cinema hd hq")
+                Servers.all[1].label -> listOf("cinema latino")
+                else -> emptyList()
+            }
+            Section.PPV -> when (sistema) {
+                Servers.all[0].label -> listOf("sudamericano", "sudamericana")
+                Servers.all[1].label -> listOf("chile primera")
+                else -> emptyList()
+            }
+            Section.MOVIES -> when (sistema) {
+                Servers.all[1].label -> listOf("2026")
+                Servers.all[0].label -> listOf("vod estrenos", "estrenos")
+                else -> emptyList()
+            }
+            else -> emptyList()
+        }
+        if (candidatas.isEmpty()) return null
+        return list.firstOrNull { cat ->
+            val nombre = PpvFilter.normalize(cat.categoryName.orEmpty())
+            candidatas.any { nombre.contains(PpvFilter.normalize(it)) }
+        }
     }
 
     private fun renderCategoryChips(categories: List<Category>) {

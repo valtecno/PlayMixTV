@@ -103,10 +103,14 @@ class PlayerActivity : AppCompatActivity() {
         streamUrl = intent.getStringExtra(EXTRA_URL) ?: return finish()
         contentTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
 
-        // En móvil se permite girar (útil para radios y para ver en vertical);
-        // en TV se fuerza horizontal, que es lo único que tiene sentido con control remoto.
+        // En móvil el resto de la app queda bloqueada en vertical (ver DeviceMode);
+        // el reproductor es la única pantalla que pasa a horizontal, y lo hace solo
+        // apenas se reproduce contenido. Al salir de acá, la pantalla anterior ya
+        // está fijada en vertical y el sistema vuelve a esa orientación solo.
+        // SENSOR_LANDSCAPE deja girar entre horizontal-izquierda/derecha según se
+        // gire el celular, pero nunca cae en vertical.
         requestedOrientation = if (DeviceMode.isMobile(this)) {
-            ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         } else {
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }

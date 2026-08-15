@@ -10,7 +10,16 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:use_controller="true"
-        app:show_timeout="4000" />
+        app:show_timeout="4000"
+        app:controller_layout_id="@layout/custom_player_control_view"
+        app:show_rewind_button="true"
+        app:show_fastforward_button="true"
+        app:show_next_button="false"
+        app:show_previous_button="false"
+        app:show_shuffle_button="false"
+        app:repeat_toggle_modes="none"
+        app:fastforward_increment="10000"
+        app:rewind_increment="10000" />
 
     <!-- ===== Barra superior propia: título, favorito, opciones ===== -->
     <LinearLayout

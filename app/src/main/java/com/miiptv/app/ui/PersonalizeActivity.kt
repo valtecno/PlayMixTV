@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.miiptv.app.R
 import com.miiptv.app.databinding.ActivityPersonalizeBinding
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.DeviceMode
 
 /**
  * Pantalla "Personalizar": tema de color, tamaño de subtítulos, qué pasa al tocar
@@ -22,6 +23,7 @@ class PersonalizeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityPersonalizeBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
@@ -32,7 +34,6 @@ class PersonalizeActivity : AppCompatActivity() {
         buildSubtitleControls()
         buildMovieClickOptions()
         buildGridOptions()
-        buildKidsIcons()
 
         refreshAll()
     }
@@ -200,43 +201,6 @@ class PersonalizeActivity : AppCompatActivity() {
         Appearance.gridOptions(this).forEachIndexed { i, cols ->
             binding.seriesGridOptions.getChildAt(i)?.background = optionBackground(cols == seriesCols)
             binding.moviesGridOptions.getChildAt(i)?.background = optionBackground(cols == moviesCols)
-        }
-    }
-
-    // ---------------- Ícono del perfil de niños ----------------
-
-    private fun buildKidsIcons() {
-        binding.kidsIconGrid.removeAllViews()
-        Appearance.kidsIcons.forEach { emoji ->
-            val cell = TextView(this).apply {
-                text = emoji
-                textSize = 24f
-                gravity = Gravity.CENTER
-                isClickable = true
-                isFocusable = true
-                setPadding(dp(6f), dp(14f), dp(6f), dp(14f))
-                layoutParams = android.widget.GridLayout.LayoutParams().apply {
-                    width = 0
-                    height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-                    columnSpec = android.widget.GridLayout.spec(
-                        android.widget.GridLayout.UNDEFINED, 1f
-                    )
-                    setMargins(dp(4f), dp(4f), dp(4f), dp(4f))
-                }
-                setOnClickListener {
-                    Appearance.setKidsIcon(this@PersonalizeActivity, emoji)
-                    refreshKidsIcons()
-                }
-            }
-            binding.kidsIconGrid.addView(cell)
-        }
-        refreshKidsIcons()
-    }
-
-    private fun refreshKidsIcons() {
-        val selected = Appearance.getKidsIcon(this)
-        Appearance.kidsIcons.forEachIndexed { i, emoji ->
-            binding.kidsIconGrid.getChildAt(i)?.background = optionBackground(emoji == selected)
         }
     }
 }

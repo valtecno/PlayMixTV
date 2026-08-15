@@ -7,8 +7,8 @@
     android:tint="@color/star_active">
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,4.4A7.6,7.6 0 1,0 19.6,12L17.4,12A5.4,5.4 0 1,1 12,6.6z" />
+        android:pathData="M12,3.6A8.4,8.4 0 1,0 20.4,12L17.9,12A5.9,5.9 0 1,1 12,6.1z" />
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M11.4,2.2L16.4,5.5L11.4,8.8z" />
+        android:pathData="M11.3,1.2L16.8,4.9L11.3,8.5z" />
 </vector>

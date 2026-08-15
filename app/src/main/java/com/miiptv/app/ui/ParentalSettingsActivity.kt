@@ -12,6 +12,7 @@ import com.miiptv.app.R
 import com.miiptv.app.api.Category
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityParentalSettingsBinding
+import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PinDialog
 import retrofit2.Call
@@ -25,6 +26,7 @@ class ParentalSettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityParentalSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)

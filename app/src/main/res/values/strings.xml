@@ -60,7 +60,7 @@
     <string name="nav_radio">Radios</string>
     <string name="nav_kids">Niños</string>
     <string name="nav_kids_exit">Salir</string>
-    <string name="kids_mode_on">Perfil de niños activado: solo contenido apto para menores de 16</string>
+    <string name="kids_mode_on">Perfil de niños activado: por protección a menores, solo se muestra contenido apto para hasta 10 años</string>
     <string name="kids_mode_off">Saliste del perfil de niños</string>
     <string name="kids_mode_need_pin">Primero creá un PIN: hará falta para salir del perfil de niños</string>
     <string name="kids_mode_blocked">Salí del perfil de niños para acceder a esto</string>
@@ -120,9 +120,6 @@
     <string name="movies_view">Vista de películas</string>
     <string name="grid_hint">%1$s: %2$d columnas por fila.</string>
     <string name="grid_option">%1$d col.</string>
-    <string name="kids_icon">Icono para perfil de niños</string>
-    <string name="kids_icon_hint">Elige un emoji que represente al perfil infantil</string>
-    <string name="kids_pending">El perfil de niños se desarrollará más adelante; por ahora solo se guarda el ícono elegido.</string>
 
     <!-- Ficha de película -->
     <string name="movie_play">Reproducir</string>
@@ -171,6 +168,9 @@
     <string name="player_locked">Pantalla bloqueada</string>
     <string name="player_unlocked">Pantalla desbloqueada</string>
     <string name="player_next">Siguiente</string>
+    <string name="player_rewind">Retroceder</string>
+    <string name="player_fastforward">Adelantar</string>
+    <string name="player_play_pause">Reproducir / pausar</string>
     <string name="player_next_in">Siguiente episodio en %1$d s</string>
     <string name="audio_unsupported">Este contenido trae audio %1$s y el aparato no puede decodificarlo. Prueba otra pista con el botón de audio.</string>
     <string name="player_no_tracks">Este contenido no tiene pistas alternativas</string>
