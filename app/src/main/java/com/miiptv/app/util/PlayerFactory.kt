@@ -72,6 +72,10 @@ object PlayerFactory {
         val builder = ExoPlayer.Builder(context, renderers)
             .setTrackSelector(trackSelector)
             .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory, extractors()))
+            // Salto de los botones adelantar/retroceder del reproductor (10s).
+            // No es un atributo del layout: se define acá, a nivel de reproductor.
+            .setSeekForwardIncrementMs(10_000)
+            .setSeekBackIncrementMs(10_000)
 
         if (loadControl != null) builder.setLoadControl(loadControl)
 

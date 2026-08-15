@@ -17,9 +17,7 @@
         app:show_next_button="false"
         app:show_previous_button="false"
         app:show_shuffle_button="false"
-        app:repeat_toggle_modes="none"
-        app:fastforward_increment="10000"
-        app:rewind_increment="10000" />
+        app:repeat_toggle_modes="none" />
 
     <!-- ===== Barra superior propia: título, favorito, opciones ===== -->
     <LinearLayout
