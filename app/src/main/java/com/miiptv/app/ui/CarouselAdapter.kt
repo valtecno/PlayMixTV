@@ -20,10 +20,23 @@ class CarouselAdapter(
 
     private val items = mutableListOf<ContentItem>()
 
-    /** Ancho de cada tarjeta, calculado para que entren exactamente 4 por pantalla. */
+    /** Ancho de cada tarjeta. Lo calcula AutoCarousel según el espacio disponible. */
     var itemWidth: Int = 0
         set(value) {
             if (field != value && value > 0) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
+    /**
+     * Título a una sola línea. En móvil las dos secciones del Inicio van
+     * apiladas, así que cada fila tiene la mitad de alto: con dos líneas de
+     * título más la etiqueta, al póster casi no le quedaba lugar.
+     */
+    var compact: Boolean = false
+        set(value) {
+            if (field != value) {
                 field = value
                 notifyDataSetChanged()
             }
@@ -48,6 +61,7 @@ class CarouselAdapter(
                 holder.binding.root.layoutParams.apply { width = itemWidth }
         }
 
+        holder.binding.tvPosterName.maxLines = if (compact) 1 else 2
         holder.binding.tvPosterName.text = item.name
         holder.binding.tvPosterTag.setTextColor(Appearance.accent(holder.itemView.context))
         holder.binding.tvPosterTag.setText(
