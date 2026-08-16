@@ -201,7 +201,12 @@ class MainActivity : AppCompatActivity() {
             Section.LIVE, Section.PPV, Section.RADIO, Section.MOVIES, Section.SERIES
         )
 
-        binding.homeSections.visibility = if (isHome) View.VISIBLE else View.GONE
+        binding.homeArea.visibility = if (isHome) View.VISIBLE else View.GONE
+        // Ocultar el cuerpo entero, no solo la lista de adentro: los dos son
+        // "0dp + weight 1" en el LinearLayout raíz, así que si bodyContainer
+        // seguía visible se quedaba con la mitad del alto y el Inicio solo
+        // llegaba hasta la mitad de la pantalla.
+        binding.bodyContainer.visibility = if (isHome) View.GONE else View.VISIBLE
         binding.recyclerChannels.visibility = if (isHome) View.GONE else View.VISIBLE
         binding.categoryScroll.visibility = if (isBrowse) View.VISIBLE else View.GONE
         binding.favFilterScroll.visibility =
@@ -470,6 +475,9 @@ class MainActivity : AppCompatActivity() {
 
         binding.colNovedades.visibility = if (novedades.itemCount == 0) View.GONE else View.VISIBLE
         binding.colRecientes.visibility = if (recientes.itemCount == 0) View.GONE else View.VISIBLE
+        // El separador solo tiene sentido si hay algo a los dos lados
+        binding.homeDivider.visibility =
+            if (novedades.itemCount > 0 && recientes.itemCount > 0) View.VISIBLE else View.GONE
 
         // Antes, si el catálogo venía vacío el cartel se ocultaba y quedaba una
         // pantalla en blanco sin explicación. Ahora se distingue entre "todavía
@@ -477,15 +485,15 @@ class MainActivity : AppCompatActivity() {
         val vacio = novedades.itemCount == 0 && recientes.itemCount == 0
         val motivo = Catalog.lastError
         when {
-            !vacio -> binding.tvEmpty.visibility = View.GONE
-            Catalog.isLoading -> binding.tvEmpty.visibility = View.GONE
+            !vacio -> binding.tvHomeEmpty.visibility = View.GONE
+            Catalog.isLoading -> binding.tvHomeEmpty.visibility = View.GONE
             motivo != null -> {
-                binding.tvEmpty.text = getString(R.string.catalog_error, motivo)
-                binding.tvEmpty.visibility = View.VISIBLE
+                binding.tvHomeEmpty.text = getString(R.string.catalog_error, motivo)
+                binding.tvHomeEmpty.visibility = View.VISIBLE
             }
             else -> {
-                binding.tvEmpty.setText(R.string.empty_list)
-                binding.tvEmpty.visibility = View.VISIBLE
+                binding.tvHomeEmpty.setText(R.string.empty_list)
+                binding.tvHomeEmpty.visibility = View.VISIBLE
             }
         }
 
@@ -521,6 +529,24 @@ class MainActivity : AppCompatActivity() {
             lp.weight = 1f
             columna.layoutParams = lp
         }
+
+        // Separador: línea vertical entre columnas en TV, horizontal entre
+        // secciones apiladas en móvil.
+        val grosor = (resources.displayMetrics.density).toInt().coerceAtLeast(1)
+        val sep = binding.homeDivider.layoutParams as LinearLayout.LayoutParams
+        val margen = (10 * resources.displayMetrics.density).toInt()
+        if (movil) {
+            sep.width = LinearLayout.LayoutParams.MATCH_PARENT
+            sep.height = grosor
+            sep.setMargins(margen, 0, margen, 0)
+            binding.homeDivider.setBackgroundResource(R.drawable.bg_divider_horizontal)
+        } else {
+            sep.width = grosor
+            sep.height = LinearLayout.LayoutParams.MATCH_PARENT
+            sep.setMargins(0, margen, 0, margen)
+            binding.homeDivider.setBackgroundResource(R.drawable.bg_divider_vertical)
+        }
+        binding.homeDivider.layoutParams = sep
     }
 
     private fun setupCarousel() {

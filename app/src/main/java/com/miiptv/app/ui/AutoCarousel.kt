@@ -23,10 +23,10 @@ import com.miiptv.app.api.ContentItem
  * tarjeta se estiraba a lo ancho Y a lo alto, y de ahí salían los dos
  * rectángulos gigantes que se comían la pantalla de Inicio.
  *
- * Ahora el ancho sale de la proporción real de una carátula (2:3) aplicada al
- * alto disponible, y la tarjeta se centra en la columna con relleno simétrico.
- * Queda una carátula con forma de carátula, centrada, en vez de un bloque
- * deformado.
+ * Ahora la tarjeta ocupa TODA la sección: una carátula por vez, a pantalla de
+ * columna. La proporción se respeta dentro de la tarjeta, con fitCenter en la
+ * imagen (ver item_poster.xml), así que se aprovecha todo el espacio sin
+ * deformar ni recortar la carátula.
  * ---------------------------------------------------------------------------
  */
 class AutoCarousel(
@@ -101,42 +101,29 @@ class AutoCarousel(
 
     val itemCount: Int get() = adapter.itemCount
 
-    /** Da a la tarjeta forma de carátula y la centra en la columna. */
+    /** La tarjeta ocupa el recuadro completo: se ve una carátula por vez. */
     private fun measureItems() {
-        // Ancho crudo, no el que queda tras el relleno: el relleno lo fija esta
-        // misma función, y leerlo acá haría que la tarjeta se encoja en cada vuelta.
-        val ancho = recycler.width
+        val usable = recycler.width - recycler.paddingStart - recycler.paddingEnd
         val alto = recycler.height
-        if (ancho <= 0 || alto <= 0) {
+        if (usable <= 0 || alto <= 0) {
             // La vista todavía no fue medida (o está oculta): reintentamos unas pocas veces
             if (measureRetries++ < 8) recycler.post { measureItems() }
             return
         }
 
-        val dm = recycler.resources.displayMetrics
-        fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, dm)
+        val margen = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, ITEM_MARGIN_DP, recycler.resources.displayMetrics
+        ).toInt()
 
-        // Fila baja (móvil, con las dos secciones apiladas): título a una línea,
-        // para no dejar a la carátula sin lugar.
-        val compacto = alto < dp(COMPACT_BELOW_DP)
-        adapter.compact = compacto
-        val bloqueTexto = if (compacto) TEXT_BLOCK_COMPACT_DP else TEXT_BLOCK_DP
+        // Fila baja: título a una línea, para no dejar a la carátula sin lugar.
+        adapter.compact = alto < TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, COMPACT_BELOW_DP, recycler.resources.displayMetrics
+        )
 
-        val margen = dp(ITEM_MARGIN_DP)
-        val altoPoster = (alto - dp(bloqueTexto) - dp(CARD_PADDING_DP))
-            .coerceAtLeast(dp(MIN_POSTER_DP))
-        val topeAncho = (ancho - margen).coerceAtLeast(dp(MIN_CARD_DP))
-        val anchoTarjeta = (altoPoster * POSTER_RATIO + dp(CARD_PADDING_DP))
-            .coerceIn(dp(MIN_CARD_DP), topeAncho)
-
-        adapter.itemWidth = anchoTarjeta.toInt()
-
-        // Relleno simétrico: la carátula queda centrada. Con clipToPadding=false
-        // la siguiente asoma al deslizar, que es lo que da sensación de carrusel.
-        val sobra = ((ancho - anchoTarjeta - margen) / 2f).toInt().coerceAtLeast(0)
-        if (recycler.paddingStart != sobra) {
-            recycler.setPadding(sobra, recycler.paddingTop, sobra, recycler.paddingBottom)
-        }
+        // Ancho completo menos los márgenes de la tarjeta: entra exactamente una,
+        // y con clipToPadding=true la siguiente queda fuera de vista hasta que
+        // el carrusel avanza.
+        adapter.itemWidth = (usable - margen).coerceAtLeast(1)
     }
 
     /**
@@ -192,22 +179,7 @@ class AutoCarousel(
         /** Margen horizontal total de cada tarjeta (ver item_poster.xml). */
         const val ITEM_MARGIN_DP = 10f
 
-        /** Relleno vertical total de la tarjeta (8dp arriba + 8dp abajo). */
-        const val CARD_PADDING_DP = 16f
-
-        /** Alto del título (2 líneas) + la etiqueta de tipo, con sus márgenes. */
-        const val TEXT_BLOCK_DP = 62f
-
-        /** Lo mismo con el título a una sola línea. */
-        const val TEXT_BLOCK_COMPACT_DP = 44f
-
         /** Por debajo de este alto de fila se usa el modo compacto. */
         const val COMPACT_BELOW_DP = 260f
-
-        /** Proporción de una carátula: el ancho es dos tercios del alto. */
-        const val POSTER_RATIO = 2f / 3f
-
-        const val MIN_POSTER_DP = 90f
-        const val MIN_CARD_DP = 96f
     }
 }

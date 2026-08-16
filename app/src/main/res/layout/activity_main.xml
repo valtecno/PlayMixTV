@@ -124,13 +124,18 @@
     </LinearLayout>
 
     <!-- ===== Inicio: dos secciones lado a lado, un póster por vez ===== -->
-    <LinearLayout
-        android:id="@+id/homeSections"
+    <FrameLayout
+        android:id="@+id/homeArea"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="horizontal"
         android:visibility="gone">
+
+    <LinearLayout
+        android:id="@+id/homeSections"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
 
         <!-- Izquierda: Novedades -->
         <LinearLayout
@@ -156,10 +161,19 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:clipToPadding="false"
+                android:clipToPadding="true"
                 android:paddingStart="6dp"
                 android:paddingEnd="6dp" />
         </LinearLayout>
+
+        <!-- Separador entre las dos secciones. La orientación (línea vertical en
+             TV, horizontal en móvil) se ajusta en applyHomeOrientation(). -->
+        <View
+            android:id="@+id/homeDivider"
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_marginVertical="6dp"
+            android:background="@drawable/bg_divider_vertical" />
 
         <!-- Derecha: Agregado recientemente -->
         <LinearLayout
@@ -185,11 +199,25 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
-                android:clipToPadding="false"
+                android:clipToPadding="true"
                 android:paddingStart="6dp"
                 android:paddingEnd="6dp" />
         </LinearLayout>
     </LinearLayout>
+
+        <!-- Mensaje del Inicio. Va acá y no en tvEmpty porque aquel vive dentro
+             de bodyContainer, que en Inicio está oculto. -->
+        <TextView
+            android:id="@+id/tvHomeEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:paddingHorizontal="24dp"
+            android:textColor="@color/text_muted"
+            android:visibility="gone" />
+
+    </FrameLayout>
 
     <!-- ===== Buscador dedicado del perfil de niños ===== -->
     <EditText
