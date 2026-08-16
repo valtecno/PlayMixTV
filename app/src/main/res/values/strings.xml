@@ -247,4 +247,7 @@
     <string name="multiscreen_pick_for">Canal para el recuadro %1$d</string>
     <string name="multiscreen_pick_count">%1$d canales</string>
     <string name="multiscreen_home">Volver al inicio</string>
+    <string name="preview_locked">Categoría bloqueada. Usa el PIN para verla.</string>
+    <string name="preview_error">No se pudo previsualizar este canal</string>
+    <string name="preview_mute">Silenciar previsualización</string>
 </resources>

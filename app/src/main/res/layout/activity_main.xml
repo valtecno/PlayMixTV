@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -245,8 +246,11 @@
             android:paddingEnd="8dp" />
     </HorizontalScrollView>
 
-    <!-- ===== Cuerpo: lista de la sección + panel de previsualización (Canales en TV) ===== -->
+    <!-- ===== Cuerpo: lista de la sección + panel de previsualización =====
+         En TV va al costado de la lista; en móvil se pone arriba (la orientación
+         y los pesos se ajustan desde applyPreviewLayout()). -->
     <LinearLayout
+        android:id="@+id/bodyContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -337,6 +341,16 @@
                 android:clickable="true"
                 android:focusable="true">
 
+                <!-- Video de la previsualización. Va primero para que el logo,
+                     la insignia y los botones queden por encima. -->
+                <androidx.media3.ui.PlayerView
+                    android:id="@+id/previewPlayer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone"
+                    app:use_controller="false"
+                    app:resize_mode="fit" />
+
                 <ImageView
                     android:id="@+id/ivPreviewLogo"
                     android:layout_width="match_parent"
@@ -344,6 +358,41 @@
                     android:scaleType="centerInside"
                     android:padding="24dp"
                     android:contentDescription="@null" />
+
+                <ProgressBar
+                    android:id="@+id/previewProgress"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvPreviewError"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:background="#B3000000"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:paddingVertical="6dp"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <!-- Silenciar: al recorrer la lista con el control remoto conviene
+                     poder callar la previsualización sin dejar de verla. -->
+                <ImageView
+                    android:id="@+id/btnPreviewMute"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="10dp"
+                    android:padding="9dp"
+                    android:background="@drawable/bg_play_circle"
+                    android:src="@drawable/ic_volume_up"
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:contentDescription="@string/preview_mute" />
 
                 <TextView
                     android:id="@+id/tvPreviewLive"
@@ -359,26 +408,36 @@
                     android:textSize="12sp"
                     android:textStyle="bold" />
 
+                <!-- Pantalla completa. Antes estaba centrado y tapaba el video;
+                     ahora va en una esquina y con el texto al lado. -->
                 <LinearLayout
+                    android:id="@+id/previewPlayRow"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:orientation="vertical"
-                    android:gravity="center">
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="12dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_glass_card"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="14dp"
+                    android:paddingVertical="6dp"
+                    android:focusable="true"
+                    android:clickable="true">
 
                     <ImageView
                         android:id="@+id/btnPreviewPlay"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
                         android:background="@drawable/bg_play_circle"
-                        android:padding="18dp"
+                        android:padding="11dp"
                         android:src="@drawable/ic_play_arrow"
                         android:contentDescription="@string/preview_play" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
+                        android:layout_marginStart="8dp"
                         android:text="@string/preview_play"
                         android:textColor="@color/text_light"
                         android:textSize="13sp"

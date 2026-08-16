@@ -2,6 +2,8 @@ package com.miiptv.app.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Menu
@@ -12,6 +14,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.recyclerview.widget.GridLayoutManager
 import com.miiptv.app.R
 import com.miiptv.app.api.*
@@ -25,6 +31,7 @@ import com.miiptv.app.util.History
 import com.miiptv.app.util.KidsFilter
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
+import com.miiptv.app.util.PlayerFactory
 import com.miiptv.app.util.PpvFilter
 import com.miiptv.app.util.RadioCatalog
 import com.miiptv.app.util.Servers
@@ -66,6 +73,24 @@ class MainActivity : AppCompatActivity() {
     private var categories: List<Category> = emptyList()
     /** Ítem que se está mostrando ahora en el panel de previsualización de Canales (TV). */
     private var previewItem: ContentItem? = null
+
+    /**
+     * Reproductor de la previsualización. Vive con la pantalla (onStart/onStop)
+     * y NUNCA suena a la vez que el reproductor a pantalla completa: al abrir
+     * PlayerActivity esta activity pasa a onStop y acá se libera. Importa
+     * porque las cuentas Xtream limitan las conexiones simultáneas, y dejar la
+     * previsualización viva haría que el canal en pantalla completa fallara.
+     */
+    private var previewPlayer: ExoPlayer? = null
+    private var previewMuted = false
+
+    /**
+     * Al recorrer la lista con el control remoto se pasa por muchos canales en
+     * un segundo. Sin esta espera se abriría una conexión por cada uno.
+     */
+    private val previewDelay = Handler(Looper.getMainLooper())
+    private var pendingPreview: Runnable? = null
+
     /** Perfil de niños: filtra a solo contenido infantil y oculta las secciones no aptas. */
     private var kidsMode: Boolean = false
 
@@ -90,7 +115,9 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerChannels.adapter = adapter
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
+        binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewThumbFrame.setOnClickListener { previewItem?.let { openItem(it) } }
+        binding.btnPreviewMute.setOnClickListener { togglePreviewMute() }
 
         binding.tvToolbarTitle.applyBrandGradient()
 
@@ -224,23 +251,87 @@ class MainActivity : AppCompatActivity() {
      * (control remoto, se navega la lista con el foco) y solo en Canales; en
      * móvil se sigue abriendo directo al tocar, como siempre.
      */
-    private fun showPreviewFor(s: Section): Boolean = !DeviceMode.isMobile(this) && s == Section.LIVE
+    private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV
 
     private fun updatePreviewVisibility(newSection: Section) {
         if (showPreviewFor(newSection)) {
             binding.previewPanel.visibility = View.VISIBLE
+            applyPreviewLayout()
         } else {
             binding.previewPanel.visibility = View.GONE
+            binding.bodyContainer.orientation = LinearLayout.HORIZONTAL
             previewItem = null
+            stopPreview()
         }
     }
 
-    private fun handleItemClick(item: ContentItem) {
-        if (showPreviewFor(section)) showPreview(item) else openItem(item)
+    /**
+     * En TV la previsualización va al costado de la lista; en móvil, arriba y
+     * con altura fija en 16:9, porque en vertical no hay ancho para dos columnas.
+     */
+    private fun applyPreviewLayout() {
+        val movil = DeviceMode.isMobile(this)
+        binding.bodyContainer.orientation =
+            if (movil) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+
+        val lista = binding.listColumn.layoutParams as LinearLayout.LayoutParams
+        val panel = binding.previewPanel.layoutParams as LinearLayout.LayoutParams
+
+        if (movil) {
+            lista.width = LinearLayout.LayoutParams.MATCH_PARENT
+            lista.height = 0
+            lista.weight = 1f
+
+            panel.width = LinearLayout.LayoutParams.MATCH_PARENT
+            panel.height = LinearLayout.LayoutParams.WRAP_CONTENT
+            panel.weight = 0f
+
+            // Marco de video en 16:9, sin pasarse de un tercio de la pantalla
+            val metrics = resources.displayMetrics
+            val alto = (metrics.widthPixels * 9 / 16)
+                .coerceAtMost((metrics.heightPixels * 0.34f).toInt())
+            binding.previewThumbFrame.layoutParams =
+                binding.previewThumbFrame.layoutParams.apply {
+                    height = alto
+                    width = LinearLayout.LayoutParams.MATCH_PARENT
+                }
+        } else {
+            lista.width = 0
+            lista.height = LinearLayout.LayoutParams.MATCH_PARENT
+            lista.weight = 1f
+
+            panel.width = 0
+            panel.height = LinearLayout.LayoutParams.MATCH_PARENT
+            panel.weight = 1.4f
+
+            binding.previewThumbFrame.layoutParams =
+                binding.previewThumbFrame.layoutParams.apply {
+                    height = 0
+                    width = LinearLayout.LayoutParams.MATCH_PARENT
+                }
+            (binding.previewThumbFrame.layoutParams as? LinearLayout.LayoutParams)?.weight = 1f
+        }
+        binding.listColumn.layoutParams = lista
+        binding.previewPanel.layoutParams = panel
     }
 
-    private fun showPreview(item: ContentItem) {
+    private fun handleItemClick(item: ContentItem) {
+        if (!showPreviewFor(section)) {
+            openItem(item)
+            return
+        }
+        // Segundo toque sobre el canal que ya se está previsualizando: pantalla completa.
+        if (previewItem?.id == item.id && previewPlayer?.isPlaying == true) {
+            openItem(item)
+        } else {
+            showPreview(item)
+        }
+    }
+
+    /** Solo la ficha: nombre, categoría y logo. No conecta nada. */
+    private fun showPreviewCard(item: ContentItem) {
         previewItem = item
+        stopPreview()
         binding.tvPreviewTitle.text = item.name
         binding.tvPreviewCategory.text =
             categories.firstOrNull { it.categoryId == item.categoryId }?.categoryName.orEmpty()
@@ -251,6 +342,109 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Ficha + arranque de la previsualización en video. */
+    private fun showPreview(item: ContentItem) {
+        showPreviewCard(item)
+
+        // Categoría bloqueada: se muestra la ficha pero no se reproduce nada
+        // hasta que se ingrese el PIN desde el botón de pantalla completa.
+        if (Parental.isCategoryLocked(this, item.categoryId)) {
+            showPreviewMessage(getString(R.string.preview_locked))
+            return
+        }
+
+        schedulePreview(item)
+    }
+
+    /** Espera un momento antes de conectar: evita abrir una conexión por canal recorrido. */
+    private fun schedulePreview(item: ContentItem) {
+        pendingPreview?.let { previewDelay.removeCallbacks(it) }
+        showPreviewIdle(loading = true)
+
+        val tarea = Runnable {
+            if (isFinishing || isDestroyed) return@Runnable
+            if (previewItem?.id != item.id) return@Runnable
+            playPreview(item)
+        }
+        pendingPreview = tarea
+        previewDelay.postDelayed(tarea, PREVIEW_DELAY_MS)
+    }
+
+    private fun playPreview(item: ContentItem) {
+        val exo = previewPlayer ?: buildPreviewPlayer().also { previewPlayer = it }
+        binding.tvPreviewError.visibility = View.GONE
+        exo.setMediaItem(MediaItem.fromUri(Session.liveStreamUrl(this, item.id)))
+        exo.prepare()
+        exo.playWhenReady = true
+    }
+
+    private fun buildPreviewPlayer(): ExoPlayer {
+        val exo = PlayerFactory.build(this)
+        exo.volume = if (previewMuted) 0f else 1f
+        exo.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (isFinishing || isDestroyed) return
+                binding.previewProgress.visibility =
+                    if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+                if (state == Player.STATE_READY) {
+                    // Recién con imagen se tapa el logo
+                    binding.previewPlayer.visibility = View.VISIBLE
+                    binding.ivPreviewLogo.visibility = View.GONE
+                    binding.tvPreviewError.visibility = View.GONE
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                if (isFinishing || isDestroyed) return
+                showPreviewMessage(getString(R.string.preview_error))
+            }
+        })
+        binding.previewPlayer.player = exo
+        return exo
+    }
+
+    /** Vuelve al estado "solo logo", opcionalmente con el indicador de carga. */
+    private fun showPreviewIdle(loading: Boolean) {
+        binding.previewPlayer.visibility = View.GONE
+        binding.ivPreviewLogo.visibility = View.VISIBLE
+        binding.tvPreviewError.visibility = View.GONE
+        binding.previewProgress.visibility = if (loading) View.VISIBLE else View.GONE
+    }
+
+    private fun showPreviewMessage(texto: String) {
+        binding.previewProgress.visibility = View.GONE
+        binding.previewPlayer.visibility = View.GONE
+        binding.ivPreviewLogo.visibility = View.VISIBLE
+        binding.tvPreviewError.text = texto
+        binding.tvPreviewError.visibility = View.VISIBLE
+    }
+
+    private fun togglePreviewMute() {
+        previewMuted = !previewMuted
+        previewPlayer?.volume = if (previewMuted) 0f else 1f
+        binding.btnPreviewMute.setImageResource(
+            if (previewMuted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+        )
+    }
+
+    /** Corta la previsualización y suelta la conexión con el panel. */
+    private fun stopPreview() {
+        pendingPreview?.let { previewDelay.removeCallbacks(it) }
+        pendingPreview = null
+        previewPlayer?.let {
+            it.stop()
+            it.clearMediaItems()
+        }
+        if (::binding.isInitialized) showPreviewIdle(loading = false)
+    }
+
+    private fun releasePreview() {
+        pendingPreview?.let { previewDelay.removeCallbacks(it) }
+        pendingPreview = null
+        binding.previewPlayer.player = null
+        previewPlayer?.release()
+        previewPlayer = null
+    }
 
     /** Tipo de contenido de la sección actual (para las pantallas de catálogo). */
     private fun currentType(): ContentType = when (section) {
@@ -595,7 +789,12 @@ class MainActivity : AppCompatActivity() {
             currentItems = items
             adapter.submitList(items)
             if (showPreviewFor(section)) {
-                if (items.isNotEmpty()) showPreview(items.first()) else previewItem = null
+                // Solo la ficha, sin arrancar el video: entrar a una categoría no
+                // debe disparar audio ni gastar una conexión del panel por su cuenta.
+                if (items.isNotEmpty()) showPreviewCard(items.first()) else {
+                    previewItem = null
+                    stopPreview()
+                }
             }
             // Si el perfil de niños tiene una búsqueda escrita, se respeta
             if (kidsMode) {
@@ -951,8 +1150,23 @@ class MainActivity : AppCompatActivity() {
             if (section in listOf(Section.HISTORY, Section.FAVORITES)) {
                 selectSection(section)   // refresca al volver del reproductor
             }
+            // Al volver del reproductor se rearma la previsualización del canal
+            // que estaba elegido (onStop la había liberado).
+            if (showPreviewFor(section)) {
+                applyPreviewLayout()
+                previewItem?.let { showPreview(it) }
+            }
             if (section == Section.HOME) showHome()   // re-dibuja con la paleta vigente
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Se suelta la conexión al irse de la pantalla. Es imprescindible: al
+        // abrir el reproductor a pantalla completa esta activity pasa por acá,
+        // y si la previsualización siguiera conectada el panel podría rechazar
+        // el canal por tope de conexiones simultáneas.
+        releasePreview()
     }
 
     override fun onPause() {
@@ -961,9 +1175,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        releasePreview()
         RadioCatalog.cancel()
         stopCarousel()
         Catalog.removeListener(catalogListener)
         super.onDestroy()
+    }
+
+    private companion object {
+        /** Espera antes de conectar la previsualización, al recorrer la lista. */
+        const val PREVIEW_DELAY_MS = 800L
     }
 }
