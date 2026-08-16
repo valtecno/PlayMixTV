@@ -334,9 +334,8 @@ class MainActivity : AppCompatActivity() {
         carouselAdapter = CarouselAdapter(onClick = { item -> openItem(item) })
         recentAdapter = CarouselAdapter(onClick = { item -> openItem(item) })
 
-        // Cuántos pósters entran por página lo decide el propio carrusel según el
-        // espacio real que tiene. Fijarlo a mano en 1 era lo que hacía que cada
-        // tarjeta ocupara la columna entera y se comiera la pantalla de Inicio.
+        // Una carátula por columna, cambiando de a una. El carrusel se encarga
+        // de darle forma de carátula y centrarla en el espacio disponible.
         novedades = AutoCarousel(binding.recyclerCarousel, carouselAdapter, delayMs = 5000L)
         recientes = AutoCarousel(binding.recyclerRecent, recentAdapter, delayMs = 5000L)
         novedades.attach()

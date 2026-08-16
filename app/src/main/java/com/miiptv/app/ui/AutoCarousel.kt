@@ -11,25 +11,22 @@ import androidx.recyclerview.widget.RecyclerView
 import com.miiptv.app.api.ContentItem
 
 /**
- * Carrusel horizontal de pósters que avanza de a una página completa y vuelve
- * al principio al llegar al final.
+ * Carrusel del Inicio: una carátula por columna, cambiando de a una.
  *
  * ---------------------------------------------------------------------------
- * POR QUÉ CAMBIÓ
+ * QUÉ ESTABA MAL Y QUÉ SE CORRIGIÓ
  *
- * Antes recibía [perPage] fijo desde afuera, y en el Inicio se estaba pasando
- * `perPage = 1`. Con un solo elemento por página, el ancho de la tarjeta salía
- * de dividir todo el ancho de la columna por uno: cada póster ocupaba la
- * columna entera. Y como item_poster.xml tiene `layout_height="match_parent"`,
- * también se estiraba a todo el alto. De ahí los dos rectángulos gigantes que
- * se comían la pantalla de Inicio.
+ * Mostrar un póster por página es la decisión de diseño correcta. Lo que estaba
+ * mal era cómo se calculaba el tamaño: el ancho de la tarjeta salía de dividir
+ * todo el ancho de la columna por la cantidad por página, o sea la columna
+ * entera. Sumado a `layout_height="match_parent"` en item_poster.xml, cada
+ * tarjeta se estiraba a lo ancho Y a lo alto, y de ahí salían los dos
+ * rectángulos gigantes que se comían la pantalla de Inicio.
  *
- * Ahora la cantidad por página NO se fija a mano: se calcula a partir del
- * espacio real que tiene el carrusel. La tarjeta toma el alto disponible, el
- * ancho sale de la proporción de un póster (2:3) y recién ahí se ve cuántas
- * entran. Así funciona solo en las dos disposiciones: en TV las dos columnas
- * van lado a lado y entran menos pósters por columna; en móvil van apiladas,
- * la columna es más ancha y entran más.
+ * Ahora el ancho sale de la proporción real de una carátula (2:3) aplicada al
+ * alto disponible, y la tarjeta se centra en la columna con relleno simétrico.
+ * Queda una carátula con forma de carátula, centrada, en vez de un bloque
+ * deformado.
  * ---------------------------------------------------------------------------
  */
 class AutoCarousel(
@@ -42,18 +39,12 @@ class AutoCarousel(
     private val layoutManager =
         LinearLayoutManager(recycler.context, LinearLayoutManager.HORIZONTAL, false)
 
-    /** Cuántos pósters entran por página. Se calcula al medir, no se fija a mano. */
-    var perPage: Int = 1
-        private set
-
-    /** Lista completa recibida. Se recorta a páginas enteras recién al medir. */
-    private var raw: List<ContentItem> = emptyList()
+    /** Una carátula por página: el carrusel avanza de a una. */
+    private val perPage = 1
 
     private var page = 0
     private var running = false
     private var measureRetries = 0
-    private var lastPerPage = 0
-    private var lastCount = -1
 
     private val tick = object : Runnable {
         override fun run() {
@@ -65,8 +56,8 @@ class AutoCarousel(
     fun attach() {
         recycler.layoutManager = layoutManager
         recycler.adapter = adapter
-        // setHasFixedSize(false): el tamaño del carrusel SÍ cambia cuando el
-        // Inicio pasa de columnas lado a lado (TV) a apiladas (móvil).
+        // El tamaño del carrusel SÍ cambia: el Inicio pasa de columnas lado a
+        // lado (TV) a apiladas (móvil), y eso cambia el alto de cada fila.
         recycler.setHasFixedSize(false)
 
         // Si el usuario lo desliza a mano, se pausa y después retoma desde donde quedó
@@ -83,38 +74,40 @@ class AutoCarousel(
             }
         })
 
-        // Recalcular cuando el carrusel cambia de tamaño (cambio de orientación,
-        // de modo TV/móvil, o la primera vez que se hace visible). Solo cuando
-        // el tamaño cambió de verdad: si no, se volvería a medir en bucle.
+        // Recalcular cuando el carrusel cambia de tamaño (primera medición,
+        // rotación, cambio de modo TV/móvil). Solo si el tamaño cambió de
+        // verdad, o se volvería a medir en bucle.
         recycler.addOnLayoutChangeListener { _, l, t, r, b, oldL, oldT, oldR, oldB ->
-            val cambioAncho = (r - l) != (oldR - oldL)
-            val cambioAlto = (b - t) != (oldB - oldT)
-            if (cambioAncho || cambioAlto) measureItems()
+            if ((r - l) != (oldR - oldL) || (b - t) != (oldB - oldT)) measureItems()
         }
     }
 
+    /**
+     * La lista se entrega al adapter en el acto, de forma síncrona.
+     *
+     * Esto es obligatorio: showHome() consulta itemCount en la línea siguiente
+     * para decidir si oculta la columna. Si la carga se difiere hasta que la
+     * vista esté medida, en ese momento todavía vale 0, la columna se oculta y,
+     * al quedar con alto 0, la medición ya no puede completarse nunca: el
+     * Inicio queda vacío para siempre. La medición solo ajusta el tamaño de la
+     * tarjeta y puede llegar después sin problema.
+     */
     fun submit(items: List<ContentItem>) {
-        raw = items
         page = 0
         measureRetries = 0
-        lastPerPage = 0
-        lastCount = -1
+        adapter.submitList(items)
         measureItems()
     }
 
     val itemCount: Int get() = adapter.itemCount
 
-    /**
-     * Calcula el tamaño de la tarjeta a partir del espacio disponible.
-     *
-     * La tarjeta ocupa el alto del carrusel. Descontando el bloque de texto
-     * (título + etiqueta) y el relleno, queda el alto del póster; el ancho sale
-     * de la proporción 2:3. Con eso ya se sabe cuántas entran a lo ancho.
-     */
+    /** Da a la tarjeta forma de carátula y la centra en la columna. */
     private fun measureItems() {
-        val usable = recycler.width - recycler.paddingStart - recycler.paddingEnd
+        // Ancho crudo, no el que queda tras el relleno: el relleno lo fija esta
+        // misma función, y leerlo acá haría que la tarjeta se encoja en cada vuelta.
+        val ancho = recycler.width
         val alto = recycler.height
-        if (usable <= 0 || alto <= 0) {
+        if (ancho <= 0 || alto <= 0) {
             // La vista todavía no fue medida (o está oculta): reintentamos unas pocas veces
             if (measureRetries++ < 8) recycler.post { measureItems() }
             return
@@ -124,31 +117,26 @@ class AutoCarousel(
         fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, dm)
 
         // Fila baja (móvil, con las dos secciones apiladas): título a una línea,
-        // para no dejar al póster sin lugar.
+        // para no dejar a la carátula sin lugar.
         val compacto = alto < dp(COMPACT_BELOW_DP)
         adapter.compact = compacto
         val bloqueTexto = if (compacto) TEXT_BLOCK_COMPACT_DP else TEXT_BLOCK_DP
 
+        val margen = dp(ITEM_MARGIN_DP)
         val altoPoster = (alto - dp(bloqueTexto) - dp(CARD_PADDING_DP))
             .coerceAtLeast(dp(MIN_POSTER_DP))
+        val topeAncho = (ancho - margen).coerceAtLeast(dp(MIN_CARD_DP))
         val anchoTarjeta = (altoPoster * POSTER_RATIO + dp(CARD_PADDING_DP))
-            .coerceAtLeast(dp(MIN_CARD_DP))
-        val margen = dp(ITEM_MARGIN_DP)
+            .coerceIn(dp(MIN_CARD_DP), topeAncho)
 
-        perPage = (usable / (anchoTarjeta + margen)).toInt().coerceIn(1, MAX_PER_PAGE)
-        adapter.itemWidth = (usable / perPage - margen).toInt().coerceAtLeast(dp(MIN_CARD_DP).toInt())
-        applyList()
-    }
+        adapter.itemWidth = anchoTarjeta.toInt()
 
-    /** Recorta a páginas enteras para que nunca quede una fila a medias. */
-    private fun applyList() {
-        val recortada =
-            if (raw.size < perPage) raw else raw.take((raw.size / perPage) * perPage)
-        // Evita reenviar la misma lista y disparar otra vuelta de medición
-        if (perPage == lastPerPage && recortada.size == lastCount) return
-        lastPerPage = perPage
-        lastCount = recortada.size
-        adapter.submitList(recortada)
+        // Relleno simétrico: la carátula queda centrada. Con clipToPadding=false
+        // la siguiente asoma al deslizar, que es lo que da sensación de carrusel.
+        val sobra = ((ancho - anchoTarjeta - margen) / 2f).toInt().coerceAtLeast(0)
+        if (recycler.paddingStart != sobra) {
+            recycler.setPadding(sobra, recycler.paddingTop, sobra, recycler.paddingBottom)
+        }
     }
 
     /**
@@ -181,7 +169,7 @@ class AutoCarousel(
         }
     }
 
-    /** Desplazamiento suave que deja el elemento destino pegado al borde izquierdo. */
+    /** Desplazamiento suave que deja el elemento destino pegado al borde inicial. */
     private fun smoothScrollToStart(position: Int) {
         val scroller = object : LinearSmoothScroller(recycler.context) {
             override fun getHorizontalSnapPreference() = SNAP_TO_START
@@ -216,13 +204,10 @@ class AutoCarousel(
         /** Por debajo de este alto de fila se usa el modo compacto. */
         const val COMPACT_BELOW_DP = 260f
 
-        /** Proporción de un póster: el ancho es dos tercios del alto. */
+        /** Proporción de una carátula: el ancho es dos tercios del alto. */
         const val POSTER_RATIO = 2f / 3f
 
         const val MIN_POSTER_DP = 90f
         const val MIN_CARD_DP = 96f
-
-        /** Tope por las dudas: más de esto y los pósters quedan ilegibles. */
-        const val MAX_PER_PAGE = 6
     }
 }
