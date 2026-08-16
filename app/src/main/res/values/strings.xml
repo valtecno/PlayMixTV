@@ -68,6 +68,8 @@
     <string name="section_ppv">PPV Fútbol VIP</string>
     <string name="section_radio">Radios del mundo</string>
     <string name="empty_ppv">No se encontraron categorías de fútbol en este servidor</string>
+    <string name="preview_live">EN VIVO</string>
+    <string name="preview_play">Reproducir</string>
     <string name="empty_radio">No se encontraron emisoras para este país</string>
     <string name="radio_loading">Buscando emisoras…</string>
     <string name="switch_account">Cambiar de cuenta</string>
@@ -162,6 +164,16 @@
     <string name="multiscreen_exit">Salir de multi-pantalla</string>
     <string name="multiscreen_instructions">Tocá un recuadro para escuchar su audio (los demás quedan en silencio). Mantené presionado un recuadro para elegir qué canal va ahí.</string>
     <string name="cancel">Cancelar</string>
+    <string name="pin_backspace">Borrar</string>
+    <string name="pin_ask_title">Ingresa tu PIN</string>
+    <string name="pin_ask_subtitle">Escribe tu PIN de control parental para continuar</string>
+    <string name="pin_create_title">Crear PIN</string>
+    <string name="pin_create_subtitle">Elegí un PIN de 4 dígitos para el control parental</string>
+    <string name="pin_confirm_title">Confirmar PIN</string>
+    <string name="pin_confirm_subtitle">Volvé a escribirlo para confirmarlo</string>
+    <string name="pin_wrong">PIN incorrecto</string>
+    <string name="pin_mismatch">Los PIN no coinciden, probá de nuevo</string>
+    <string name="pin_saved">PIN guardado</string>
     <string name="player_audio">Pista de audio</string>
     <string name="player_subtitles">Subtítulos</string>
     <string name="player_quality">Calidad de imagen</string>

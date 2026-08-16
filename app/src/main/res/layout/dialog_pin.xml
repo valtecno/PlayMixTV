@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/background_dark"
+    android:paddingHorizontal="28dp"
+    android:paddingVertical="32dp">
+
+    <FrameLayout
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginBottom="16dp">
+
+        <View
+            android:id="@+id/pinIconBg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <ImageView
+            android:id="@+id/ivPinIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="18dp"
+            android:src="@drawable/ic_lock_closed"
+            android:contentDescription="@null" />
+
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tvPinTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_light"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tvPinSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="22dp"
+        android:gravity="center"
+        android:textColor="@color/text_muted"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:id="@+id/pinDots"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="26dp">
+
+        <View android:id="@+id/pinDot0" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+        <View android:id="@+id/pinDot1" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+        <View android:id="@+id/pinDot2" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+        <View android:id="@+id/pinDot3" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            <TextView android:id="@+id/pinKey1" style="@style/PinKey" android:text="1" />
+            <TextView android:id="@+id/pinKey2" style="@style/PinKey" android:text="2" />
+            <TextView android:id="@+id/pinKey3" style="@style/PinKey" android:text="3" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            <TextView android:id="@+id/pinKey4" style="@style/PinKey" android:text="4" />
+            <TextView android:id="@+id/pinKey5" style="@style/PinKey" android:text="5" />
+            <TextView android:id="@+id/pinKey6" style="@style/PinKey" android:text="6" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            <TextView android:id="@+id/pinKey7" style="@style/PinKey" android:text="7" />
+            <TextView android:id="@+id/pinKey8" style="@style/PinKey" android:text="8" />
+            <TextView android:id="@+id/pinKey9" style="@style/PinKey" android:text="9" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <View android:layout_width="64dp" android:layout_height="64dp" android:layout_margin="6dp" />
+
+            <TextView android:id="@+id/pinKey0" style="@style/PinKey" android:text="0" />
+
+            <ImageView
+                android:id="@+id/pinKeyBackspace"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_margin="6dp"
+                android:padding="20dp"
+                android:src="@drawable/ic_backspace"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/pin_backspace" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvPinCancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:padding="8dp"
+        android:text="@string/cancel"
+        android:textColor="@color/text_muted"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:background="?android:attr/selectableItemBackgroundBorderless" />
+
+</LinearLayout>

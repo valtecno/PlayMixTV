@@ -410,10 +410,13 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(false)
             binding.playerView.hideController()
             binding.topBar.visibility = View.GONE
-            binding.btnUnlock.visibility = View.VISIBLE
+            // Con la pantalla bloqueada queda 100% limpia: ni el candado se ve.
+            // Solo aparece un momento al tocar la pantalla (ver dispatchTouchEvent).
+            binding.btnUnlock.visibility = View.GONE
             hideNextBar()
             Toast.makeText(this, R.string.player_locked, Toast.LENGTH_SHORT).show()
         } else {
+            lockIconHide?.let { ui.removeCallbacks(it) }
             binding.playerView.setUseController(true)
             binding.btnUnlock.visibility = View.GONE
             binding.topBar.visibility = View.VISIBLE
@@ -422,10 +425,26 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private var lockIconHide: Runnable? = null
+
+    /** Muestra el candado unos segundos y lo vuelve a esconder si no se lo toca de nuevo. */
+    private fun showLockIconTemporarily() {
+        binding.btnUnlock.visibility = View.VISIBLE
+        lockIconHide?.let { ui.removeCallbacks(it) }
+        val runnable = Runnable { if (locked) binding.btnUnlock.visibility = View.GONE }
+        lockIconHide = runnable
+        ui.postDelayed(runnable, 3000L)
+    }
+
     /** Con la pantalla bloqueada se descarta cualquier toque salvo el del candado. */
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         if (locked) {
             val unlock = binding.btnUnlock
+            if (unlock.visibility != View.VISIBLE) {
+                // Primer toque en pantalla: solo revela el candado, no desbloquea nada.
+                if (ev.action == MotionEvent.ACTION_DOWN) showLockIconTemporarily()
+                return true
+            }
             val pos = IntArray(2)
             unlock.getLocationOnScreen(pos)
             val dentro = ev.rawX >= pos[0] && ev.rawX <= pos[0] + unlock.width &&

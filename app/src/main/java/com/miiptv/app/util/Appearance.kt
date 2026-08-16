@@ -170,6 +170,17 @@ object Appearance {
         }
     }
 
+    /** Mismo degradado de marca que [gradient], pero circular (para íconos redondos). */
+    fun gradientOval(c: Context): GradientDrawable {
+        val p = palette(c)
+        return GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(p.start, p.end)
+        ).apply {
+            shape = GradientDrawable.OVAL
+        }
+    }
+
     // ---------------- Subtítulos ----------------
 
     fun getSubtitleSize(c: Context): Int = prefs(c).getInt("subtitle_size", 20).coerceIn(12, 44)

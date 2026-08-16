@@ -30,6 +30,7 @@ import com.miiptv.app.util.RadioCatalog
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PinDialog
 import com.miiptv.app.util.applyBrandGradient
+import com.squareup.picasso.Picasso
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -58,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     /** Última lista cargada, sin filtrar: base del buscador del perfil de niños. */
     private var currentItems: List<ContentItem> = emptyList()
     private var categories: List<Category> = emptyList()
+    /** Ítem que se está mostrando ahora en el panel de previsualización de Canales (TV). */
+    private var previewItem: ContentItem? = null
     /** Perfil de niños: filtra a solo contenido infantil y oculta las secciones no aptas. */
     private var kidsMode: Boolean = false
 
@@ -77,9 +80,12 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        adapter = ContentAdapter(onClick = { item -> openItem(item) })
+        adapter = ContentAdapter(onClick = { item -> handleItemClick(item) })
         binding.recyclerChannels.layoutManager = GridLayoutManager(this, 1)
         binding.recyclerChannels.adapter = adapter
+
+        binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
+        binding.previewThumbFrame.setOnClickListener { previewItem?.let { openItem(it) } }
 
         binding.tvToolbarTitle.applyBrandGradient()
 
@@ -174,6 +180,7 @@ class MainActivity : AppCompatActivity() {
                 View.VISIBLE else View.GONE
 
         applyLayoutMode(newSection)
+        updatePreviewVisibility(newSection)
         if (isHome) startCarousel() else stopCarousel()
 
         when (newSection) {
@@ -205,6 +212,40 @@ class MainActivity : AppCompatActivity() {
         adapter.posterMode = columns > 1
         binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
     }
+
+    /**
+     * Panel de previsualización: foto grande + botón "Reproducir" al lado de la
+     * lista, en vez de abrir el reproductor de una. Solo tiene sentido en TV
+     * (control remoto, se navega la lista con el foco) y solo en Canales; en
+     * móvil se sigue abriendo directo al tocar, como siempre.
+     */
+    private fun showPreviewFor(s: Section): Boolean = !DeviceMode.isMobile(this) && s == Section.LIVE
+
+    private fun updatePreviewVisibility(newSection: Section) {
+        if (showPreviewFor(newSection)) {
+            binding.previewPanel.visibility = View.VISIBLE
+        } else {
+            binding.previewPanel.visibility = View.GONE
+            previewItem = null
+        }
+    }
+
+    private fun handleItemClick(item: ContentItem) {
+        if (showPreviewFor(section)) showPreview(item) else openItem(item)
+    }
+
+    private fun showPreview(item: ContentItem) {
+        previewItem = item
+        binding.tvPreviewTitle.text = item.name
+        binding.tvPreviewCategory.text =
+            categories.firstOrNull { it.categoryId == item.categoryId }?.categoryName.orEmpty()
+        if (!item.icon.isNullOrBlank()) {
+            Picasso.get().load(item.icon).into(binding.ivPreviewLogo)
+        } else {
+            binding.ivPreviewLogo.setImageDrawable(null)
+        }
+    }
+
 
     /** Tipo de contenido de la sección actual (para las pantallas de catálogo). */
     private fun currentType(): ContentType = when (section) {
@@ -533,6 +574,9 @@ class MainActivity : AppCompatActivity() {
             val items = map(response.body().orEmpty()).filter { it.name.isNotBlank() }
             currentItems = items
             adapter.submitList(items)
+            if (showPreviewFor(section)) {
+                if (items.isNotEmpty()) showPreview(items.first()) else previewItem = null
+            }
             // Si el perfil de niños tiene una búsqueda escrita, se respeta
             if (kidsMode) {
                 val q = binding.etKidsSearch.text?.toString().orEmpty()
