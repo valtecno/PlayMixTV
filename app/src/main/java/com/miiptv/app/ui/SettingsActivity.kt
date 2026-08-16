@@ -76,6 +76,9 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, PersonalizeActivity::class.java))
         }
 
+        // La acción vive ahora en su propio botón; el recuadro de abajo solo
+        // muestra el recuento y, con pulsación larga, abre el diagnóstico.
+        binding.btnRefreshCatalog.setOnClickListener { refreshCatalog() }
         binding.rowRefresh.setOnClickListener { refreshCatalog() }
         // Pulsación larga: prueba el panel endpoint por endpoint y dice qué falla
         binding.rowRefresh.setOnLongClickListener { runDiagnostics(); true }

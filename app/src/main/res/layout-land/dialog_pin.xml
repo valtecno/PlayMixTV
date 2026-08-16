@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Teclado de PIN en horizontal (modo TV).
+
+    El layout vertical no entra a lo alto en un televisor: sumando candado,
+    título, subtítulo, puntos, cuatro filas de teclas y los botones de abajo
+    pasa de 590dp, y una pantalla 1536x841 a densidad 1.5 solo tiene 560dp.
+    Como el LinearLayout centraba el contenido sin poder desplazarse, recortaba
+    por arriba (el candado) y por abajo (los botones).
+
+    Acá se reparte en dos columnas: a la izquierda la cabecera y los botones, a
+    la derecha el teclado. Los IDs son los mismos que en la versión vertical,
+    así que PinDialog.kt funciona igual sin tocar nada.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center"
+    android:background="@color/background_dark"
+    android:paddingHorizontal="40dp"
+    android:paddingVertical="20dp">
+
+    <!-- ===== Izquierda: cabecera, puntos y botones ===== -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingEnd="28dp">
+
+        <FrameLayout
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginBottom="14dp">
+
+            <View
+                android:id="@+id/pinIconBg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <ImageView
+                android:id="@+id/ivPinIcon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="16dp"
+                android:src="@drawable/ic_lock_closed"
+                android:contentDescription="@null" />
+
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/tvPinTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/text_light"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvPinSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:textColor="@color/text_muted"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/pinDots"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="18dp">
+
+            <View android:id="@+id/pinDot0" android:layout_width="12dp" android:layout_height="12dp"
+                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+            <View android:id="@+id/pinDot1" android:layout_width="12dp" android:layout_height="12dp"
+                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+            <View android:id="@+id/pinDot2" android:layout_width="12dp" android:layout_height="12dp"
+                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+            <View android:id="@+id/pinDot3" android:layout_width="12dp" android:layout_height="12dp"
+                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+
+        </LinearLayout>
+
+        <!-- Mismo estilo que el botón Inicio del menú principal -->
+        <TextView
+            android:id="@+id/btnPinHome"
+            style="@style/NavItem"
+            android:layout_marginTop="24dp"
+            android:text="@string/nav_home"
+            android:drawableStart="@drawable/ic_home" />
+
+        <TextView
+            android:id="@+id/tvPinCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="8dp"
+            android:text="@string/cancel"
+            android:textColor="@color/text_muted"
+            android:textSize="14sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
+
+    </LinearLayout>
+
+    <!-- ===== Derecha: teclado ===== -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:id="@+id/pinKey1" style="@style/PinKeyCompact" android:text="1" />
+            <TextView android:id="@+id/pinKey2" style="@style/PinKeyCompact" android:text="2" />
+            <TextView android:id="@+id/pinKey3" style="@style/PinKeyCompact" android:text="3" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:id="@+id/pinKey4" style="@style/PinKeyCompact" android:text="4" />
+            <TextView android:id="@+id/pinKey5" style="@style/PinKeyCompact" android:text="5" />
+            <TextView android:id="@+id/pinKey6" style="@style/PinKeyCompact" android:text="6" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+            <TextView android:id="@+id/pinKey7" style="@style/PinKeyCompact" android:text="7" />
+            <TextView android:id="@+id/pinKey8" style="@style/PinKeyCompact" android:text="8" />
+            <TextView android:id="@+id/pinKey9" style="@style/PinKeyCompact" android:text="9" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <View android:layout_width="56dp" android:layout_height="56dp" android:layout_margin="5dp" />
+
+            <TextView android:id="@+id/pinKey0" style="@style/PinKeyCompact" android:text="0" />
+
+            <ImageView
+                android:id="@+id/pinKeyBackspace"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_margin="5dp"
+                android:padding="17dp"
+                android:src="@drawable/ic_backspace"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/pin_backspace" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

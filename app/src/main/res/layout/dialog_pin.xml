@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    Versión vertical (móvil). La horizontal está en layout-land/dialog_pin.xml,
+    repartida en dos columnas: en un televisor este layout no entra a lo alto y
+    se cortaban el candado de arriba y el botón de abajo.
+
+    El ScrollView es el seguro: en una pantalla corta se puede desplazar en vez
+    de recortar.
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background_dark"
+    android:fillViewport="true">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:background="@color/background_dark"
     android:paddingHorizontal="28dp"
-    android:paddingVertical="32dp">
+    android:paddingVertical="24dp">
 
     <FrameLayout
         android:layout_width="72dp"
@@ -124,11 +138,19 @@
 
     </LinearLayout>
 
+    <!-- Mismo estilo que el botón Inicio del menú principal -->
+    <TextView
+        android:id="@+id/btnPinHome"
+        style="@style/NavItem"
+        android:layout_marginTop="18dp"
+        android:text="@string/nav_home"
+        android:drawableStart="@drawable/ic_home" />
+
     <TextView
         android:id="@+id/tvPinCancel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
+        android:layout_marginTop="10dp"
         android:padding="8dp"
         android:text="@string/cancel"
         android:textColor="@color/text_muted"
@@ -138,3 +160,4 @@
         android:background="?android:attr/selectableItemBackgroundBorderless" />
 
 </LinearLayout>
+</ScrollView>

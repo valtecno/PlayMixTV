@@ -230,6 +230,15 @@
         <item name="android:focusable">true</item>
     </style>
 
+    <!-- Teclas del PIN en horizontal (TV): algo más chicas para que las cuatro
+         filas entren sin recortar la cabecera ni los botones de abajo. -->
+    <style name="PinKeyCompact" parent="PinKey">
+        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:layout_margin">5dp</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
     <style name="SettingsRow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

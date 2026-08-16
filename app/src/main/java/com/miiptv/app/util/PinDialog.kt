@@ -1,6 +1,8 @@
 package com.miiptv.app.util
 
+import android.app.Activity
 import android.app.Dialog
+import android.content.Intent
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -59,6 +61,19 @@ object PinDialog {
                 }
             }
         }
+    }
+
+    /**
+     * Vuelve al inicio de la app. CLEAR_TOP descarta lo que haya quedado
+     * encima de la pantalla principal en vez de apilar otra copia.
+     */
+    private fun goHome(context: Context) {
+        val intent = Intent(context, com.miiptv.app.ui.MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        // Si el contexto no es una Activity hace falta tarea nueva, o el sistema rechaza el intent
+        if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        if (context is Activity && context !is com.miiptv.app.ui.MainActivity) context.finish()
     }
 
     /**
@@ -122,6 +137,17 @@ object PinDialog {
         }
 
         binding.tvPinCancel.setOnClickListener { dialog.dismiss() }
+
+        // Botón de inicio, con el mismo tratamiento que el del menú principal:
+        // degradado pleno y el ícono teñido del color del texto.
+        Appearance.applyLevel(binding.btnPinHome, Appearance.Level.PRIMARY, 22f)
+        binding.btnPinHome.compoundDrawablesRelative.forEach {
+            it?.mutate()?.setTint(binding.btnPinHome.currentTextColor)
+        }
+        binding.btnPinHome.setOnClickListener {
+            dialog.dismiss()
+            goHome(context)
+        }
 
         dialog.show()
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)

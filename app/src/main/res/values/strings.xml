@@ -250,4 +250,5 @@
     <string name="preview_locked">Categoría bloqueada. Usa el PIN para verla.</string>
     <string name="preview_error">No se pudo previsualizar este canal</string>
     <string name="preview_mute">Silenciar previsualización</string>
+    <string name="setting_refresh_action">Actualizar</string>
 </resources>

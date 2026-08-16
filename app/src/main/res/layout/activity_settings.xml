@@ -103,9 +103,28 @@
             <!-- ===== Contenido ===== -->
             <TextView style="@style/SettingsHeader" android:text="@string/settings_content" />
 
+            <!-- La acción va en su propio botón, arriba del recuadro.
+                 Antes eran una sola fila: la etiqueta compartía el ancho con el
+                 recuento del catálogo ("11503 canales · 0 pelis · 18212 series"),
+                 que al ser tan largo dejaba a "Actualizar catálogo" con tres
+                 caracteres de ancho y lo partía en vertical, letra por letra. -->
+            <Button
+                android:id="@+id/btnRefreshCatalog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_button_gradient"
+                android:textColor="@color/text_light"
+                android:text="@string/setting_refresh_action" />
+
+            <!-- Recuento del catálogo. Pulsación larga: diagnóstico del servidor. -->
             <LinearLayout android:id="@+id/rowRefresh" style="@style/SettingsRow">
-                <TextView style="@style/SettingsLabel" android:text="@string/setting_refresh" />
-                <TextView android:id="@+id/tvCatalog" style="@style/SettingsValue" />
+                <TextView
+                    android:id="@+id/tvCatalog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_muted"
+                    android:textSize="14sp" />
             </LinearLayout>
 
             <LinearLayout android:id="@+id/rowClearCache" style="@style/SettingsRow">
