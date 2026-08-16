@@ -48,6 +48,19 @@ object PpvFilter {
         Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
             .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
 
+    /**
+     * Igual que [normalize], pero además cambia cualquier separador
+     * ("|", "-", "_", "·", etc.) por un espacio simple y junta espacios
+     * repetidos. Sirve para comparar frases completas contra nombres de
+     * carpeta reales, que suelen venir con separadores raros, por ej.
+     * "CINEMA | HD | HQ" → "cinema hd hq" (así sí calza con la frase esperada).
+     * No se usa en isFootball, que depende de los espacios tal cual vienen.
+     */
+    fun normalizeLoose(text: String): String =
+        normalize(text)
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .trim()
+
     /** ¿Esta categoría entra en la sección PPV Fútbol? */
     fun isFootball(categoryName: String?): Boolean {
         if (categoryName.isNullOrBlank()) return false

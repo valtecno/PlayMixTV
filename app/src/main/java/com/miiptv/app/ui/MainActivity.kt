@@ -464,10 +464,22 @@ class MainActivity : AppCompatActivity() {
             else -> emptyList()
         }
         if (candidatas.isEmpty()) return list
-        val preferida = list.firstOrNull { cat ->
-            val nombre = PpvFilter.normalize(cat.categoryName.orEmpty())
-            candidatas.any { nombre.contains(PpvFilter.normalize(it)) }
-        } ?: return list
+        // Para cada candidata, primero se busca una carpeta con el nombre EXACTO
+        // (evita que "2026" agarre por error "Copa Mundial 2026" o "Nominados al
+        // Oscar 2026", que también contienen "2026"). Solo si no hay nombre exacto
+        // se usa una coincidencia más floja (contiene la frase), útil para casos
+        // como "Chile Primera 08/15" o "PPV Futbol Sudamericano".
+        var preferida: Category? = null
+        for (candidata in candidatas) {
+            val candidataNorm = PpvFilter.normalizeLoose(candidata)
+            preferida = list.firstOrNull { cat ->
+                PpvFilter.normalizeLoose(cat.categoryName.orEmpty()) == candidataNorm
+            } ?: list.firstOrNull { cat ->
+                PpvFilter.normalizeLoose(cat.categoryName.orEmpty()).contains(candidataNorm)
+            }
+            if (preferida != null) break
+        }
+        if (preferida == null) return list
         return listOf(preferida) + list.filter { it.categoryId != preferida.categoryId }
     }
 

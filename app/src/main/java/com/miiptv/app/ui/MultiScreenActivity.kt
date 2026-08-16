@@ -31,6 +31,8 @@ class MultiScreenActivity : AppCompatActivity() {
         binding = ActivityMultiscreenBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        binding.btnExit.setOnClickListener { finish() }
+
         val playerViews = listOf(binding.player0, binding.player1, binding.player2, binding.player3)
         val slots = listOf(binding.slot0, binding.slot1, binding.slot2, binding.slot3)
 
@@ -56,8 +58,6 @@ class MultiScreenActivity : AppCompatActivity() {
                     channels.take(4).forEachIndexed { index, ch -> loadIntoSlot(index, ch) }
                     if (channels.isEmpty()) {
                         Toast.makeText(this@MultiScreenActivity, "No hay canales disponibles", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this@MultiScreenActivity, "Mantén presionado un recuadro para cambiar el canal", Toast.LENGTH_LONG).show()
                     }
                 }
 

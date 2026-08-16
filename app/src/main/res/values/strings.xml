@@ -159,6 +159,8 @@
     <string name="logout_confirm">Vas a volver a la pantalla de inicio de sesión. ¿Continuar?</string>
     <!-- Reproductor -->
     <string name="back">Volver</string>
+    <string name="multiscreen_exit">Salir de multi-pantalla</string>
+    <string name="multiscreen_instructions">Tocá un recuadro para escuchar su audio (los demás quedan en silencio). Mantené presionado un recuadro para elegir qué canal va ahí.</string>
     <string name="cancel">Cancelar</string>
     <string name="player_audio">Pista de audio</string>
     <string name="player_subtitles">Subtítulos</string>
