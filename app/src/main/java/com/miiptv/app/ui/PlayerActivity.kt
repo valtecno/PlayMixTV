@@ -1,9 +1,19 @@
 package com.miiptv.app.ui
 
 import android.app.AlertDialog
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.res.Configuration
+import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Rational
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
@@ -58,6 +68,7 @@ class PlayerActivity : AppCompatActivity() {
 
         private const val MAX_RETRIES = 5
         private const val NEXT_COUNTDOWN_SECONDS = 8
+        private const val ACTION_PIP_PLAY_PAUSE = "com.miiptv.app.PIP_PLAY_PAUSE"
     }
 
     private lateinit var binding: ActivityPlayerBinding
@@ -79,6 +90,19 @@ class PlayerActivity : AppCompatActivity() {
     private val ui = Handler(Looper.getMainLooper())
     private var countdown = 0
     private var lastUnlockTap = 0L
+
+    /** Botón play/pausa que se ve en la ventanita de PiP (se registra una sola vez). */
+    private var pipReceiverRegistered = false
+    private val pipReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != ACTION_PIP_PLAY_PAUSE) return
+            val exo = player ?: return
+            if (exo.isPlaying) exo.pause() else exo.play()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                buildPipParams()?.let { setPictureInPictureParams(it) }
+            }
+        }
+    }
 
     private val countdownTick = object : Runnable {
         override fun run() {
@@ -132,6 +156,7 @@ class PlayerActivity : AppCompatActivity() {
 
         setupControls()
         askNotificationPermission()
+        registerPipReceiver()
 
         if (PlaybackHolder.canResume(streamUrl)) {
             // Vuelve desde la notificación: se engancha al reproductor que ya está sonando
@@ -181,12 +206,105 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         ui.removeCallbacksAndMessages(null)
+        unregisterPipReceiver()
         if (isFinishing) {
             PlaybackService.stop(this)
             PlaybackHolder.release()
             player = null
         }
         super.onDestroy()
+    }
+
+    // ---------------- Picture-in-Picture ----------------
+    // Al salir de la app (botón Inicio, cambiar de app, etc.) mientras hay video
+    // reproduciéndose, se abre una ventanita flotante encima de las demás apps,
+    // igual que hace YouTube, para poder seguir mirando mientras se hace otra cosa.
+
+    private fun canUsePip(): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            DeviceMode.isMobile(this) &&
+            packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
+
+    private fun registerPipReceiver() {
+        if (!canUsePip() || pipReceiverRegistered) return
+        val filter = IntentFilter(ACTION_PIP_PLAY_PAUSE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.registerReceiver(this, pipReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(pipReceiver, filter)
+        }
+        pipReceiverRegistered = true
+    }
+
+    private fun unregisterPipReceiver() {
+        if (!pipReceiverRegistered) return
+        runCatching { unregisterReceiver(pipReceiver) }
+        pipReceiverRegistered = false
+    }
+
+    /** El aspecto de PiP en Android tiene que estar entre 1:2.39 y 2.39:1. */
+    private fun clampedAspect(width: Int, height: Int): Rational {
+        val r = Rational(width, height)
+        val value = r.toFloat()
+        return when {
+            value > 2.39f -> Rational(239, 100)
+            value < 1f / 2.39f -> Rational(100, 239)
+            else -> r
+        }
+    }
+
+    private fun buildPipParams(): PictureInPictureParams? {
+        if (!canUsePip()) return null
+        val playing = player?.isPlaying == true
+        val icon = if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        val titulo = getString(R.string.player_play_pause)
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val pi = PendingIntent.getBroadcast(
+            this, 0, Intent(ACTION_PIP_PLAY_PAUSE).setPackage(packageName), flags
+        )
+        val accion = RemoteAction(Icon.createWithResource(this, icon), titulo, titulo, pi)
+
+        val vf = player?.videoFormat
+        val aspecto = if (vf != null && vf.width > 0 && vf.height > 0) {
+            clampedAspect(vf.width, vf.height)
+        } else {
+            Rational(16, 9)
+        }
+
+        return PictureInPictureParams.Builder()
+            .setActions(listOf(accion))
+            .setAspectRatio(aspecto)
+            .build()
+    }
+
+    /**
+     * Se llama justo antes de que la app deje de estar en primer plano por una
+     * acción del usuario (Inicio, recientes, abrir otra app) — es el momento
+     * correcto para pasar a PiP, a diferencia de onStop, que llega demasiado tarde.
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (player?.isPlaying != true) return
+        val params = buildPipParams() ?: return
+        runCatching { enterPictureInPictureMode(params) }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            // En la ventanita no se puede tocar nada más que el video: se ocultan
+            // los controles propios para no dejar botones "muertos" en pantalla.
+            binding.playerView.setUseController(false)
+            binding.playerView.hideController()
+            binding.topBar.visibility = View.GONE
+            binding.btnUnlock.visibility = View.GONE
+            hideNextBar()
+        } else if (!locked) {
+            binding.playerView.setUseController(true)
+            binding.playerView.showController()
+            binding.topBar.visibility = View.VISIBLE
+        }
     }
 
     /** Sin este permiso, en Android 13+ la notificación del servicio no se ve. */
