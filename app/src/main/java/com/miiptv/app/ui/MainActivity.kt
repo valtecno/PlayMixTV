@@ -404,7 +404,7 @@ class MainActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return
                 categories = response.body().orEmpty().let { list ->
                     if (filter != null) list.filter(filter) else list
-                }
+                }.let { list -> reorderPreferredFirst(list) }
                 if (section == Section.PPV) ppvCategories = categories
                 renderCategoryChips(categories)
                 if (categories.isEmpty()) {
@@ -419,7 +419,7 @@ class MainActivity : AppCompatActivity() {
                     )
                     binding.tvEmpty.visibility = View.VISIBLE
                 } else {
-                    val elegida = preferredCategory(categories) ?: categories.first()
+                    val elegida = categories.first()
                     loadContent(type, elegida.categoryId)
                 }
             }
@@ -433,16 +433,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Carpeta/categoría que se abre sola al entrar a Canales, PPV o Películas,
-     * según el sistema conectado ahora mismo (Sistema L / Sistema XL). Estas
-     * carpetas existen con nombres distintos en cada panel:
+     * Pone primera en la lista (izquierda del todo) la carpeta/categoría que
+     * corresponde según el sistema conectado ahora mismo (Sistema L / Sistema XL),
+     * tanto para elegirla como contenido por defecto como para su posición visual
+     * en los chips. Estas carpetas existen con nombres distintos en cada panel:
      *  - Canales: Sistema L trae "Cinema HD HQ", Sistema XL trae "Cinema Latino".
      *  - PPV: Sistema L trae "PPV Futbol Sudamericano", Sistema XL trae "Chile Primera".
      *  - Películas: Sistema XL trae "2026", Sistema L trae "VOD Estrenos".
      * Si no se encuentra ninguna coincidencia (otro servidor, o el panel no la
-     * trae esta vez), se sigue abriendo la primera de la lista como antes.
+     * trae esta vez), la lista queda igual que vino del servidor.
      */
-    private fun preferredCategory(list: List<Category>): Category? {
+    private fun reorderPreferredFirst(list: List<Category>): List<Category> {
         val sistema = Servers.currentLabel(this)
         val candidatas: List<String> = when (section) {
             Section.LIVE -> when (sistema) {
@@ -462,11 +463,12 @@ class MainActivity : AppCompatActivity() {
             }
             else -> emptyList()
         }
-        if (candidatas.isEmpty()) return null
-        return list.firstOrNull { cat ->
+        if (candidatas.isEmpty()) return list
+        val preferida = list.firstOrNull { cat ->
             val nombre = PpvFilter.normalize(cat.categoryName.orEmpty())
             candidatas.any { nombre.contains(PpvFilter.normalize(it)) }
-        }
+        } ?: return list
+        return listOf(preferida) + list.filter { it.categoryId != preferida.categoryId }
     }
 
     private fun renderCategoryChips(categories: List<Category>) {
