@@ -86,4 +86,35 @@ interface XtreamApi {
         @Query("action") action: String = "get_series_info",
         @Query("series_id") seriesId: Int
     ): Call<SeriesInfoResponse>
+
+    // ---- Catálogo completo (lectura en streaming) ----
+    //
+    // Mismos endpoints que los de arriba, pero devolviendo los tipos de
+    // XtreamStream. Retrofit los parsea de a un registro por vez y arma
+    // directamente el ContentItem final, sin la lista intermedia que hacía
+    // reventar el bloque de películas en teléfonos reales.
+
+    @GET("player_api.php")
+    fun getLiveCatalog(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_live_streams",
+        @Header("Cache-Control") cacheControl: String? = null
+    ): Call<XtreamStream.LiveList>
+
+    @GET("player_api.php")
+    fun getVodCatalog(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_vod_streams",
+        @Header("Cache-Control") cacheControl: String? = null
+    ): Call<XtreamStream.MovieList>
+
+    @GET("player_api.php")
+    fun getSeriesCatalog(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_series",
+        @Header("Cache-Control") cacheControl: String? = null
+    ): Call<XtreamStream.SeriesList>
 }

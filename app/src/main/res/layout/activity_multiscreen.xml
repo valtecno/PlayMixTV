@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="#000000">
 
-    <!-- ===== Barra superior: salir + instrucciones de uso ===== -->
+    <!-- ===== Barra superior: inicio + fuente + recargar ===== -->
     <LinearLayout
         android:id="@+id/topBar"
         android:layout_width="match_parent"
@@ -14,17 +14,16 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="#CC000000"
-        android:paddingHorizontal="10dp"
-        android:paddingVertical="8dp">
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="6dp">
 
-        <ImageView
-            android:id="@+id/btnExit"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:padding="8dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_back"
-            android:contentDescription="@string/multiscreen_exit" />
+        <!-- Mismo estilo que el botón Inicio del menú principal -->
+        <TextView
+            android:id="@+id/btnHome"
+            style="@style/NavItem"
+            android:text="@string/nav_home"
+            android:drawableStart="@drawable/ic_home"
+            android:contentDescription="@string/multiscreen_home" />
 
         <TextView
             android:id="@+id/tvInstructions"
@@ -33,42 +32,348 @@
             android:layout_weight="1"
             android:layout_marginStart="10dp"
             android:text="@string/multiscreen_instructions"
-            android:textColor="@color/text_light"
+            android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:maxLines="2"
             android:ellipsize="end" />
 
+        <TextView
+            android:id="@+id/btnSource"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_chip_outline"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp"
+            android:textColor="@color/text_light"
+            android:textSize="12sp"
+            android:focusable="true"
+            android:clickable="true"
+            android:contentDescription="@string/multiscreen_source" />
+
+        <ImageView
+            android:id="@+id/btnReloadAll"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="6dp"
+            android:padding="7dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh"
+            android:contentDescription="@string/multiscreen_reload" />
+
     </LinearLayout>
 
+    <!-- ===== Grilla 2x2 =====
+         El contenedor se pinta con el color de marca y los recuadros dejan
+         3dp de separación: ese hueco es la línea de la grilla, así se ve
+         dónde termina cada pantalla incluso cuando están todas en negro. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        android:background="@color/brand_purple"
+        android:padding="3dp">
 
-        <FrameLayout android:id="@+id/slot0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#111111">
-            <androidx.media3.ui.PlayerView android:id="@+id/player0" android:layout_width="match_parent" android:layout_height="match_parent" app:use_controller="false" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+        <FrameLayout
+            android:id="@+id/slot0"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="#0D0D14"
+            android:focusable="true"
+            android:clickable="true">
+
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/player0"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:use_controller="false" />
+
+            <ProgressBar
+                android:id="@+id/progress0"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:id="@+id/error0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="12dp"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <!-- Marco del recuadro con audio. Superpuesto, no de fondo: el
+                 PlayerView taparía cualquier background. -->
+            <View
+                android:id="@+id/border0"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_active"
+                android:visibility="gone" />
+
+            <!-- Número de recuadro, siempre visible -->
+            <TextView
+                android:id="@+id/number0"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|start"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_slot_number"
+                android:gravity="center"
+                android:text="1"
+                android:textColor="@color/text_light"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/label0"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#B3000000"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/text_light"
+                android:textSize="11sp" />
+
         </FrameLayout>
 
-        <FrameLayout android:id="@+id/slot1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#111111" android:layout_marginStart="2dp">
-            <androidx.media3.ui.PlayerView android:id="@+id/player1" android:layout_width="match_parent" android:layout_height="match_parent" app:use_controller="false" />
-        </FrameLayout>
-    </LinearLayout>
+        <FrameLayout
+            android:id="@+id/slot1"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="#0D0D14"
+            android:focusable="true"
+            android:clickable="true"
+            android:layout_marginStart="3dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="horizontal"
-        android:layout_marginTop="2dp">
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/player1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:use_controller="false" />
 
-        <FrameLayout android:id="@+id/slot2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#111111">
-            <androidx.media3.ui.PlayerView android:id="@+id/player2" android:layout_width="match_parent" android:layout_height="match_parent" app:use_controller="false" />
+            <ProgressBar
+                android:id="@+id/progress1"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:id="@+id/error1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="12dp"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <!-- Marco del recuadro con audio. Superpuesto, no de fondo: el
+                 PlayerView taparía cualquier background. -->
+            <View
+                android:id="@+id/border1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_active"
+                android:visibility="gone" />
+
+            <!-- Número de recuadro, siempre visible -->
+            <TextView
+                android:id="@+id/number1"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|start"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_slot_number"
+                android:gravity="center"
+                android:text="2"
+                android:textColor="@color/text_light"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/label1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#B3000000"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/text_light"
+                android:textSize="11sp" />
+
         </FrameLayout>
 
-        <FrameLayout android:id="@+id/slot3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#111111" android:layout_marginStart="2dp">
-            <androidx.media3.ui.PlayerView android:id="@+id/player3" android:layout_width="match_parent" android:layout_height="match_parent" app:use_controller="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:layout_marginTop="3dp">
+
+        <FrameLayout
+            android:id="@+id/slot2"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="#0D0D14"
+            android:focusable="true"
+            android:clickable="true">
+
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/player2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:use_controller="false" />
+
+            <ProgressBar
+                android:id="@+id/progress2"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:id="@+id/error2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="12dp"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <!-- Marco del recuadro con audio. Superpuesto, no de fondo: el
+                 PlayerView taparía cualquier background. -->
+            <View
+                android:id="@+id/border2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_active"
+                android:visibility="gone" />
+
+            <!-- Número de recuadro, siempre visible -->
+            <TextView
+                android:id="@+id/number2"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|start"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_slot_number"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="@color/text_light"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/label2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#B3000000"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/text_light"
+                android:textSize="11sp" />
+
         </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/slot3"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="#0D0D14"
+            android:focusable="true"
+            android:clickable="true"
+            android:layout_marginStart="3dp">
+
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/player3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:use_controller="false" />
+
+            <ProgressBar
+                android:id="@+id/progress3"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_gravity="center" />
+
+            <TextView
+                android:id="@+id/error3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center"
+                android:padding="12dp"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:visibility="gone" />
+
+            <!-- Marco del recuadro con audio. Superpuesto, no de fondo: el
+                 PlayerView taparía cualquier background. -->
+            <View
+                android:id="@+id/border3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_active"
+                android:visibility="gone" />
+
+            <!-- Número de recuadro, siempre visible -->
+            <TextView
+                android:id="@+id/number3"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_gravity="top|start"
+                android:layout_margin="6dp"
+                android:background="@drawable/bg_slot_number"
+                android:gravity="center"
+                android:text="4"
+                android:textColor="@color/text_light"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/label3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:background="#B3000000"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/text_light"
+                android:textSize="11sp" />
+
+        </FrameLayout>
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </LinearLayout>

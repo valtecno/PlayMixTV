@@ -30,13 +30,19 @@ object Session {
      * byte. A los 10 segundos OkHttp cortaba con SocketTimeoutException y la
      * pantalla quedaba vacía. Este era el motivo real de "no carga el contenido".
      *
-     * readTimeout mide el hueco entre bytes, no la descarga entera; por eso
-     * además se fija callTimeout, que sí limita la operación completa.
+     * readTimeout mide el hueco entre bytes, NO la descarga entera. Eso es
+     * justamente lo que se quiere acá: corta si el servidor se cuelga, pero
+     * deja terminar una descarga larga aunque el enlace sea lento.
+     *
+     * callTimeout queda DESACTIVADO a propósito. Con 300 s puestos como tope
+     * total, el catálogo de películas del Sistema XL (decenas de MB) llegaba
+     * completo en el emulador de PC pero se cortaba en el teléfono, donde el
+     * mismo archivo tarda más. El síntoma era "0 películas" sin ningún error.
      */
     private const val CONNECT_TIMEOUT_S = 20L
     private const val READ_TIMEOUT_S = 120L
     private const val WRITE_TIMEOUT_S = 30L
-    private const val CALL_TIMEOUT_S = 300L
+    private const val CALL_TIMEOUT_S = 0L   // 0 = sin tope total
 
     /** Caché en disco de las respuestas del panel (JSON), en bytes. */
     private const val HTTP_CACHE_BYTES = 48L * 1024 * 1024
@@ -163,6 +169,9 @@ object Session {
             val creado = Retrofit.Builder()
                 .baseUrl(normalize(server(context)) + "/")
                 .client(clientFor(context))
+                // El de streaming va primero: solo atiende los tipos del catálogo
+                // y le deja todo lo demás a Gson.
+                .addConverterFactory(XtreamStream.Factory)
                 .addConverterFactory(GsonConverterFactory.create(XtreamGson.instance))
                 .build()
                 .create(XtreamApi::class.java)

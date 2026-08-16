@@ -144,6 +144,12 @@ class SearchActivity : AppCompatActivity() {
         binding.tvCatalogSummary.text = getString(
             R.string.catalog_summary, Catalog.movies.size, Catalog.series.size, Catalog.live.size
         )
+        // Si un bloque no llegó, decirlo. Antes se veía "0 películas" sin ninguna
+        // explicación y parecía que el panel no tenía nada.
+        val motivo = Catalog.lastError
+        if (motivo != null && !Catalog.isLoading) {
+            binding.tvCatalogSummary.append("\n" + getString(R.string.catalog_error, motivo))
+        }
     }
 
     // ---------------- Filtrado ----------------

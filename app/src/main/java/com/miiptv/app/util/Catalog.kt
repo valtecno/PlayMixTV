@@ -132,63 +132,65 @@ object Catalog {
         val user = Session.username(context)
         val pass = Session.password(context)
         val api = Session.api(context)
+        // En un reintento se fuerza ir al panel: si la respuesta anterior fue
+        // mala y OkHttp la guardó, reintentar contra la caché daría lo mismo.
+        val noCache = if (attempt > 0) "no-cache" else this.noCache
 
         when (block) {
-            Block.LIVE -> execute(context, block, attempt, api.getLiveStreams(user, pass, cacheControl = noCache)) { body ->
-                absorb(live, body) { it.toContentItem() }
-            }
-            Block.MOVIES -> execute(context, block, attempt, api.getVodStreams(user, pass, cacheControl = noCache)) { body ->
-                absorb(movies, body) { it.toContentItem() }
-            }
-            Block.SERIES -> execute(context, block, attempt, api.getSeries(user, pass, cacheControl = noCache)) { body ->
-                absorb(series, body) { it.toContentItem() }
-            }
+            Block.LIVE -> execute(context, block, attempt, live,
+                api.getLiveCatalog(user, pass, cacheControl = noCache)) { it?.items.orEmpty() }
+            Block.MOVIES -> execute(context, block, attempt, movies,
+                api.getVodCatalog(user, pass, cacheControl = noCache)) { it?.items.orEmpty() }
+            Block.SERIES -> execute(context, block, attempt, series,
+                api.getSeriesCatalog(user, pass, cacheControl = noCache)) { it?.items.orEmpty() }
         }
     }
 
-    private fun <T> execute(
+    private fun <R> execute(
         context: Context,
         block: Block,
         attempt: Int,
-        call: Call<List<T>>,
-        absorbBody: (List<T>) -> Unit
+        target: MutableList<ContentItem>,
+        call: Call<R>,
+        extract: (R?) -> List<ContentItem>
     ) {
         current = call
-        call.enqueue(object : Callback<List<T>> {
-            override fun onResponse(c: Call<List<T>>, r: Response<List<T>>) {
+        call.enqueue(object : Callback<R> {
+            override fun onResponse(c: Call<R>, r: Response<R>) {
                 if (!r.isSuccessful) {
                     failed(context, block, attempt, "HTTP ${r.code()}")
                     return
                 }
-                // Un OutOfMemoryError acá no debe matar la app entera.
-                runCatching { absorbBody(r.body().orEmpty()) }
-                    .onFailure { lastError = describe(block, it::class.java.simpleName) }
+                val intento = runCatching { extract(r.body()) }
+                val fallo = intento.exceptionOrNull()
+                if (fallo != null) {
+                    failed(context, block, attempt, fallo::class.java.simpleName)
+                    return
+                }
+
+                val items = intento.getOrDefault(emptyList())
+                // Un bloque completamente vacío casi nunca es real: un panel no
+                // tiene cero películas. Es un fallo disfrazado (tope de conexiones,
+                // respuesta cortada, caché envenenada), así que se reintenta antes
+                // de darlo por bueno. Este era exactamente el caso de "0 películas".
+                if (items.isEmpty()) {
+                    failed(context, block, attempt, "respuesta vacía")
+                    return
+                }
+
+                target.addAll(items)
                 advance(context, block)
             }
 
-            override fun onFailure(c: Call<List<T>>, t: Throwable) {
+            override fun onFailure(c: Call<R>, t: Throwable) {
                 if (c.isCanceled) return
-                failed(context, block, attempt, t::class.java.simpleName)
+                val motivo = when (t) {
+                    is XtreamStream.ShapeException -> t.token
+                    else -> t::class.java.simpleName
+                }
+                failed(context, block, attempt, motivo)
             }
         })
-    }
-
-    /**
-     * Vuelca los datos crudos al destino sin crear listas intermedias. El
-     * `.map { }.filter { }` anterior generaba dos copias completas del bloque
-     * antes de quedarse con la definitiva; en un panel XL eso triplicaba el pico
-     * de memoria justo en el momento más delicado.
-     */
-    private inline fun <T> absorb(
-        target: MutableList<ContentItem>,
-        source: List<T>,
-        map: (T) -> ContentItem
-    ) {
-        if (target is ArrayList<*>) target.ensureCapacity(target.size + source.size)
-        for (raw in source) {
-            val item = map(raw)
-            if (item.name.isNotBlank()) target.add(item)
-        }
     }
 
     private fun failed(context: Context, block: Block, attempt: Int, motivo: String) {

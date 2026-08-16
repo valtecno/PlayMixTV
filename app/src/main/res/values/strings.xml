@@ -71,7 +71,7 @@
     <string name="preview_live">EN VIVO</string>
     <string name="preview_play">Reproducir</string>
     <string name="empty_radio">No se encontraron emisoras para este país</string>
-    <string name="empty_radio_source">No se encontraron emisoras de %1$s. Tocá el chip otra vez para reintentar.</string>
+    <string name="empty_radio_source">No se encontraron emisoras de %1$s. Toca la categoría otra vez para reintentar.</string>
     <string name="radio_loading">Buscando emisoras…</string>
     <!-- Reproductor de radio -->
     <string name="radio_live">EN VIVO</string>
@@ -171,17 +171,17 @@
     <!-- Reproductor -->
     <string name="back">Volver</string>
     <string name="multiscreen_exit">Salir de multi-pantalla</string>
-    <string name="multiscreen_instructions">Tocá un recuadro para escuchar su audio (los demás quedan en silencio). Mantené presionado un recuadro para elegir qué canal va ahí.</string>
+    <string name="multiscreen_instructions">Los recuadros están numerados del 1 al 4. Toca uno para escuchar su audio; mantenlo pulsado para buscar y cambiar su canal.</string>
     <string name="cancel">Cancelar</string>
     <string name="pin_backspace">Borrar</string>
     <string name="pin_ask_title">Ingresa tu PIN</string>
     <string name="pin_ask_subtitle">Escribe tu PIN de control parental para continuar</string>
     <string name="pin_create_title">Crear PIN</string>
-    <string name="pin_create_subtitle">Elegí un PIN de 4 dígitos para el control parental</string>
+    <string name="pin_create_subtitle">Elige un PIN de 4 dígitos para el control parental</string>
     <string name="pin_confirm_title">Confirmar PIN</string>
-    <string name="pin_confirm_subtitle">Volvé a escribirlo para confirmarlo</string>
+    <string name="pin_confirm_subtitle">Vuelve a escribirlo para confirmarlo</string>
     <string name="pin_wrong">PIN incorrecto</string>
-    <string name="pin_mismatch">Los PIN no coinciden, probá de nuevo</string>
+    <string name="pin_mismatch">Los PIN no coinciden. Inténtalo de nuevo</string>
     <string name="pin_saved">PIN guardado</string>
     <string name="player_audio">Pista de audio</string>
     <string name="player_subtitles">Subtítulos</string>
@@ -225,9 +225,26 @@
     <string name="setting_autoplay_next">Reproducir siguiente episodio</string>
     <string name="player_error">No se pudo reproducir (%1$s)</string>
 
-    <string name="catalog_error">No se pudo cargar el catálogo (%1$s). Probá Ajustes → Actualizar catálogo.</string>
+    <string name="catalog_error">No se pudo cargar el catálogo (%1$s). Prueba en Ajustes → Actualizar catálogo.</string>
     <string name="diag_title">Diagnóstico del servidor</string>
     <string name="diag_running">Probando el panel endpoint por endpoint…</string>
     <string name="diag_copy">Copiar</string>
     <string name="diag_copied">Informe copiado</string>
+    <!-- ===== Multi-pantalla ===== -->
+    <string name="multiscreen_slot_empty">Sin canal</string>
+    
+    <string name="multiscreen_no_channels">Sin canales en esta categoría</string>
+    <string name="multiscreen_load_error">No se pudo cargar (%1$s)</string>
+    <string name="multiscreen_err_limit">El panel rechazó la conexión. La cuenta tiene un límite de conexiones simultáneas y aquí se abren 4 a la vez.</string>
+    <string name="multiscreen_err_notfound">Canal no disponible en el servidor</string>
+    <string name="multiscreen_err_format">El servidor no ofrece este canal en %1$s. Prueba con el botón de fuente.</string>
+    <string name="multiscreen_source">Formato del stream</string>
+    <string name="multiscreen_source_label">Fuente: %1$s</string>
+    <string name="multiscreen_source_changed">Fuente cambiada a %1$s</string>
+    <string name="multiscreen_reload">Recargar los 4 recuadros</string>
+    <string name="multiscreen_search_hint">Buscar canal…</string>
+    <string name="multiscreen_search_clear">Borrar búsqueda</string>
+    <string name="multiscreen_pick_for">Canal para el recuadro %1$d</string>
+    <string name="multiscreen_pick_count">%1$d canales</string>
+    <string name="multiscreen_home">Volver al inicio</string>
 </resources>
