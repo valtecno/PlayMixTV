@@ -277,9 +277,23 @@ class MainActivity : AppCompatActivity() {
         binding.colNovedades.visibility = if (novedades.itemCount == 0) View.GONE else View.VISIBLE
         binding.colRecientes.visibility = if (recientes.itemCount == 0) View.GONE else View.VISIBLE
 
+        // Antes, si el catálogo venía vacío el cartel se ocultaba y quedaba una
+        // pantalla en blanco sin explicación. Ahora se distingue entre "todavía
+        // cargando", "no hay nada" y "falló, y este fue el motivo".
         val vacio = novedades.itemCount == 0 && recientes.itemCount == 0
-        binding.tvEmpty.setText(R.string.empty_list)
-        binding.tvEmpty.visibility = if (vacio && !Catalog.isEmpty) View.VISIBLE else View.GONE
+        val motivo = Catalog.lastError
+        when {
+            !vacio -> binding.tvEmpty.visibility = View.GONE
+            Catalog.isLoading -> binding.tvEmpty.visibility = View.GONE
+            motivo != null -> {
+                binding.tvEmpty.text = getString(R.string.catalog_error, motivo)
+                binding.tvEmpty.visibility = View.VISIBLE
+            }
+            else -> {
+                binding.tvEmpty.setText(R.string.empty_list)
+                binding.tvEmpty.visibility = View.VISIBLE
+            }
+        }
 
         startCarousel()
     }

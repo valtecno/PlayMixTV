@@ -17,6 +17,7 @@ import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PlayerPrefs
+import com.miiptv.app.util.ServerDiagnostics
 
 /**
  * Ajustes del sistema: opciones internas del reproductor, del catálogo y de la cuenta.
@@ -76,6 +77,8 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.rowRefresh.setOnClickListener { refreshCatalog() }
+        // Pulsación larga: prueba el panel endpoint por endpoint y dice qué falla
+        binding.rowRefresh.setOnLongClickListener { runDiagnostics(); true }
         binding.rowClearCache.setOnClickListener { clearImageCache() }
 
         // ---------- Cuenta ----------
@@ -222,10 +225,39 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    /** Prueba directa contra el panel para ver qué endpoint falla y por qué. */
+    private fun runDiagnostics() {
+        val esperando = AlertDialog.Builder(this)
+            .setTitle(R.string.diag_title)
+            .setMessage(R.string.diag_running)
+            .setCancelable(false)
+            .show()
+
+        ServerDiagnostics.run(this) { informe ->
+            if (isFinishing || isDestroyed) return@run
+            esperando.dismiss()
+            AlertDialog.Builder(this)
+                .setTitle(R.string.diag_title)
+                .setMessage(informe)
+                .setPositiveButton(R.string.diag_copy) { _, _ ->
+                    val cb = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cb.setPrimaryClip(android.content.ClipData.newPlainText("PlayMix diag", informe))
+                    Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton(android.R.string.ok, null)
+                .show()
+        }
+    }
+
     private fun clearImageCache() {
         // Solo se borra la caché en disco: apagar la instancia de Picasso la dejaría
         // inutilizable para el resto de la app hasta reiniciarla.
-        runCatching { cacheDir.deleteRecursively() }
+        // También se tira el JSON del panel guardado por OkHttp, en un hilo aparte
+        // porque borrar archivos en el hilo principal traba la pantalla.
+        Thread {
+            runCatching { Session.dropHttpCache(this) }
+            runCatching { cacheDir.deleteRecursively() }
+        }.start()
         Toast.makeText(this, R.string.cache_cleared, Toast.LENGTH_SHORT).show()
     }
 

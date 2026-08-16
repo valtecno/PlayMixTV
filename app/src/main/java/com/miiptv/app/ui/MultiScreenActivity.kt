@@ -8,6 +8,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import com.miiptv.app.api.LiveStream
 import com.miiptv.app.api.Session
+import com.miiptv.app.util.Catalog
 import com.miiptv.app.databinding.ActivityMultiscreenBinding
 import com.miiptv.app.util.PlayerFactory
 import retrofit2.Call
@@ -50,6 +51,17 @@ class MultiScreenActivity : AppCompatActivity() {
     }
 
     private fun loadChannels() {
+        // Si el catálogo ya está en memoria no se vuelve a bajar la lista completa
+        // de canales: en el Sistema XL eso era una descarga de decenas de MB por
+        // cada vez que se abría la multipantalla.
+        val enMemoria = Catalog.live
+        if (enMemoria.isNotEmpty()) {
+            channels = enMemoria.map {
+                LiveStream(null, it.name, it.id, it.icon, it.categoryId)
+            }
+            channels.take(4).forEachIndexed { index, ch -> loadIntoSlot(index, ch) }
+            return
+        }
         Session.api(this).getLiveStreams(Session.username(this), Session.password(this))
             .enqueue(object : Callback<List<LiveStream>> {
                 override fun onResponse(call: Call<List<LiveStream>>, response: Response<List<LiveStream>>) {

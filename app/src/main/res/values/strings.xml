@@ -225,4 +225,9 @@
     <string name="setting_autoplay_next">Reproducir siguiente episodio</string>
     <string name="player_error">No se pudo reproducir (%1$s)</string>
 
+    <string name="catalog_error">No se pudo cargar el catálogo (%1$s). Probá Ajustes → Actualizar catálogo.</string>
+    <string name="diag_title">Diagnóstico del servidor</string>
+    <string name="diag_running">Probando el panel endpoint por endpoint…</string>
+    <string name="diag_copy">Copiar</string>
+    <string name="diag_copied">Informe copiado</string>
 </resources>
