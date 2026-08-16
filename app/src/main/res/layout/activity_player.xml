@@ -19,6 +19,121 @@
         app:show_shuffle_button="false"
         app:repeat_toggle_modes="none" />
 
+    <!--
+      ===== Fondo de la sección Radios =====
+      Las emisoras no traen imagen, así que la superficie de video quedaría
+      negra. Cuando lo que suena es una radio se oculta el PlayerView y se
+      muestra esto en su lugar: el fondo de marca, el logo de la emisora y un
+      ecualizador que se mueve solo mientras hay audio.
+    -->
+    <FrameLayout
+        android:id="@+id/radioBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/bg_radio"
+            android:contentDescription="@null" />
+
+        <!-- Oscurece el pie para que la barra de reproducción se despegue -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="190dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bg_radio_scrim"
+            android:rotation="180" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="32dp">
+
+            <FrameLayout
+                android:id="@+id/radioLogoHolder"
+                android:layout_width="126dp"
+                android:layout_height="126dp"
+                android:background="@drawable/bg_radio_logo">
+
+                <ImageView
+                    android:id="@+id/ivRadioLogo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="24dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_radio"
+                    android:contentDescription="@string/section_radio" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvRadioName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textColor="@color/text_light"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <!-- Ecualizador vivo + indicador de emisión en directo -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:id="@+id/equalizer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="18dp"
+                    android:orientation="horizontal"
+                    android:gravity="bottom">
+
+                    <View style="@style/EqBar" />
+                    <View style="@style/EqBar" />
+                    <View style="@style/EqBar" />
+                    <View style="@style/EqBar" />
+                    <View style="@style/EqBar" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:layout_marginStart="14dp"
+                    android:background="@drawable/bg_live_dot" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:letterSpacing="0.09"
+                    android:text="@string/radio_live"
+                    android:textColor="@color/text_light"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvRadioMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </FrameLayout>
+
     <!-- ===== Barra superior propia: título, favorito, opciones ===== -->
     <LinearLayout
         android:id="@+id/topBar"
@@ -167,6 +282,99 @@
                 android:focusable="true"
                 android:clickable="true" />
         </LinearLayout>
+    </LinearLayout>
+
+    <!--
+      ===== Barra de reproducción de radio =====
+      Qué emisora suena (logo + nombre) y los botones para saltar a la
+      anterior o la siguiente sin volver a la lista.
+    -->
+    <LinearLayout
+        android:id="@+id/radioBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginHorizontal="14dp"
+        android:layout_marginBottom="14dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_radio_bar"
+        android:padding="10dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/ivBarLogo"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_radio_logo_small"
+            android:padding="7dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_radio"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvBarName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="marquee"
+                android:marqueeRepeatLimit="marquee_forever"
+                android:singleLine="true"
+                android:textColor="@color/text_light"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvBarSub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnPrevStation"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_prev_station"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:focusable="true"
+            android:clickable="true"
+            android:contentDescription="@string/radio_prev_station" />
+
+        <ImageView
+            android:id="@+id/btnRadioPlayPause"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginHorizontal="6dp"
+            android:padding="13dp"
+            android:src="@drawable/ic_radio_pause"
+            android:focusable="true"
+            android:clickable="true"
+            android:contentDescription="@string/player_play_pause" />
+
+        <ImageView
+            android:id="@+id/btnNextStation"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_next_station"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:focusable="true"
+            android:clickable="true"
+            android:contentDescription="@string/radio_next_station" />
+
     </LinearLayout>
 
     <ProgressBar

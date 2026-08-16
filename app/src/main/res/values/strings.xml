@@ -71,7 +71,16 @@
     <string name="preview_live">EN VIVO</string>
     <string name="preview_play">Reproducir</string>
     <string name="empty_radio">No se encontraron emisoras para este país</string>
+    <string name="empty_radio_source">No se encontraron emisoras de %1$s. Tocá el chip otra vez para reintentar.</string>
     <string name="radio_loading">Buscando emisoras…</string>
+    <!-- Reproductor de radio -->
+    <string name="radio_live">EN VIVO</string>
+    <string name="radio_connecting">Conectando…</string>
+    <string name="radio_prev_station">Emisora anterior</string>
+    <string name="radio_next_station">Emisora siguiente</string>
+    <string name="radio_position">Emisora %1$d de %2$d</string>
+    <string name="radio_only_station">Emisora única</string>
+    <string name="radio_no_more">No hay más emisoras en esta lista</string>
     <string name="switch_account">Cambiar de cuenta</string>
     <string name="add_account">Agregar otra cuenta…</string>
     <string name="account_switched">Cuenta cambiada a %1$s</string>

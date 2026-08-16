@@ -54,8 +54,13 @@ class MainActivity : AppCompatActivity() {
     private var favIsRadio = false
     /** Categorías de PPV sin filtrar, para el buscador propio de esa sección. */
     private var ppvCategories: List<Category> = emptyList()
-    /** País de radios abierto ahora mismo. */
-    private var currentRadioCode: String? = null
+    /** Chip de radios abierto ahora mismo (país o marca). */
+    private var currentRadioSource: RadioCatalog.Source? = null
+    /**
+     * Emisoras que se están mostrando. Se le pasan enteras al reproductor para
+     * poder saltar de una a otra sin volver a esta pantalla.
+     */
+    private var radioPlaylist: List<ContentItem> = emptyList()
     /** Última lista cargada, sin filtrar: base del buscador del perfil de niños. */
     private var currentItems: List<ContentItem> = emptyList()
     private var categories: List<Category> = emptyList()
@@ -694,38 +699,42 @@ class MainActivity : AppCompatActivity() {
         binding.tvSectionTitle.setText(R.string.section_radio)
         binding.tvSectionTitle.visibility = View.VISIBLE
         renderRadioChips()
-        loadRadio(RadioCatalog.countries.first())
+        loadRadio(currentRadioSource ?: RadioCatalog.sources.first())
     }
 
     private fun renderRadioChips() {
         binding.categoryContainer.removeAllViews()
-        RadioCatalog.countries.forEach { country ->
+        RadioCatalog.sources.forEach { source ->
             val chip: TextView =
                 ItemCategoryBinding.inflate(layoutInflater, binding.categoryContainer, false).root
-            chip.text = "${country.flag}  ${country.name}"
-            chip.tag = country.code
-            Appearance.applyChipState(chip, country.code == currentRadioCode)
-            chip.setOnClickListener { loadRadio(country) }
+            chip.text = "${source.flag}  ${source.name}"
+            chip.tag = source.id
+            Appearance.applyChipState(chip, source.id == currentRadioSource?.id)
+            chip.setOnClickListener { loadRadio(source) }
             binding.categoryContainer.addView(chip)
         }
     }
 
-    private fun loadRadio(country: RadioCatalog.Country) {
-        currentRadioCode = country.code
-        // Repinta los chips para que se vea qué país está abierto
+    private fun loadRadio(source: RadioCatalog.Source) {
+        currentRadioSource = source
+        // Repinta los chips para que se vea cuál está abierto
         for (i in 0 until binding.categoryContainer.childCount) {
             val chip = binding.categoryContainer.getChildAt(i) as? TextView ?: continue
-            Appearance.applyChipState(chip, chip.tag == country.code)
+            Appearance.applyChipState(chip, chip.tag == source.id)
         }
         setLoading(true)
         binding.tvEmpty.visibility = View.GONE
-        binding.tvSectionTitle.text = "${country.flag}  ${country.name} · ${country.genres}"
+        binding.tvSectionTitle.text = "${source.flag}  ${source.name} · ${source.genres}"
 
-        RadioCatalog.load(this, country) { items, error ->
+        RadioCatalog.load(this, source) { items, error ->
             if (isFinishing || isDestroyed) return@load
+            // Llegó tarde: el usuario ya tocó otro chip
+            if (currentRadioSource?.id != source.id) return@load
             setLoading(false)
+            radioPlaylist = items
             adapter.submitList(items)
-            binding.tvEmpty.text = error ?: getString(R.string.empty_radio)
+            binding.tvEmpty.text = error
+                ?: getString(R.string.empty_radio_source, source.name)
             binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         }
     }
@@ -809,16 +818,7 @@ class MainActivity : AppCompatActivity() {
         }
         // Las radios ya traen su URL; el resto se arma con los datos de la sesión
         item.streamUrl?.let { url ->
-            startActivity(
-                Intent(this, PlayerActivity::class.java)
-                    .putExtra(PlayerActivity.EXTRA_URL, url)
-                    .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
-                    .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
-                    .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
-                    .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
-                    .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
-                    .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
-            )
+            startActivity(radioIntent(item, url))
             return
         }
 
@@ -865,6 +865,59 @@ class MainActivity : AppCompatActivity() {
                     .putExtra(SeriesDetailActivity.EXTRA_SERIES_NAME, item.name)
             )
         }
+    }
+
+    /**
+     * Abre una emisora en el reproductor y le lleva además la lista completa de
+     * la que salió, para que los botones "anterior / siguiente" de la barra de
+     * reproducción puedan saltar de emisora sin volver acá.
+     *
+     * La lista es la que se ve en pantalla en ese momento: el país o la marca
+     * abiertos en Radios, o las radios guardadas si se entró desde Favoritos o
+     * Historial.
+     */
+    private fun radioIntent(item: ContentItem, url: String): Intent {
+        val emisoras = (if (section == Section.RADIO) radioPlaylist else adapter.currentItems)
+            .filter { !it.streamUrl.isNullOrBlank() }
+            .ifEmpty { listOf(item) }
+
+        val posicion = emisoras.indexOfFirst { it.streamUrl == url }.coerceAtLeast(0)
+
+        // Solo se etiqueta el origen cuando venimos de la sección Radios; desde
+        // Favoritos o Historial la lista es mezcla y poner un país sería mentir.
+        val origen = if (section == Section.RADIO) {
+            currentRadioSource?.let { "${it.flag}  ${it.name}" }
+        } else {
+            null
+        }
+
+        return Intent(this, PlayerActivity::class.java)
+            .putExtra(PlayerActivity.EXTRA_URL, url)
+            .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
+            .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
+            .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
+            .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
+            .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
+            .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
+            .putExtra(PlayerActivity.EXTRA_IS_RADIO, true)
+            .putExtra(PlayerActivity.EXTRA_RADIO_SOURCE, origen)
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_URLS,
+                ArrayList(emisoras.map { it.streamUrl.orEmpty() })
+            )
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_TITLES,
+                ArrayList(emisoras.map { it.name })
+            )
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_ICONS,
+                ArrayList(emisoras.map { it.icon.orEmpty() })
+            )
+            .putIntegerArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_IDS,
+                ArrayList(emisoras.map { it.id })
+            )
+            .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, posicion)
     }
 
     private fun setLoading(loading: Boolean) {

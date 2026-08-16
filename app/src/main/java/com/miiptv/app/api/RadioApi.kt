@@ -36,4 +36,19 @@ interface RadioApi {
         @Query("reverse") reverse: Boolean = true,
         @Query("hidebroken") hideBroken: Boolean = true
     ): Call<List<RadioStation>>
+
+    /**
+     * Emisoras cuyo nombre contiene el texto buscado. Es lo que usa la app para
+     * armar las listas de una marca concreta (Loca FM y todos sus estilos,
+     * Tomorrowland One World Radio, etc.) sin dejar direcciones fijas en el
+     * código: si la emisora cambia de servidor, el directorio ya trae la nueva.
+     */
+    @GET("json/stations/search")
+    fun searchByName(
+        @Query("name") name: String,
+        @Query("limit") limit: Int = 120,
+        @Query("order") order: String = "votes",
+        @Query("reverse") reverse: Boolean = true,
+        @Query("hidebroken") hideBroken: Boolean = true
+    ): Call<List<RadioStation>>
 }

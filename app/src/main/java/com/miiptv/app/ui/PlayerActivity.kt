@@ -1,5 +1,7 @@
 package com.miiptv.app.ui
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
@@ -9,6 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +21,8 @@ import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -42,6 +47,7 @@ import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.PlaybackHolder
 import com.miiptv.app.util.PlayerPrefs
 import com.miiptv.app.service.PlaybackService
+import com.squareup.picasso.Picasso
 import android.Manifest
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -66,6 +72,18 @@ class PlayerActivity : AppCompatActivity() {
         const val EXTRA_PLAYLIST_TITLES = "extra_playlist_titles"
         const val EXTRA_PLAYLIST_INDEX = "extra_playlist_index"
 
+        /**
+         * Modo radio: lo que suena es una emisora, no un video. Cambia toda la
+         * pantalla (fondo propio, logo grande y barra de reproducción) y la
+         * misma lista de arriba pasa a ser la lista de emisoras por las que se
+         * puede saltar con los botones anterior/siguiente.
+         */
+        const val EXTRA_IS_RADIO = "extra_is_radio"
+        const val EXTRA_PLAYLIST_ICONS = "extra_playlist_icons"
+        const val EXTRA_PLAYLIST_IDS = "extra_playlist_ids"
+        /** De dónde salió la lista: "🇪🇸  España", "🎧  Loca FM", etc. */
+        const val EXTRA_RADIO_SOURCE = "extra_radio_source"
+
         private const val MAX_RETRIES = 5
         private const val NEXT_COUNTDOWN_SECONDS = 8
         private const val ACTION_PIP_PLAY_PAUSE = "com.miiptv.app.PIP_PLAY_PAUSE"
@@ -84,7 +102,36 @@ class PlayerActivity : AppCompatActivity() {
     /** Episodios encadenados (vacío si no viene de una serie). */
     private var playlistUrls: List<String> = emptyList()
     private var playlistTitles: List<String> = emptyList()
+
+    /** En modo radio, la misma lista trae además el logo y el id de cada emisora. */
+    private var playlistIcons: List<String> = emptyList()
+    private var playlistIds: List<Int> = emptyList()
+    private var isRadio = false
+    private var radioSourceLabel: String? = null
+    /** Animaciones del ecualizador; se cancelan al pausar y al salir. */
+    private val eqAnimators = mutableListOf<ObjectAnimator>()
+
     private var playlistIndex = 0
+
+    /** Mantiene el ecualizador y el botón de la barra al día con el audio. */
+    private val radioUiListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            updateRadioPlaybackState(isPlaying)
+        }
+
+        /**
+         * Una emisora tarda un momento en enganchar. Decirlo en la barra evita
+         * que parezca que el botón no hizo nada.
+         */
+        override fun onPlaybackStateChanged(state: Int) {
+            if (!isRadio) return
+            binding.tvBarSub.text = if (state == Player.STATE_BUFFERING) {
+                getString(R.string.radio_connecting)
+            } else {
+                stationPositionText()
+            }
+        }
+    }
 
     private var locked = false
     private val ui = Handler(Looper.getMainLooper())
@@ -126,6 +173,8 @@ class PlayerActivity : AppCompatActivity() {
 
         streamUrl = intent.getStringExtra(EXTRA_URL) ?: return finish()
         contentTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        isRadio = intent.getBooleanExtra(EXTRA_IS_RADIO, false)
+        radioSourceLabel = intent.getStringExtra(EXTRA_RADIO_SOURCE)?.takeIf { it.isNotBlank() }
 
         // En móvil el resto de la app queda bloqueada en vertical (ver DeviceMode);
         // el reproductor es la única pantalla que pasa a horizontal, y lo hace solo
@@ -133,10 +182,14 @@ class PlayerActivity : AppCompatActivity() {
         // está fijada en vertical y el sistema vuelve a esa orientación solo.
         // SENSOR_LANDSCAPE deja girar entre horizontal-izquierda/derecha según se
         // gire el celular, pero nunca cae en vertical.
-        requestedOrientation = if (DeviceMode.isMobile(this)) {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        //
+        // Con una radio no hay imagen que mirar: forzar horizontal no aporta nada
+        // y el celular se sostiene mejor en vertical, así que ahí se respeta la
+        // orientación que tenga puesta el usuario.
+        requestedOrientation = when {
+            isRadio && DeviceMode.isMobile(this) -> ActivityInfo.SCREEN_ORIENTATION_USER
+            DeviceMode.isMobile(this) -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         }
 
         readPlaylist()
@@ -155,6 +208,7 @@ class PlayerActivity : AppCompatActivity() {
         )
 
         setupControls()
+        setupRadioMode()
         askNotificationPermission()
         registerPipReceiver()
 
@@ -163,6 +217,10 @@ class PlayerActivity : AppCompatActivity() {
             PlaybackService.stop(this)
             player = PlaybackHolder.player
             binding.playerView.player = player
+            if (isRadio) {
+                player?.addListener(radioUiListener)
+                updateRadioPlaybackState(player?.isPlaying == true)
+            }
         } else {
             PlaybackHolder.release()
             startPlayback(streamUrl, resumeAtMs = 0L)
@@ -172,6 +230,8 @@ class PlayerActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         ui.removeCallbacks(countdownTick)
+        // Sin pantalla visible las animaciones solo gastan batería
+        stopEqualizer()
 
         val seguirSonando = PlayerPrefs.getBackground(this) && !isFinishing && player?.playWhenReady == true
         if (seguirSonando) {
@@ -195,6 +255,10 @@ class PlayerActivity : AppCompatActivity() {
                 PlaybackService.stop(this)
                 player = vivo
                 binding.playerView.player = vivo
+                if (isRadio) {
+                    vivo.addListener(radioUiListener)
+                    updateRadioPlaybackState(vivo.isPlaying)
+                }
             }
             // Se detuvo desde la notificación: hay que rearmarlo, el anterior ya no sirve
             vivo == null && !isFinishing -> {
@@ -206,6 +270,7 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         ui.removeCallbacksAndMessages(null)
+        stopEqualizer()
         unregisterPipReceiver()
         if (isFinishing) {
             PlaybackService.stop(this)
@@ -222,6 +287,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun canUsePip(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !isRadio &&   // una emisora no tiene imagen: la ventanita saldría vacía
             DeviceMode.isMobile(this) &&
             packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
 
@@ -336,7 +402,11 @@ class PlayerActivity : AppCompatActivity() {
     private fun readPlaylist() {
         playlistUrls = intent.getStringArrayListExtra(EXTRA_PLAYLIST_URLS).orEmpty()
         playlistTitles = intent.getStringArrayListExtra(EXTRA_PLAYLIST_TITLES).orEmpty()
+        playlistIcons = intent.getStringArrayListExtra(EXTRA_PLAYLIST_ICONS).orEmpty()
+        playlistIds = intent.getIntegerArrayListExtra(EXTRA_PLAYLIST_IDS).orEmpty()
         playlistIndex = intent.getIntExtra(EXTRA_PLAYLIST_INDEX, 0)
+        // El índice tiene que caer dentro de la lista sí o sí
+        if (playlistIndex !in playlistUrls.indices) playlistIndex = 0
     }
 
     private fun readFavoriteItem() {
@@ -352,7 +422,11 @@ class PlayerActivity : AppCompatActivity() {
             icon = intent.getStringExtra(EXTRA_ITEM_ICON),
             categoryId = intent.getStringExtra(EXTRA_ITEM_CATEGORY),
             type = type,
-            containerExtension = intent.getStringExtra(EXTRA_ITEM_EXT)
+            containerExtension = intent.getStringExtra(EXTRA_ITEM_EXT),
+            // Una emisora se guarda con su dirección: es lo único que la
+            // distingue de un canal del servidor y lo que permite volver a
+            // ponerla desde Favoritos.
+            streamUrl = if (isRadio) streamUrl else null
         )
     }
 
@@ -373,8 +447,7 @@ class PlayerActivity : AppCompatActivity() {
         refreshFavoriteIcon()
 
         // Solo tiene sentido si hay más episodios por delante
-        binding.btnNext.visibility =
-            if (playlistIndex + 1 < playlistUrls.size) View.VISIBLE else View.GONE
+        binding.btnNext.visibility = if (hasNextEpisode()) View.VISIBLE else View.GONE
 
         binding.btnPlayNextNow.background = Appearance.gradient(this, 10f)
         binding.btnPlayNextNow.setOnClickListener {
@@ -410,6 +483,7 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(false)
             binding.playerView.hideController()
             binding.topBar.visibility = View.GONE
+            binding.radioBar.visibility = View.GONE
             // Con la pantalla bloqueada queda 100% limpia: ni el candado se ve.
             // Solo aparece un momento al tocar la pantalla (ver dispatchTouchEvent).
             binding.btnUnlock.visibility = View.GONE
@@ -420,6 +494,7 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(true)
             binding.btnUnlock.visibility = View.GONE
             binding.topBar.visibility = View.VISIBLE
+            if (isRadio) binding.radioBar.visibility = View.VISIBLE
             binding.playerView.showController()
             Toast.makeText(this, R.string.player_unlocked, Toast.LENGTH_SHORT).show()
         }
@@ -564,6 +639,186 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    // ---------------- Modo radio ----------------
+
+    /**
+     * Una emisora no manda imagen, así que la superficie del reproductor solo
+     * aportaría el rectángulo negro que se veía antes. En modo radio se saca de
+     * en medio y en su lugar queda el fondo de la sección, con el logo de la
+     * emisora, su nombre y un ecualizador que se mueve mientras hay audio.
+     */
+    private fun setupRadioMode() {
+        if (!isRadio) return
+
+        binding.playerView.visibility = View.GONE
+        binding.radioBackdrop.visibility = View.VISIBLE
+        binding.radioBar.visibility = View.VISIBLE
+
+        // Sin video no hay calidad, subtítulos ni relación de aspecto que elegir
+        binding.btnQuality.visibility = View.GONE
+        binding.btnSubtitles.visibility = View.GONE
+        binding.btnAspect.visibility = View.GONE
+
+        val acento = Appearance.accent(this)
+
+        // Aro del logo grande, en el color de acento elegido en Personalizar
+        binding.radioLogoHolder.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(0xE60E0820.toInt())
+            setStroke(dp(2), acento)
+        }
+        binding.btnRadioPlayPause.background = Appearance.gradientOval(this)
+        for (i in 0 until binding.equalizer.childCount) {
+            binding.equalizer.getChildAt(i).background?.mutate()?.setTint(acento)
+        }
+
+        binding.btnPrevStation.setOnClickListener { changeStation(-1) }
+        binding.btnNextStation.setOnClickListener { changeStation(+1) }
+        binding.btnRadioPlayPause.setOnClickListener {
+            val exo = player ?: return@setOnClickListener
+            if (exo.isPlaying) exo.pause() else exo.play()
+        }
+
+        renderRadioNowPlaying()
+    }
+
+    /** Nombre, logo y posición dentro de la lista de la emisora que suena. */
+    private fun renderRadioNowPlaying() {
+        if (!isRadio) return
+
+        binding.tvNowPlaying.text = contentTitle
+        binding.tvRadioName.text = contentTitle
+        binding.tvBarName.text = contentTitle
+        binding.tvBarName.isSelected = true
+
+        val total = playlistUrls.size
+        val posicion = stationPositionText()
+        binding.tvBarSub.text = posicion
+        binding.tvRadioMeta.text = radioSourceLabel?.let {
+            if (total > 1) "$it · $posicion" else it
+        } ?: posicion
+
+        loadRadioLogo(
+            playlistIcons.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
+                ?: intent.getStringExtra(EXTRA_ITEM_ICON)?.takeIf { it.isNotBlank() }
+        )
+
+        setStationButton(binding.btnPrevStation, playlistIndex > 0)
+        setStationButton(binding.btnNextStation, playlistIndex + 1 < total)
+    }
+
+    /** "Emisora 3 de 42", o "Emisora única" si la lista trae una sola. */
+    private fun stationPositionText(): String {
+        val total = playlistUrls.size
+        return if (total > 1) {
+            getString(R.string.radio_position, playlistIndex + 1, total)
+        } else {
+            getString(R.string.radio_only_station)
+        }
+    }
+
+    /** Un botón de salto apagado se ve apagado: no da un toque en falso. */
+    private fun setStationButton(button: ImageView, enabled: Boolean) {
+        button.isEnabled = enabled
+        button.alpha = if (enabled) 1f else 0.28f
+    }
+
+    private fun loadRadioLogo(url: String?) {
+        val vistas = listOf(binding.ivRadioLogo, binding.ivBarLogo)
+        if (url.isNullOrBlank()) {
+            vistas.forEach { it.setImageResource(R.drawable.ic_radio) }
+            return
+        }
+        vistas.forEach { vista ->
+            Picasso.get()
+                .load(url)
+                .placeholder(R.drawable.ic_radio)
+                .error(R.drawable.ic_radio)
+                .into(vista)
+        }
+    }
+
+    /** Salta a la emisora anterior (-1) o la siguiente (+1) de la misma lista. */
+    private fun changeStation(delta: Int) {
+        if (!isRadio) return
+        val destino = playlistIndex + delta
+        if (destino !in playlistUrls.indices) {
+            Toast.makeText(this, R.string.radio_no_more, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        playlistIndex = destino
+        streamUrl = playlistUrls[destino]
+        contentTitle = playlistTitles.getOrElse(destino) { contentTitle }
+        retries = 0
+        audioAvisado = false
+
+        // La estrella tiene que marcar la emisora que suena ahora, no la anterior
+        favoriteItem = favoriteItem?.copy(
+            id = playlistIds.getOrElse(destino) { streamUrl.hashCode() },
+            name = contentTitle,
+            icon = playlistIcons.getOrNull(destino)?.takeIf { it.isNotBlank() },
+            streamUrl = streamUrl
+        )
+        refreshFavoriteIcon()
+        renderRadioNowPlaying()
+
+        PlaybackHolder.release()
+        startPlayback(streamUrl, resumeAtMs = 0L)
+    }
+
+    /** Botón de la barra y ecualizador, en sintonía con lo que hace el audio. */
+    private fun updateRadioPlaybackState(playing: Boolean) {
+        if (!isRadio) return
+        binding.btnRadioPlayPause.setImageResource(
+            if (playing) R.drawable.ic_radio_pause else R.drawable.ic_radio_play
+        )
+        if (playing) startEqualizer() else stopEqualizer()
+    }
+
+    /**
+     * Las barras suben y bajan solo mientras hay audio: es la señal de que la
+     * emisora está sonando, aunque no haya nada que mirar. Cada una lleva su
+     * propia altura y su propio ritmo para que no se vea un movimiento en bloque.
+     */
+    private fun startEqualizer() {
+        if (!isRadio || eqAnimators.isNotEmpty()) return
+        val alturas = listOf(0.35f, 0.85f, 0.5f, 1f, 0.6f)
+        val duraciones = listOf(520L, 380L, 610L, 440L, 700L)
+
+        binding.equalizer.post {
+            // Entre el post y este momento el audio pudo haberse pausado
+            if (eqAnimators.isNotEmpty() || player?.isPlaying != true) return@post
+            for (i in 0 until binding.equalizer.childCount) {
+                val barra = binding.equalizer.getChildAt(i)
+                barra.pivotY = barra.height.toFloat()   // crecen desde abajo
+                val animator = ObjectAnimator.ofFloat(
+                    barra, View.SCALE_Y, 0.18f, alturas.getOrElse(i) { 0.7f }
+                ).apply {
+                    duration = duraciones.getOrElse(i) { 500L }
+                    repeatCount = ValueAnimator.INFINITE
+                    repeatMode = ValueAnimator.REVERSE
+                    interpolator = AccelerateDecelerateInterpolator()
+                    startDelay = i * 80L
+                }
+                eqAnimators.add(animator)
+                animator.start()
+            }
+        }
+    }
+
+    private fun stopEqualizer() {
+        eqAnimators.forEach { it.cancel() }
+        eqAnimators.clear()
+        for (i in 0 until binding.equalizer.childCount) {
+            binding.equalizer.getChildAt(i).scaleY = 0.18f
+        }
+    }
+
+    private fun dp(value: Int): Int = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics
+    ).toInt()
+
     // ---------------- Aspecto y buffer en caliente ----------------
 
     private fun applyAspect() {
@@ -621,7 +876,11 @@ class PlayerActivity : AppCompatActivity() {
 
     // ---------------- Siguiente episodio ----------------
 
-    private fun hasNextEpisode() = playlistIndex + 1 < playlistUrls.size
+    /**
+     * En modo radio la lista es de emisoras, no de episodios: no se encadena
+     * nada sola, se salta solo cuando el usuario toca anterior/siguiente.
+     */
+    private fun hasNextEpisode() = !isRadio && playlistIndex + 1 < playlistUrls.size
 
     private fun showNextBar() {
         if (!hasNextEpisode()) return
@@ -669,6 +928,11 @@ class PlayerActivity : AppCompatActivity() {
             exo.prepare()
             if (resumeAtMs > 0) exo.seekTo(resumeAtMs)
             exo.playWhenReady = true
+
+            if (isRadio) {
+                exo.addListener(radioUiListener)
+                updateRadioPlaybackState(true)
+            }
 
             exo.addListener(object : Player.Listener {
 

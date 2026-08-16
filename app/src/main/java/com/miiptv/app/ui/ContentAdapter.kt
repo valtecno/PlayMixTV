@@ -48,6 +48,9 @@ class ContentAdapter(
         notifyDataSetChanged()
     }
 
+    /** Lo que se está mostrando ahora, para armar listas de reproducción. */
+    val currentItems: List<ContentItem> get() = items.toList()
+
     override fun getItemViewType(position: Int) = if (posterMode) TYPE_POSTER else TYPE_ROW
 
     override fun getItemCount() = items.size
