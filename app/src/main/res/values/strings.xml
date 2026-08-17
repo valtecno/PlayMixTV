@@ -251,4 +251,19 @@
     <string name="preview_error">No se pudo previsualizar este canal</string>
     <string name="preview_mute">Silenciar previsualización</string>
     <string name="setting_refresh_action">Actualizar</string>
+    <string name="player_channel_prev">Canal anterior</string>
+    <string name="player_channel_next">Canal siguiente</string>
+    <string name="player_no_more_channels">No hay más canales en esta categoría</string>
+    <string name="setting_update">Buscar actualizaciones</string>
+    <string name="update_checking">Buscando actualizaciones…</string>
+    <string name="update_up_to_date">Ya tienes la última versión</string>
+    <string name="update_not_configured">No hay repositorio configurado para actualizaciones</string>
+    <string name="update_available_title">Actualización disponible</string>
+    <string name="update_available_msg">Versión %1$s</string>
+    <string name="update_download">Descargar</string>
+    <string name="update_later">Ahora no</string>
+    <string name="update_downloading">Descargando actualización…</string>
+    <string name="update_failed">No se pudo actualizar (%1$s)</string>
+    <string name="update_need_permission">Permite instalar aplicaciones de esta app y vuelve a intentarlo</string>
+    <string name="home_loading">Cargando el contenido, espere un momento</string>
 </resources>
