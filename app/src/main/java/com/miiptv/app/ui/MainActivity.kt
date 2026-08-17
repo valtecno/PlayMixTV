@@ -36,7 +36,6 @@ import com.miiptv.app.util.PpvFilter
 import com.miiptv.app.util.RadioCatalog
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PinDialog
-import com.miiptv.app.util.UpdateDialog
 import com.miiptv.app.util.applyBrandGradient
 import com.squareup.picasso.Picasso
 import retrofit2.Call
@@ -260,40 +259,30 @@ class MainActivity : AppCompatActivity() {
     private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV
 
     private fun updatePreviewVisibility(newSection: Section) {
-        val conPreview = showPreviewFor(newSection)
-        binding.previewPanel.visibility = if (conPreview) View.VISIBLE else View.GONE
-        if (!conPreview) {
+        if (showPreviewFor(newSection)) {
+            binding.previewPanel.visibility = View.VISIBLE
+            applyPreviewLayout()
+        } else {
+            binding.previewPanel.visibility = View.GONE
+            binding.bodyContainer.orientation = LinearLayout.HORIZONTAL
             previewItem = null
             stopPreview()
         }
-        // Siempre se recalcula, con y sin previsualización. Antes la rama "sin
-        // previsualización" solo devolvía el contenedor a horizontal y dejaba
-        // listColumn con los parámetros del modo apilado (height=0). En un
-        // LinearLayout horizontal el peso reparte solo a lo ancho, así que ese
-        // height=0 se quedaba en cero de verdad: la columna colapsaba y en móvil
-        // desaparecían Películas, Series y Radios (y sus chips de categoría).
-        applyPreviewLayout(conPreview)
     }
 
     /**
-     * Coloca la lista y el panel de previsualización.
-     *
-     * Solo hay un caso apilado: móvil CON previsualización, donde el video va
-     * arriba en 16:9 y la lista debajo. En todos los demás (TV, o cualquier
-     * sección sin previsualización) el cuerpo va en horizontal y la lista ocupa
-     * el alto completo.
+     * En TV la previsualización va al costado de la lista; en móvil, arriba y
+     * con altura fija en 16:9, porque en vertical no hay ancho para dos columnas.
      */
-    private fun applyPreviewLayout(conPreview: Boolean) {
-        val apilado = conPreview && DeviceMode.isMobile(this)
-
+    private fun applyPreviewLayout() {
+        val movil = DeviceMode.isMobile(this)
         binding.bodyContainer.orientation =
-            if (apilado) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+            if (movil) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
 
         val lista = binding.listColumn.layoutParams as LinearLayout.LayoutParams
         val panel = binding.previewPanel.layoutParams as LinearLayout.LayoutParams
-        val marco = binding.previewThumbFrame.layoutParams as LinearLayout.LayoutParams
 
-        if (apilado) {
+        if (movil) {
             lista.width = LinearLayout.LayoutParams.MATCH_PARENT
             lista.height = 0
             lista.weight = 1f
@@ -304,10 +293,13 @@ class MainActivity : AppCompatActivity() {
 
             // Marco de video en 16:9, sin pasarse de un tercio de la pantalla
             val metrics = resources.displayMetrics
-            marco.width = LinearLayout.LayoutParams.MATCH_PARENT
-            marco.height = (metrics.widthPixels * 9 / 16)
+            val alto = (metrics.widthPixels * 9 / 16)
                 .coerceAtMost((metrics.heightPixels * 0.34f).toInt())
-            marco.weight = 0f
+            binding.previewThumbFrame.layoutParams =
+                binding.previewThumbFrame.layoutParams.apply {
+                    height = alto
+                    width = LinearLayout.LayoutParams.MATCH_PARENT
+                }
         } else {
             lista.width = 0
             lista.height = LinearLayout.LayoutParams.MATCH_PARENT
@@ -317,14 +309,15 @@ class MainActivity : AppCompatActivity() {
             panel.height = LinearLayout.LayoutParams.MATCH_PARENT
             panel.weight = 1.4f
 
-            marco.width = LinearLayout.LayoutParams.MATCH_PARENT
-            marco.height = 0
-            marco.weight = 1f
+            binding.previewThumbFrame.layoutParams =
+                binding.previewThumbFrame.layoutParams.apply {
+                    height = 0
+                    width = LinearLayout.LayoutParams.MATCH_PARENT
+                }
+            (binding.previewThumbFrame.layoutParams as? LinearLayout.LayoutParams)?.weight = 1f
         }
-
         binding.listColumn.layoutParams = lista
         binding.previewPanel.layoutParams = panel
-        binding.previewThumbFrame.layoutParams = marco
     }
 
     private fun handleItemClick(item: ContentItem) {
@@ -493,12 +486,7 @@ class MainActivity : AppCompatActivity() {
         val motivo = Catalog.lastError
         when {
             !vacio -> binding.tvHomeEmpty.visibility = View.GONE
-            // Mientras baja el catálogo se avisa, en vez de dejar el Inicio en
-            // blanco sin explicación: en el Sistema XL puede tardar bastante.
-            Catalog.isLoading -> {
-                binding.tvHomeEmpty.setText(R.string.home_loading)
-                binding.tvHomeEmpty.visibility = View.VISIBLE
-            }
+            Catalog.isLoading -> binding.tvHomeEmpty.visibility = View.GONE
             motivo != null -> {
                 binding.tvHomeEmpty.text = getString(R.string.catalog_error, motivo)
                 binding.tvHomeEmpty.visibility = View.VISIBLE
@@ -575,10 +563,6 @@ class MainActivity : AppCompatActivity() {
 
         // El catálogo se carga una sola vez y lo reutiliza también el buscador
         Catalog.ensureLoaded(this, onUpdate = catalogListener)
-
-        // Búsqueda de actualizaciones en segundo plano. Con manual = false solo
-        // avisa si hay algo nuevo, y como mucho una vez cada 12 horas.
-        UpdateDialog.check(this, manual = false)
     }
 
     private fun startCarousel() {
@@ -1079,7 +1063,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         when (item.type) {
-            ContentType.LIVE -> startActivity(liveIntent(item))
+            ContentType.LIVE -> startActivity(
+                Intent(this, PlayerActivity::class.java)
+                    .putExtra(PlayerActivity.EXTRA_URL, Session.liveStreamUrl(this, item.id))
+                    .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
+            )
             ContentType.MOVIE -> {
                 if (Appearance.getMovieClick(this) == Appearance.CLICK_DETAILS) {
                     startActivity(
@@ -1167,44 +1160,6 @@ class MainActivity : AppCompatActivity() {
             .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, posicion)
     }
 
-    /**
-     * Intent de un canal en vivo, con la lista de la categoría para poder
-     * zapear desde el reproductor.
-     *
-     * Solo viajan ids y nombres: la URL de cada canal se arma sola a partir del
-     * id, así que mandarla sería duplicar datos. Y la lista se recorta a una
-     * ventana alrededor del canal elegido, porque un intent con miles de
-     * entradas revienta el límite de tamaño de una transacción Binder
-     * (TransactionTooLargeException) y la app se cae al abrir el reproductor.
-     */
-    private fun liveIntent(item: ContentItem): Intent {
-        val intent = Intent(this, PlayerActivity::class.java)
-            .putExtra(PlayerActivity.EXTRA_URL, Session.liveStreamUrl(this, item.id))
-            .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
-            .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
-            .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
-            .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
-            .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
-            .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
-
-        val lista = currentItems.filter { it.type == ContentType.LIVE }
-        val actual = lista.indexOfFirst { it.id == item.id }
-        if (actual < 0 || lista.size < 2) return intent
-
-        val desde = (actual - ZAP_WINDOW).coerceAtLeast(0)
-        val hasta = (actual + ZAP_WINDOW + 1).coerceAtMost(lista.size)
-        val ventana = lista.subList(desde, hasta)
-
-        return intent
-            .putIntegerArrayListExtra(
-                PlayerActivity.EXTRA_PLAYLIST_IDS, ArrayList(ventana.map { it.id })
-            )
-            .putStringArrayListExtra(
-                PlayerActivity.EXTRA_PLAYLIST_TITLES, ArrayList(ventana.map { it.name })
-            )
-            .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, actual - desde)
-    }
-
     private fun setLoading(loading: Boolean) {
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
     }
@@ -1224,7 +1179,7 @@ class MainActivity : AppCompatActivity() {
             // Al volver del reproductor se rearma la previsualización del canal
             // que estaba elegido (onStop la había liberado).
             if (showPreviewFor(section)) {
-                applyPreviewLayout(conPreview = true)
+                applyPreviewLayout()
                 previewItem?.let { showPreview(it) }
             }
             if (section == Section.HOME) showHome()   // re-dibuja con la paleta vigente
@@ -1256,8 +1211,5 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         /** Espera antes de conectar la previsualización, al recorrer la lista. */
         const val PREVIEW_DELAY_MS = 800L
-
-        /** Canales a cada lado del elegido que viajan al reproductor para zapear. */
-        const val ZAP_WINDOW = 200
     }
 }

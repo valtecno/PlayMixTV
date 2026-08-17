@@ -22,7 +22,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -41,9 +40,7 @@ import com.miiptv.app.R
 import com.miiptv.app.api.ContentItem
 import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
-import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
-import com.miiptv.app.util.History
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.PlayerFactory
 import com.miiptv.app.util.DeviceMode
@@ -93,13 +90,6 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityPlayerBinding
-
-    /**
-     * Botón de siguiente episodio. Vive dentro de custom_player_control_view,
-     * que lo infla Media3 y no ViewBinding, así que hay que buscarlo a mano
-     * sobre el PlayerView una vez creado.
-     */
-    private var btnNextEpisode: ImageButton? = null
     private var player: ExoPlayer? = null
 
     private var streamUrl: String = ""
@@ -117,23 +107,11 @@ class PlayerActivity : AppCompatActivity() {
     private var playlistIcons: List<String> = emptyList()
     private var playlistIds: List<Int> = emptyList()
     private var isRadio = false
-
-    /** Tipo del contenido que se está viendo. Decide si hay zapping de canales. */
-    private var itemType: ContentType = ContentType.LIVE
     private var radioSourceLabel: String? = null
     /** Animaciones del ecualizador; se cancelan al pausar y al salir. */
     private val eqAnimators = mutableListOf<ObjectAnimator>()
 
     private var playlistIndex = 0
-
-    /**
-     * Zapping de canales en vivo. Reutiliza la misma lista que las emisoras de
-     * radio, pero solo con id y nombre: la URL de un canal es determinista
-     * (Session.liveStreamUrl), así que mandarla por el intent sería repetir
-     * datos y acercarse al límite de tamaño de una transacción Binder.
-     */
-    private val hasChannelList: Boolean
-        get() = !isRadio && itemType == ContentType.LIVE && playlistIds.size > 1
 
     /** Mantiene el ecualizador y el botón de la barra al día con el audio. */
     private val radioUiListener = object : Player.Listener {
@@ -427,21 +405,16 @@ class PlayerActivity : AppCompatActivity() {
         playlistIcons = intent.getStringArrayListExtra(EXTRA_PLAYLIST_ICONS).orEmpty()
         playlistIds = intent.getIntegerArrayListExtra(EXTRA_PLAYLIST_IDS).orEmpty()
         playlistIndex = intent.getIntExtra(EXTRA_PLAYLIST_INDEX, 0)
-        itemType = runCatching {
-            ContentType.valueOf(intent.getStringExtra(EXTRA_ITEM_TYPE) ?: ContentType.LIVE.name)
-        }.getOrDefault(ContentType.LIVE)
-
-        // El índice tiene que caer dentro de la lista sí o sí. Los canales en
-        // vivo viajan sin URLs (se arman solas), así que se valida contra la
-        // lista que venga con datos.
-        val largo = maxOf(playlistUrls.size, playlistIds.size)
-        if (playlistIndex !in 0 until largo) playlistIndex = 0
+        // El índice tiene que caer dentro de la lista sí o sí
+        if (playlistIndex !in playlistUrls.indices) playlistIndex = 0
     }
 
     private fun readFavoriteItem() {
         val id = intent.getIntExtra(EXTRA_ITEM_ID, -1)
         if (id < 0) return
-        val type = itemType
+        val type = runCatching {
+            ContentType.valueOf(intent.getStringExtra(EXTRA_ITEM_TYPE) ?: ContentType.LIVE.name)
+        }.getOrDefault(ContentType.LIVE)
 
         favoriteItem = ContentItem(
             id = id,
@@ -460,10 +433,6 @@ class PlayerActivity : AppCompatActivity() {
     // ---------------- Controles ----------------
 
     private fun setupControls() {
-        Appearance.applyLevel(binding.btnBack, Appearance.Level.PRIMARY, 22f)
-        binding.btnBack.compoundDrawablesRelative.forEach {
-            it?.mutate()?.setTint(binding.btnBack.currentTextColor)
-        }
         binding.btnBack.setOnClickListener { finish() }
         binding.btnAudio.setOnClickListener { showTrackDialog(C.TRACK_TYPE_AUDIO) }
         binding.btnSubtitles.setOnClickListener { showTrackDialog(C.TRACK_TYPE_TEXT) }
@@ -471,15 +440,14 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnAspect.setOnClickListener { showAspectDialog() }
         binding.btnBuffer.setOnClickListener { showBufferDialog() }
         binding.btnLock.setOnClickListener { setLocked(true) }
-        btnNextEpisode = binding.playerView.findViewById(R.id.btnNextEpisode)
-        btnNextEpisode?.setOnClickListener { playNextEpisode() }
+        binding.btnNext.setOnClickListener { playNextEpisode() }
 
         binding.btnFavorite.setOnClickListener { toggleFavorite() }
         binding.btnFavorite.visibility = if (favoriteItem == null) View.GONE else View.VISIBLE
         refreshFavoriteIcon()
 
         // Solo tiene sentido si hay más episodios por delante
-        btnNextEpisode?.visibility = if (hasNextEpisode()) View.VISIBLE else View.GONE
+        binding.btnNext.visibility = if (hasNextEpisode()) View.VISIBLE else View.GONE
 
         binding.btnPlayNextNow.background = Appearance.gradient(this, 10f)
         binding.btnPlayNextNow.setOnClickListener {
@@ -488,18 +456,10 @@ class PlayerActivity : AppCompatActivity() {
         }
         binding.btnCancelNext.setOnClickListener { hideNextBar() }
 
-        binding.btnChannelPrev.setOnClickListener { changeChannel(-1) }
-        binding.btnChannelNext.setOnClickListener { changeChannel(+1) }
-        updateChannelNav()
-
         // La barra propia aparece y desaparece junto con los controles nativos
         binding.playerView.setControllerVisibilityListener(
             PlayerView.ControllerVisibilityListener { visibility ->
-                if (!locked) {
-                    binding.topBar.visibility = visibility
-                    binding.channelNav.visibility =
-                        if (hasChannelList) visibility else View.GONE
-                }
+                if (!locked) binding.topBar.visibility = visibility
             }
         )
 
@@ -523,7 +483,6 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(false)
             binding.playerView.hideController()
             binding.topBar.visibility = View.GONE
-            binding.channelNav.visibility = View.GONE
             binding.radioBar.visibility = View.GONE
             // Con la pantalla bloqueada queda 100% limpia: ni el candado se ve.
             // Solo aparece un momento al tocar la pantalla (ver dispatchTouchEvent).
@@ -535,7 +494,6 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(true)
             binding.btnUnlock.visibility = View.GONE
             binding.topBar.visibility = View.VISIBLE
-            if (hasChannelList) binding.channelNav.visibility = View.VISIBLE
             if (isRadio) binding.radioBar.visibility = View.VISIBLE
             binding.playerView.showController()
             Toast.makeText(this, R.string.player_unlocked, Toast.LENGTH_SHORT).show()
@@ -714,19 +672,6 @@ class PlayerActivity : AppCompatActivity() {
             binding.equalizer.getChildAt(i).background?.mutate()?.setTint(acento)
         }
 
-        // Botón de inicio, con el mismo tratamiento que el del menú principal
-        Appearance.applyLevel(binding.btnRadioHome, Appearance.Level.PRIMARY, 22f)
-        binding.btnRadioHome.compoundDrawablesRelative.forEach {
-            it?.mutate()?.setTint(binding.btnRadioHome.currentTextColor)
-        }
-        binding.btnRadioHome.setOnClickListener {
-            startActivity(
-                Intent(this, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            )
-            finish()
-        }
-
         binding.btnPrevStation.setOnClickListener { changeStation(-1) }
         binding.btnNextStation.setOnClickListener { changeStation(+1) }
         binding.btnRadioPlayPause.setOnClickListener {
@@ -794,50 +739,6 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /** Salta a la emisora anterior (-1) o la siguiente (+1) de la misma lista. */
-    /**
-     * Salta al canal anterior o siguiente de la categoría desde la que se entró.
-     *
-     * La URL no viaja en el intent: se arma acá con el id, igual que al abrir el
-     * canal desde la lista. Así la lista puede ser larga sin acercarse al límite
-     * de tamaño de una transacción Binder.
-     */
-    private fun changeChannel(delta: Int) {
-        if (!hasChannelList) return
-        val destino = playlistIndex + delta
-        if (destino !in playlistIds.indices) {
-            Toast.makeText(this, R.string.player_no_more_channels, Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        playlistIndex = destino
-        val id = playlistIds[destino]
-        streamUrl = Session.liveStreamUrl(this, id)
-        contentTitle = playlistTitles.getOrElse(destino) { contentTitle }
-        retries = 0
-        audioAvisado = false
-
-        binding.tvNowPlaying.text = contentTitle
-        // La estrella tiene que marcar el canal que se ve ahora, no el anterior
-        favoriteItem = favoriteItem?.copy(id = id, name = contentTitle, streamUrl = null)
-        refreshFavoriteIcon()
-        favoriteItem?.let { History.add(this, it) }
-        updateChannelNav()
-
-        PlaybackHolder.release()
-        startPlayback(streamUrl, resumeAtMs = 0L)
-    }
-
-    /** Muestra los botones solo si hay lista, y apaga el que no lleva a ningún lado. */
-    private fun updateChannelNav() {
-        if (!hasChannelList) {
-            binding.channelNav.visibility = View.GONE
-            return
-        }
-        binding.channelNav.visibility = if (locked) View.GONE else View.VISIBLE
-        setStationButton(binding.btnChannelPrev, playlistIndex > 0)
-        setStationButton(binding.btnChannelNext, playlistIndex + 1 < playlistIds.size)
-    }
-
     private fun changeStation(delta: Int) {
         if (!isRadio) return
         val destino = playlistIndex + delta
@@ -1000,7 +901,7 @@ class PlayerActivity : AppCompatActivity() {
         streamUrl = playlistUrls[playlistIndex]
         contentTitle = playlistTitles.getOrElse(playlistIndex) { contentTitle }
         binding.tvNowPlaying.text = contentTitle
-        btnNextEpisode?.visibility = if (hasNextEpisode()) View.VISIBLE else View.GONE
+        binding.btnNext.visibility = if (hasNextEpisode()) View.VISIBLE else View.GONE
         retries = 0
         audioAvisado = false
         PlaybackHolder.release()

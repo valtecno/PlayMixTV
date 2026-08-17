@@ -22,17 +22,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v3
 
       - name: Compilar APK (debug, listo para instalar)
-        # --no-daemon a secas escupe la pila interna de Gradle y entierra el
-        # error real. Con estas opciones el motivo sale en claro al final.
-        run: gradle assembleDebug --no-daemon --stacktrace --warning-mode=all
-
-      # Si falla, esto deja a la vista SOLO las líneas que importan
-      - name: Resumen del error
-        if: failure()
-        run: |
-          echo "Si el fallo es de Kotlin, busca líneas que empiecen por 'e:'."
-          echo "Si es de recursos, busca 'AAPT' o 'error:'."
-          find . -name "*.txt" -path "*build*" 2>/dev/null | head -20
+        run: gradle assembleDebug --no-daemon
 
       - name: Subir el APK como resultado
         uses: actions/upload-artifact@v4

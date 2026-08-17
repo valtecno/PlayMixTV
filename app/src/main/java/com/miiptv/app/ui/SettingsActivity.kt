@@ -18,7 +18,6 @@ import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PlayerPrefs
 import com.miiptv.app.util.ServerDiagnostics
-import com.miiptv.app.util.UpdateDialog
 
 /**
  * Ajustes del sistema: opciones internas del reproductor, del catálogo y de la cuenta.
@@ -79,9 +78,6 @@ class SettingsActivity : AppCompatActivity() {
 
         // La acción vive ahora en su propio botón; el recuadro de abajo solo
         // muestra el recuento y, con pulsación larga, abre el diagnóstico.
-        binding.rowUpdate.setOnClickListener { UpdateDialog.check(this, manual = true) }
-        binding.tvUpdateState.text = getString(R.string.settings_version, appVersion())
-
         binding.btnRefreshCatalog.setOnClickListener { refreshCatalog() }
         binding.rowRefresh.setOnClickListener { refreshCatalog() }
         // Pulsación larga: prueba el panel endpoint por endpoint y dice qué falla

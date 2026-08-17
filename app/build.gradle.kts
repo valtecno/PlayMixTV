@@ -11,50 +11,13 @@ android {
         applicationId = "com.miiptv.app"
         minSdk = 21
         targetSdk = 34
-        // El workflow de publicación las pasa desde el tag (-PversionName=1.2.3),
-        // así la versión que muestra la app coincide con la Release de GitHub.
-        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("versionName") as? String) ?: "1.0"
-
-        // Repositorio desde el que la app busca actualizaciones.
-        // Se define en gradle.properties para no tocar código al cambiarlo.
-        val repo = (project.findProperty("playmix.repo") as? String).orEmpty()
-        buildConfigField("String", "GITHUB_REPO", "\"$repo\"")
-    }
-
-    /*
-     * Firma de publicación.
-     *
-     * Android solo permite actualizar una app si el APK nuevo está firmado con
-     * la MISMA clave que el instalado. GitHub Actions genera un keystore de
-     * depuración distinto en cada ejecución, así que sin esto la actualización
-     * descargaría bien y luego fallaría con "aplicación no instalada".
-     *
-     * Las credenciales llegan por variables de entorno desde los secrets del
-     * repositorio. Si no están (compilación local), se ignora y se firma con la
-     * clave de depuración de siempre.
-     */
-    val keystoreFile = System.getenv("PLAYMIX_KEYSTORE")
-        ?.takeIf { it.isNotBlank() }
-        ?.let { java.io.File(it) }
-        ?.takeIf { it.exists() }
-    signingConfigs {
-        if (keystoreFile != null) {
-            create("release") {
-                storeFile = keystoreFile
-                storePassword = System.getenv("PLAYMIX_STORE_PASSWORD")
-                keyAlias = System.getenv("PLAYMIX_KEY_ALIAS")
-                keyPassword = System.getenv("PLAYMIX_KEY_PASSWORD")
-            }
-        }
+        versionCode = 1
+        versionName = "1.0"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            if (keystoreFile != null) {
-                signingConfig = signingConfigs.getByName("release")
-            }
         }
     }
 
@@ -70,8 +33,6 @@ android {
 
     buildFeatures {
         viewBinding = true
-        // Necesario para BuildConfig.GITHUB_REPO (AGP 8 lo pide explícito)
-        buildConfig = true
     }
 }
 
