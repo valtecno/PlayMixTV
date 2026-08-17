@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptar pantalla (relación de aspecto).
+
+    Reemplaza a ic_multiscreen, que se usaba para esta acción y era idéntico al
+    de multi-pantalla: cuatro cuadrados. Este muestra una pantalla con flechas
+    saliendo hacia las esquinas, que sí sugiere "ajustar la imagen al marco".
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Marco de la pantalla -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M3,5.5A1.5,1.5 0 0,1 4.5,4h15A1.5,1.5 0 0,1 21,5.5v13A1.5,1.5 0 0,1 19.5,20h-15A1.5,1.5 0 0,1 3,18.5zM4.8,5.8v12.4h14.4V5.8z" />
+
+    <!-- Flechas hacia las cuatro esquinas -->
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M6.6,7.4h3.6v1.5H9.1l1.9,1.9 -1.1,1.1 -1.9,-1.9v1.1H6.6z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M17.4,7.4v3.6h-1.5V9.9l-1.9,1.9 -1.1,-1.1 1.9,-1.9h-1.1V7.4z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M6.6,16.6v-3.6h1.5v1.1l1.9,-1.9 1.1,1.1 -1.9,1.9h1.1v1.4z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M17.4,16.6h-3.6v-1.4h1.1l-1.9,-1.9 1.1,-1.1 1.9,1.9v-1.1h1.4z" />
+
+</vector>

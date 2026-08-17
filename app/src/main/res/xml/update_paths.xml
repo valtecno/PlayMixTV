@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Carpeta desde la que se comparte el APK descargado con el instalador del
+     sistema. Desde Android 7 no se puede pasar un file:// entre apps. -->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>
