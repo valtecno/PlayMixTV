@@ -7,6 +7,9 @@
   retroceder / play-pausa / adelantar. Al ser una fila fija (sin la lógica de
   "extra controls" que se puede reordenar según el ancho disponible), el botón
   de adelantar queda SIEMPRE junto a los demás controles, nunca arriba.
+
+  La fila central lleva un cuarto botón propio, el de siguiente episodio, que
+  solo aparece al ver una serie.
 -->
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -61,6 +64,23 @@
             android:contentDescription="@string/player_fastforward"
             android:scaleType="fitCenter"
             android:padding="8dp" />
+
+        <!-- Siguiente episodio. Antes vivía en la barra superior, entre los
+             ajustes, donde no tenía nada que ver: es un control de reproducción,
+             igual que retroceder y adelantar, y aquí queda junto a ellos.
+             No lo maneja Media3 (no es un id exo_*): la lógica de episodios es
+             propia, así que PlayerActivity lo busca con findViewById. -->
+        <ImageButton
+            android:id="@+id/btnNextEpisode"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="18dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_next"
+            android:contentDescription="@string/player_next"
+            android:scaleType="fitCenter"
+            android:padding="10dp"
+            android:visibility="gone" />
 
     </LinearLayout>
 

@@ -175,12 +175,6 @@ object Updater {
     ) {
         val ctx = context.applicationContext
         Thread {
-            // Sin returns con etiqueta dentro del lambda del Thread: se resuelve
-            // todo con un resultado nulo/no nulo, que es más claro y no depende
-            // de cómo Kotlin etiquete un lambda pasado a un constructor Java.
-            var fallo: String? = null
-            var descargado: File? = null
-
             try {
                 val carpeta = File(ctx.cacheDir, "updates").apply { mkdirs() }
                 // Se limpian descargas anteriores: si no, se acumulan APKs completos
@@ -189,53 +183,43 @@ object Updater {
 
                 val peticion = Request.Builder().url(release.apkUrl).build()
                 Session.httpClient.newCall(peticion).execute().use { r ->
-                    val cuerpo = r.body
-                    when {
-                        !r.isSuccessful -> fallo = "HTTP ${r.code}"
-                        cuerpo == null -> fallo = "respuesta vacía"
-                        else -> {
-                            val total =
-                                if (release.sizeBytes > 0) release.sizeBytes else cuerpo.contentLength()
-                            var leidos = 0L
-                            var ultimoPct = -1
+                    if (!r.isSuccessful) {
+                        ui.post { onError("HTTP ${r.code}") }
+                        return@Thread
+                    }
+                    val cuerpo = r.body ?: run {
+                        ui.post { onError("respuesta vacía") }
+                        return@Thread
+                    }
+                    val total = if (release.sizeBytes > 0) release.sizeBytes else cuerpo.contentLength()
+                    var leidos = 0L
+                    var ultimoPct = -1
 
-                            cuerpo.byteStream().use { entrada ->
-                                destino.outputStream().use { salida ->
-                                    val buffer = ByteArray(64 * 1024)
-                                    while (true) {
-                                        val n = entrada.read(buffer)
-                                        if (n <= 0) break
-                                        salida.write(buffer, 0, n)
-                                        leidos += n
-                                        if (total > 0) {
-                                            val pct = (leidos * 100 / total).toInt()
-                                            // Avisar solo al cambiar de punto porcentual
-                                            if (pct != ultimoPct) {
-                                                ultimoPct = pct
-                                                ui.post { onProgress(pct) }
-                                            }
-                                        } else {
-                                            ui.post { onProgress(-1) }
-                                        }
+                    cuerpo.byteStream().use { entrada ->
+                        destino.outputStream().use { salida ->
+                            val buffer = ByteArray(64 * 1024)
+                            while (true) {
+                                val n = entrada.read(buffer)
+                                if (n <= 0) break
+                                salida.write(buffer, 0, n)
+                                leidos += n
+                                if (total > 0) {
+                                    val pct = (leidos * 100 / total).toInt()
+                                    // Avisar solo al cambiar de punto porcentual
+                                    if (pct != ultimoPct) {
+                                        ultimoPct = pct
+                                        ui.post { onProgress(pct) }
                                     }
+                                } else {
+                                    ui.post { onProgress(-1) }
                                 }
                             }
-                            descargado = destino
                         }
                     }
                 }
+                ui.post { install(ctx, destino, onError) }
             } catch (t: Throwable) {
-                fallo = t::class.java.simpleName
-            }
-
-            val motivo = fallo
-            val apk = descargado
-            ui.post {
-                when {
-                    motivo != null -> onError(motivo)
-                    apk != null -> install(ctx, apk, onError)
-                    else -> onError("descarga incompleta")
-                }
+                ui.post { onError(t::class.java.simpleName) }
             }
         }.start()
     }

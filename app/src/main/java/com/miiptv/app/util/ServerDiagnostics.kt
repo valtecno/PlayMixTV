@@ -65,7 +65,7 @@ object ServerDiagnostics {
         val pruebas = listOf(
             "Login" to "",
             "Categorías canales" to "&action=get_live_categories",
-            "Categorías pelis" to "&action=get_vod_categories",
+            "Categorías películas" to "&action=get_vod_categories",
             "Categorías series" to "&action=get_series_categories",
             "Canales (todo)" to "&action=get_live_streams",
             "Películas (todo)" to "&action=get_vod_streams",

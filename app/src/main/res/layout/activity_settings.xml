@@ -149,6 +149,13 @@
                 <TextView android:id="@+id/tvUser" style="@style/SettingsValue" />
             </LinearLayout>
 
+            <!-- Actualización de la app (distinta de "Actualizar catálogo", que
+                 refresca el contenido del servidor) -->
+            <LinearLayout android:id="@+id/rowUpdate" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_update" />
+                <TextView android:id="@+id/tvUpdateState" style="@style/SettingsValue" />
+            </LinearLayout>
+
             <Button
                 android:id="@+id/btnLogout"
                 android:layout_width="match_parent"
