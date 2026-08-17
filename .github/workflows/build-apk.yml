@@ -26,8 +26,6 @@ jobs:
       # Antes se llamaba a "gradle" a secas, o sea la versión que viniera
       # instalada en el runner. Con el wrapper en el repositorio, acá y en
       # cualquier máquina se compila con Gradle 8.7 exacto.
-      - name: Dar permisos de ejecución a gradlew
-  run: chmod +x ./gradlew
       - name: Correr los tests
         run: ./gradlew test --no-daemon
 
