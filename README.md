@@ -281,6 +281,52 @@ Hace lo mismo que la estrella de la barra superior, que en una tele es diminuta
 y queda lejos de la mano. Los dos se mantienen sincronizados y siguen a la
 emisora que suena al pasar de una a otra.
 
+## 6.1.5 Iconos
+
+Todo sale de `logo_PM.png`. El script que los genera está descrito acá para
+poder rehacerlos si cambia el logo.
+
+### Escritorio del móvil (icono adaptativo)
+El `ic_launcher_foreground.png` que había medía **192 px** en su densidad más
+alta. Ese es el tamaño de un icono *legacy*; uno adaptativo se dibuja sobre un
+lienzo de 108dp, o sea **432 px** en xxxhdpi. Android lo estaba ampliando x2,25
+en cada pantalla, y de ahí venía el aspecto pixelado.
+
+Además llenaba el lienzo entero. De los 108dp solo se garantizan los 72dp
+centrales, y con máscara circular (la del lanzador de Pixel) los vértices del
+triángulo se perdían.
+
+Ahora:
+
+| | Antes | Ahora |
+|---|---|---|
+| Tamaño real | 192 px | 432 px (mdpi 108 · hdpi 162 · xhdpi 216 · xxhdpi 324) |
+| Fondo | color plano | degradado diagonal del proyecto (`ic_launcher_background.xml`) |
+| Máscara circular | recortaba el logo | entra completo |
+| Android 13+ | — | versión monocroma para iconos temáticos |
+
+El logo ocupa 55,3dp de los 108. Ese número **no es a ojo**: se midió el radio
+real de los píxeles sólidos del logo y se calculó el máximo que entra en el
+círculo de 34dp de radio que toda máscara respeta. Verificado después:
+0 píxeles sólidos recortados. Por eso se ve algo más chico que antes — antes se
+veía más grande porque se salía del área segura.
+
+Si lo querés más grande asumiendo que en lanzadores circulares se recorten los
+bordes, es una constante en el script (`ALTO_LOGO_DP`).
+
+### Android TV (banner)
+`android:banner` apuntaba al icono **cuadrado** del escritorio. Por eso PlayMix
+TV aparecía como un cuadradito con el nombre debajo, mientras Prime Video, TLTV
+y YouTube mostraban una tarjeta ancha.
+
+Ahora hay un banner propio de **320×180** (`drawable-xhdpi/banner.png`, el
+tamaño que pide Google) más una versión de 480×270 en xxhdpi para pantallas
+grandes: fondo con el degradado de la app, dos halos cruzados en naranja y rosa,
+y el logo centrado al 80% del alto.
+
+No lleva texto añadido: el logo ya trae "play mix TV" con su tipografía. Un
+segundo texto en otra fuente se notaría.
+
 ## 6.2 Calidad del proyecto
 
 ### Tests

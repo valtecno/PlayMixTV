@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Icono adaptativo (Android 8 en adelante).
+
+    El sistema recorta este dibujo con la forma que tenga cada lanzador:
+    círculo, cuadrado redondeado o "squircle". De los 108dp del lienzo solo se
+    garantizan los 72dp centrales, así que el logo del primer plano está
+    dimensionado para entrar entero incluso en el recorte circular, que es el
+    más agresivo.
+
+    monochrome se usa en Android 13 y posteriores, cuando el usuario activa los
+    iconos con el color del fondo de pantalla.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/brand_primary_dark" />
+    <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>

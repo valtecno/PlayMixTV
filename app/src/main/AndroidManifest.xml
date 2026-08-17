@@ -23,13 +23,25 @@
         android:name="android.software.picture-in-picture"
         android:required="false" />
 
+    <!--
+        ICONOS
+
+        android:icon / android:roundIcon  -> escritorio del movil. Apuntan al
+        icono adaptativo de mipmap-anydpi-v26, que el sistema recorta con la
+        forma de cada lanzador (circulo, cuadrado redondeado, squircle).
+
+        android:banner -> fila de aplicaciones de Android TV. Tiene que ser un
+        rectangulo de 320x180; antes apuntaba al icono cuadrado del escritorio y
+        por eso PlayMix TV salia como un cuadradito con el nombre debajo,
+        mientras las demas apps mostraban una tarjeta ancha.
+    -->
     <application
         android:allowBackup="true"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:banner="@mipmap/ic_launcher"
+        android:banner="@drawable/banner"
         android:theme="@style/Theme.MiIPTV"
         android:usesCleartextTraffic="true">
 
