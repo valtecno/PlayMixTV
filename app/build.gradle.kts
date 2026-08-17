@@ -13,16 +13,13 @@ android {
         targetSdk = 34
         // El workflow de publicación las pasa desde el tag (-PversionName=1.2.3),
         // así la versión que muestra la app coincide con la Release de GitHub.
-        versionCode = (project.findProperty("versionCode") as String? ?: "1").toInt()
-        versionName = project.findProperty("versionName") as String? ?: "1.0"
+        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("versionName") as? String) ?: "1.0"
 
         // Repositorio desde el que la app busca actualizaciones.
         // Se define en gradle.properties para no tocar código al cambiarlo.
-        buildConfigField(
-            "String",
-            "GITHUB_REPO",
-            "\"" + (project.findProperty("playmix.repo") as String? ?: "") + "\""
-        )
+        val repo = (project.findProperty("playmix.repo") as? String).orEmpty()
+        buildConfigField("String", "GITHUB_REPO", "\"$repo\"")
     }
 
     /*
@@ -37,9 +34,12 @@ android {
      * repositorio. Si no están (compilación local), se ignora y se firma con la
      * clave de depuración de siempre.
      */
-    val keystoreFile = System.getenv("PLAYMIX_KEYSTORE")?.let { file(it) }
+    val keystoreFile = System.getenv("PLAYMIX_KEYSTORE")
+        ?.takeIf { it.isNotBlank() }
+        ?.let { java.io.File(it) }
+        ?.takeIf { it.exists() }
     signingConfigs {
-        if (keystoreFile != null && keystoreFile.exists()) {
+        if (keystoreFile != null) {
             create("release") {
                 storeFile = keystoreFile
                 storePassword = System.getenv("PLAYMIX_STORE_PASSWORD")
@@ -52,7 +52,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            if (keystoreFile != null && keystoreFile.exists()) {
+            if (keystoreFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
