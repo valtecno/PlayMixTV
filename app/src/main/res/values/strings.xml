@@ -92,6 +92,8 @@
     <string name="accounts_hint_multi">%1$d cuentas guardadas · toca una para usarla</string>
     <string name="accounts_available">%1$d guardada(s)</string>
     <string name="action_refresh">Actualizar</string>
+    <!-- Titulo del engranaje del menu superior (movil) -->
+    <string name="action_quick">Ajustes</string>
     <string name="action_account">Cuenta</string>
     <string name="greeting_morning">Buenos días</string>
     <string name="greeting_afternoon">Buenas tardes</string>
@@ -202,6 +204,9 @@
     <string name="player_no_subtitles">Este contenido no trae subtítulos</string>
     <string name="track_disabled">Desactivado</string>
     <string name="track_auto">Automática</string>
+    <!-- Boton de favorito del reproductor de radio (al lado de Inicio) -->
+    <string name="radio_fav_add">Favorito</string>
+    <string name="radio_fav_saved">Guardada</string>
     <string name="fav_added">Agregado a favoritos</string>
     <string name="fav_removed">Quitado de favoritos</string>
     <string name="buffer_applied">Buffer: %1$s</string>

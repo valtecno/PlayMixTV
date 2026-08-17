@@ -123,13 +123,51 @@
 
     </LinearLayout>
 
-    <!-- ===== Inicio: dos secciones lado a lado, un póster por vez ===== -->
+    <!-- ===== Inicio: dos secciones lado a lado, un póster por vez =====
+
+         OJO CON LA POSICIÓN DE ESTE BLOQUE: homeArea es hermano del menú dentro
+         del LinearLayout vertical raíz, no un hermano que se superponga. Va
+         DESPUÉS de la barra de menú, así que arranca justo debajo de ella y
+         llega hasta el final de la pantalla.
+
+         De ahí salen dos garantías estructurales para la imagen de fondo del
+         Inicio (ivHomeBackdrop), sin depender de que ningún código se acuerde:
+          1. No puede taparle nada al menú superior ni a la barra de título,
+             porque físicamente empieza más abajo.
+          2. No puede aparecer en otra sección, porque homeArea entero se oculta
+             al salir del Inicio.
+    -->
     <FrameLayout
         android:id="@+id/homeArea"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:visibility="gone">
+
+    <!-- ===== Imagen de marca del Inicio (SOLO en modo móvil) =====
+         Reemplaza a los carruseles: en móvil se ocultan homeSections y queda
+         esto. En TV no se muestra nunca y los carruseles siguen como estaban.
+         Lo enciende y apaga showHome() según DeviceMode.
+
+         Para que se vea más o menos marcada, cambiá android:alpha acá abajo:
+         0.20 = apenas insinuada · 0.35 = actual · 0.60 = bien presente. -->
+    <ImageView
+        android:id="@+id/ivHomeBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/home_backdrop"
+        android:alpha="0.35"
+        android:contentDescription="@null"
+        android:visibility="gone" />
+
+    <!-- Funde la imagen con el fondo de la app por arriba y por abajo -->
+    <View
+        android:id="@+id/homeBackdropScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_home_backdrop_scrim"
+        android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/homeSections"
@@ -301,6 +339,31 @@
                 android:paddingBottom="8dp">
                 <LinearLayout
                     android:id="@+id/categoryContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
+            </HorizontalScrollView>
+
+            <!-- ===== Segunda fila de chips: SOLO para Radios =====
+                 Arriba van las carpetas (Países · Tomorrowland · Electrónica) y
+                 acá lo que hay dentro de la carpeta abierta: los países, o los
+                 géneros de Electrónica.
+
+                 Se oculta cuando la carpeta tiene una sola fuente (Tomorrowland)
+                 y en todas las demás secciones. Es una fila aparte y no un menú
+                 desplegable a propósito: así los dos niveles se ven a la vez y
+                 con control remoto se pasa de uno a otro con arriba/abajo. -->
+            <HorizontalScrollView
+                android:id="@+id/radioSubScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/radioSubContainer"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"

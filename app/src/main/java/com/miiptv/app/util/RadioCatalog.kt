@@ -19,7 +19,7 @@ import retrofit2.converter.gson.GsonConverterFactory
  * No hay claves ni registro; solo piden identificarse con un User-Agent propio,
  * que es el mismo "PlayMix TV - VIP" que usa el resto de la app.
  *
- * Hay dos maneras de armar una lista:
+ * Hay tres maneras de armar una lista:
  *
  *  - **Por país** ([Source.countryCode]): todas las emisoras de ese país, las
  *    más votadas primero. Es lo que usan los chips con bandera.
@@ -27,6 +27,22 @@ import retrofit2.converter.gson.GsonConverterFactory
  *    arman Loca FM (con sus veintipico de estilos) y Tomorrowland, sin dejar
  *    direcciones de stream fijas en el código: si la emisora se muda de
  *    servidor, el directorio ya devuelve la nueva y la app no se entera.
+ *  - **Por género** ([Source.tag]): las emisoras etiquetadas como house, techno,
+ *    trance... Es lo que llena la carpeta Electrónica.
+ *
+ * ---------------------------------------------------------------------------
+ * ORGANIZACIÓN EN CARPETAS
+ *
+ * Antes todo era una sola fila de chips: España, Loca FM, Tomorrowland y detrás
+ * doce países, mezclando marcas con lugares en la misma línea. Ahora hay dos
+ * niveles: [folders] arriba y las fuentes de la carpeta abierta abajo.
+ *
+ *      🌎 Países  ·  🎪 Tomorrowland  ·  🎛️ Electrónica
+ *      └─ 🇪🇸 España · 🇺🇸 EE.UU. · 🇲🇽 México · ...
+ *
+ * Una carpeta con una sola fuente (Tomorrowland) no muestra la segunda fila:
+ * no hay nada que elegir, se carga directo.
+ * ---------------------------------------------------------------------------
  */
 object RadioCatalog {
 
@@ -44,40 +60,48 @@ object RadioCatalog {
          * cargados como "LOCA 80'S", sin el "FM" en el medio.
          */
         val queries: List<String> = emptyList(),
+        /** Etiqueta de género del directorio: "house", "techno", "trance"... */
+        val tag: String? = null,
         /** Red de seguridad por si el directorio no devuelve nada. */
         val fallback: List<Fixed> = emptyList()
     ) {
-        /** Las marcas se buscan por nombre; los países, por código. */
-        val isCollection: Boolean get() = countryCode == null
+        /**
+         * ¿Es la lista de una marca?
+         *
+         * Solo estas se ordenan alfabéticamente y se limpian de nombres
+         * repetidos, porque ahí la lista funciona como un índice de estilos
+         * ("LOCA 80'S", "LOCA DANCE", "LOCA TECHNO"...) y el directorio suele
+         * traer la misma emisora cargada dos o tres veces.
+         *
+         * Los países y los géneros NO: ahí el orden por votos es información
+         * útil, las más escuchadas primero. Antes esto miraba `countryCode`, y
+         * al agregar los géneros habrían quedado ordenados de la A a la Z, con
+         * las emisoras grandes perdidas en el medio.
+         */
+        val isCollection: Boolean get() = queries.isNotEmpty()
     }
 
     /** Emisora con dirección fija, solo para los casos de respaldo. */
     data class Fixed(val name: String, val url: String, val icon: String? = null)
 
-    /**
-     * Chips de la sección, en el orden en que se muestran. Primero España y las
-     * dos marcas pedidas; después el resto de los países.
-     */
-    val sources = listOf(
+    /** Una carpeta de la sección Radios: el primer nivel de chips. */
+    data class Folder(
+        /** Icono de la carpeta. Emoji, igual que las banderas de los países. */
+        val icon: String,
+        val name: String,
+        val id: String,
+        val sources: List<Source>
+    ) {
+        /** Con una sola fuente no hace falta la segunda fila de chips. */
+        val hasChoices: Boolean get() = sources.size > 1
+    }
+
+    // ---------------- Fuentes ----------------
+
+    private val paises = listOf(
         Source(
             flag = "\uD83C\uDDEA\uD83C\uDDF8", name = "España", id = "radio_ES", countryCode = "ES",
             genres = "Los 40, Cadena SER, COPE, Rock FM, Kiss, Flaix, indie y flamenco"
-        ),
-        Source(
-            flag = "\uD83C\uDFA7", name = "Loca FM", id = "radio_locafm",
-            genres = "Dance, techno, house, trance, hard, remember y 80s — todos sus estilos",
-            queries = listOf("loca fm", "locafm", "loca 80")
-        ),
-        Source(
-            flag = "\uD83C\uDFAA", name = "Tomorrowland", id = "radio_tomorrowland",
-            genres = "One World Radio: el sonido del festival, 24/7 y siempre mezclado",
-            queries = listOf("tomorrowland", "one world radio"),
-            fallback = listOf(
-                Fixed(
-                    "Tomorrowland One World Radio",
-                    "https://playerservices.streamtheworld.com/api/livestream-redirect/ONE_WORLD_RADIO.mp3"
-                )
-            )
         ),
         Source("\uD83C\uDDFA\uD83C\uDDF8", "Estados Unidos", "radio_US", "Pop, rock, country, hip-hop, R&B, electrónica", "US"),
         Source("\uD83C\uDDF2\uD83C\uDDFD", "México", "radio_MX", "Regional mexicano, pop latino, banda, norteño", "MX"),
@@ -92,6 +116,61 @@ object RadioCatalog {
         Source("\uD83C\uDDE9\uD83C\uDDF4", "Rep. Dominicana", "radio_DO", "Bachata, merengue, urbano", "DO"),
         Source("\uD83C\uDDF5\uD83C\uDDF7", "Puerto Rico", "radio_PR", "Reguetón, trap latino, salsa, pop", "PR")
     )
+
+    private val tomorrowland = Source(
+        flag = "\uD83C\uDFAA", name = "Tomorrowland", id = "radio_tomorrowland",
+        genres = "One World Radio: el sonido del festival, 24/7 y siempre mezclado",
+        queries = listOf("tomorrowland", "one world radio"),
+        fallback = listOf(
+            Fixed(
+                "Tomorrowland One World Radio",
+                "https://playerservices.streamtheworld.com/api/livestream-redirect/ONE_WORLD_RADIO.mp3"
+            )
+        )
+    )
+
+    /**
+     * Electrónica: una marca (Loca FM, que ya estaba suelta en la fila vieja) y
+     * el resto por etiqueta de género.
+     *
+     * Van por etiqueta y no por nombre porque una emisora de techno casi nunca
+     * se llama "techno": la etiqueta la carga la comunidad del directorio y
+     * describe lo que de verdad pincha.
+     */
+    private val electronica = listOf(
+        Source(
+            flag = "\uD83C\uDFA7", name = "Loca FM", id = "radio_locafm",
+            genres = "Dance, techno, house, trance, hard, remember y 80s — todos sus estilos",
+            queries = listOf("loca fm", "locafm", "loca 80")
+        ),
+        Source("\uD83C\uDFE0", "House", "radio_tag_house", "House, deep house y todas sus ramas", tag = "house"),
+        Source("\u26A1", "Techno", "radio_tag_techno", "Techno de club, minimal y hard", tag = "techno"),
+        Source("\uD83C\uDF00", "Trance", "radio_tag_trance", "Trance melódico, uplifting y progressive", tag = "trance"),
+        Source("\uD83D\uDC83", "Dance", "radio_tag_dance", "Dance comercial y remember de pista", tag = "dance"),
+        Source("\uD83C\uDF9B\uFE0F", "Electrónica", "radio_tag_electronic", "Electrónica en general: EDM, chill y experimental", tag = "electronic")
+    )
+
+    // ---------------- Carpetas ----------------
+
+    /**
+     * Primer nivel de la sección, en el orden en que se muestran.
+     * Países va primera porque es la que se abre por defecto.
+     */
+    val folders = listOf(
+        Folder("\uD83C\uDF0E", "Países", "radio_folder_paises", paises),
+        Folder("\uD83C\uDFAA", "Tomorrowland", "radio_folder_tomorrowland", listOf(tomorrowland)),
+        Folder("\uD83C\uDF9B\uFE0F", "Electrónica", "radio_folder_electronica", electronica)
+    )
+
+    /** Carpeta que se abre al entrar a Radios. */
+    val defaultFolder: Folder get() = folders.first()
+
+    /** Todas las fuentes de todas las carpetas, en orden. */
+    val sources: List<Source> get() = folders.flatMap { it.sources }
+
+    /** A qué carpeta pertenece una fuente (para recuperar el estado al volver). */
+    fun folderOf(sourceId: String?): Folder? =
+        folders.firstOrNull { carpeta -> carpeta.sources.any { it.id == sourceId } }
 
     /** Espejos oficiales del servicio; si uno no responde se prueba el siguiente. */
     private val mirrors = listOf(
@@ -143,15 +222,19 @@ object RadioCatalog {
         }
 
         val api = apiFor(mirrors[mirrorIndex])
-        val code = source.countryCode
-        if (code != null) {
-            enqueue(
-                api.byCountry(code),
+        val siguienteEspejo = { request(source, mirrorIndex + 1, onResult) }
+        when {
+            source.countryCode != null -> enqueue(
+                api.byCountry(source.countryCode),
                 onOk = { finish(source, it, onResult) },
-                onFail = { request(source, mirrorIndex + 1, onResult) }
+                onFail = { siguienteEspejo() }
             )
-        } else {
-            runQuery(api, source, queryIndex = 0, acc = mutableListOf(), mirrorIndex, onResult)
+            source.tag != null -> enqueue(
+                api.byTag(source.tag),
+                onOk = { finish(source, it, onResult) },
+                onFail = { siguienteEspejo() }
+            )
+            else -> runQuery(api, source, queryIndex = 0, acc = mutableListOf(), mirrorIndex, onResult)
         }
     }
 

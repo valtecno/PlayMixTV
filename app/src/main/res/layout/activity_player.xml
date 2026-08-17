@@ -132,16 +132,34 @@
                 android:textColor="@color/text_muted"
                 android:textSize="12sp" />
 
-            <!-- Salida al inicio. Mismo estilo que el botón Inicio del menú
-                 principal: en radio la pantalla es fija y sin él solo queda
-                 el botón atrás del sistema. -->
-            <TextView
-                android:id="@+id/btnRadioHome"
-                style="@style/NavItem"
+            <!-- Fila de acciones de la emisora que suena.
+
+                 En radio la pantalla es fija: sin el botón de inicio solo queda
+                 el atrás del sistema. Y el favorito de la barra de arriba es una
+                 estrella chica, fácil de no ver y difícil de alcanzar con el
+                 control remoto, así que acá va otro con etiqueta. Los dos hacen
+                 exactamente lo mismo y se mantienen sincronizados. -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="22dp"
-                android:text="@string/nav_home"
-                android:drawableStart="@drawable/ic_home" />
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/btnRadioHome"
+                    style="@style/NavItem"
+                    android:text="@string/nav_home"
+                    android:drawableStart="@drawable/ic_home" />
+
+                <TextView
+                    android:id="@+id/btnRadioFavorite"
+                    style="@style/NavItem"
+                    android:layout_marginStart="10dp"
+                    android:text="@string/tab_favorites"
+                    android:drawableStart="@drawable/ic_favorite" />
+            </LinearLayout>
         </LinearLayout>
     </FrameLayout>
 

@@ -4,6 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Resplandor detrás del logo. Va antes que animatedIntro para quedar por
+         debajo, y centrado en el mismo punto que el logo. Arranca invisible: lo
+         enciende y lo apaga la animación de SplashActivity. -->
+    <View
+        android:id="@+id/introGlow"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="70dp"
+        android:background="@drawable/bg_splash_glow"
+        android:alpha="0" />
+
     <!-- Intro animado por código (logo + nombre). Se usa mientras no exista res/raw/intro.mp4 -->
     <LinearLayout
         android:id="@+id/animatedIntro"

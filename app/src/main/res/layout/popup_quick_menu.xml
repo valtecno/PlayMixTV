@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Menú que se abre desde el engranaje, solo en modo móvil.
+
+    Son tres iconos en fila, sin texto: candado (control parental),
+    multipantalla y cuenta. Cada uno lleva contentDescription y un mensaje
+    emergente al mantenerlo pulsado, que es como se resuelve un botón sin
+    etiqueta sin dejar afuera a quien no reconozca el icono ni a los lectores
+    de pantalla.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/bg_popup_menu"
+    android:padding="6dp"
+    android:elevation="12dp">
+
+    <ImageButton
+        android:id="@+id/quickParental"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:padding="14dp"
+        android:src="@drawable/ic_lock_closed"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_parental"
+        android:scaleType="fitCenter" />
+
+    <ImageButton
+        android:id="@+id/quickMulti"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:padding="14dp"
+        android:src="@drawable/ic_multiscreen"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/nav_multi"
+        android:scaleType="fitCenter" />
+
+    <ImageButton
+        android:id="@+id/quickAccount"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:padding="14dp"
+        android:src="@drawable/ic_account"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_account"
+        android:scaleType="fitCenter" />
+
+</LinearLayout>

@@ -6,13 +6,17 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -65,6 +69,7 @@ class MainActivity : AppCompatActivity() {
     private var ppvCategories: List<Category> = emptyList()
     /** Chip de radios abierto ahora mismo (país o marca). */
     private var currentRadioSource: RadioCatalog.Source? = null
+    private var currentRadioFolder: RadioCatalog.Folder? = null
     /**
      * Emisoras que se están mostrando. Se le pasan enteras al reproductor para
      * poder saltar de una a otra sin volver a esta pantalla.
@@ -228,6 +233,9 @@ class MainActivity : AppCompatActivity() {
         binding.bodyContainer.visibility = if (isHome) View.GONE else View.VISIBLE
         binding.recyclerChannels.visibility = if (isHome) View.GONE else View.VISIBLE
         binding.categoryScroll.visibility = if (isBrowse) View.VISIBLE else View.GONE
+        // La segunda fila es exclusiva de Radios; showRadio() la vuelve a
+        // encender si la carpeta abierta tiene algo que elegir.
+        if (newSection != Section.RADIO) binding.radioSubScroll.visibility = View.GONE
         binding.favFilterScroll.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
         if (newSection != Section.PPV) binding.etPpvSearch.visibility = View.GONE
@@ -237,7 +245,10 @@ class MainActivity : AppCompatActivity() {
 
         applyLayoutMode(newSection)
         updatePreviewVisibility(newSection)
-        if (isHome) startCarousel() else stopCarousel()
+        // En móvil el Inicio es una imagen fija, así que no hay nada que rotar.
+        // showHome() también lo frena, pero mejor no arrancarlo de entrada: el
+        // temporizador quedaba andando un instante al entrar a Inicio.
+        if (isHome && !DeviceMode.isMobile(this)) startCarousel() else stopCarousel()
 
         when (newSection) {
             Section.HOME -> showHome()
@@ -490,6 +501,34 @@ class MainActivity : AppCompatActivity() {
         setLoading(false)
         adapter.submitList(emptyList())
 
+        /*
+         * En móvil el Inicio es la imagen de marca, no los carruseles.
+         *
+         * Los carruseles se pensaron para el televisor: dos columnas lado a lado
+         * que van rotando solas. Apiladas en una pantalla de teléfono quedaban
+         * dos franjas cortas, cada una con un póster a la vez.
+         *
+         * La imagen va con poca opacidad y con un velo que la funde por los
+         * bordes, para que no compita con el menú ni con la barra de título.
+         *
+         * Dónde NO hace falta controlar nada: la imagen vive dentro de homeArea,
+         * que empieza debajo del menú y se oculta entero al salir del Inicio. O
+         * sea que no puede taparle nada al menú ni asomarse en otra sección
+         * aunque este método cambie. Ver el comentario en activity_main.xml.
+         */
+        val fondoDeMarca = DeviceMode.isMobile(this)
+        binding.ivHomeBackdrop.visibility = if (fondoDeMarca) View.VISIBLE else View.GONE
+        binding.homeBackdropScrim.visibility = if (fondoDeMarca) View.VISIBLE else View.GONE
+        binding.homeSections.visibility = if (fondoDeMarca) View.GONE else View.VISIBLE
+
+        if (fondoDeMarca) {
+            // Sin carruseles no hay nada que cargar ni que rotar, y tampoco
+            // tiene sentido el cartel de "cargando" o "no hay nada".
+            binding.tvHomeEmpty.visibility = View.GONE
+            stopCarousel()
+            return
+        }
+
         // Fila 1: lo más nuevo. Fila 2: lo que sigue, sin repetir nada de la primera.
         val todo = Catalog.newest(this, limit = 40)
         val fila1 = todo.take(20)
@@ -620,14 +659,32 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    /** Con el Perfil de niños activo, Personalizar y Cuenta quedan ocultos. */
+    /**
+     * Arma el menú superior según el modo, y lo recorta dentro del perfil de niños.
+     *
+     * **Móvil:** tres iconos y nada más — actualizar, lupa y engranaje. Control
+     * parental, multipantalla y cuenta se esconden de la barra y pasan a vivir
+     * detrás del engranaje ([showQuickMenu]). Como no queda ningún ítem fuera de
+     * la barra, Android deja de dibujar los tres puntos: no hay que ocultarlos,
+     * dejan de existir.
+     *
+     * **TV:** igual que siempre, los cinco iconos sueltos. En una pantalla ancha
+     * entran de sobra, y con control remoto esconder cosas detrás de un menú
+     * agrega pulsaciones en vez de ahorrarlas.
+     *
+     * **Perfil de niños:** solo queda "actualizar", en los dos modos.
+     */
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
-        // Dentro del perfil de niños solo queda "actualizar": ni búsqueda global,
-        // ni control parental, ni multi, ni cuenta.
-        menu.findItem(R.id.action_multi)?.isVisible = !kidsMode
+        val movil = DeviceMode.isMobile(this)
+
         menu.findItem(R.id.action_search)?.isVisible = !kidsMode
-        menu.findItem(R.id.action_parental)?.isVisible = !kidsMode
-        menu.findItem(R.id.action_account)?.isVisible = !kidsMode
+        // El engranaje solo existe en móvil
+        menu.findItem(R.id.action_quick)?.isVisible = movil && !kidsMode
+        // Y estos tres, solo cuando NO están agrupados detrás del engranaje
+        val sueltos = !kidsMode && !movil
+        menu.findItem(R.id.action_parental)?.isVisible = sueltos
+        menu.findItem(R.id.action_multi)?.isVisible = sueltos
+        menu.findItem(R.id.action_account)?.isVisible = sueltos
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -638,8 +695,52 @@ class MainActivity : AppCompatActivity() {
             R.id.action_parental -> openParentalSettings()
             R.id.action_multi -> startActivity(Intent(this, MultiScreenActivity::class.java))
             R.id.action_account -> startActivity(Intent(this, SettingsActivity::class.java))
+            R.id.action_quick -> showQuickMenu()
         }
         return true
+    }
+
+    /**
+     * Despliega los tres iconos del engranaje, colgados de él.
+     *
+     * Van sin etiqueta, como pidió el diseño. Para que eso no sea un problema,
+     * cada uno lleva contentDescription (lectores de pantalla) y un mensaje
+     * emergente al mantenerlo pulsado (TooltipCompat): un icono sin texto se
+     * entiende igual, solo que hay que dar la manera de averiguarlo.
+     */
+    private fun showQuickMenu() {
+        // El ancla es la vista del propio ítem dentro de la barra: comparte el
+        // id del ítem del menú, así que se encuentra por ahí.
+        val ancla = binding.toolbar.findViewById<View>(R.id.action_quick) ?: return
+
+        val vista = layoutInflater.inflate(R.layout.popup_quick_menu, binding.root, false)
+        val popup = PopupWindow(
+            vista,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true // enfocable: se cierra al tocar afuera o con Atrás
+        )
+        popup.elevation = 12f * resources.displayMetrics.density
+
+        fun accion(id: Int, titulo: Int, alTocar: () -> Unit) {
+            val boton = vista.findViewById<View>(id)
+            TooltipCompat.setTooltipText(boton, getString(titulo))
+            boton.setOnClickListener {
+                popup.dismiss()
+                alTocar()
+            }
+        }
+
+        accion(R.id.quickParental, R.string.action_parental) { openParentalSettings() }
+        accion(R.id.quickMulti, R.string.nav_multi) {
+            startActivity(Intent(this, MultiScreenActivity::class.java))
+        }
+        accion(R.id.quickAccount, R.string.action_account) {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        val margen = (6 * resources.displayMetrics.density).toInt()
+        popup.showAsDropDown(ancla, 0, margen, Gravity.END)
     }
 
     // ---------------- Perfil de niños ----------------
@@ -961,31 +1062,81 @@ class MainActivity : AppCompatActivity() {
 
     // ---------------- Radios del mundo ----------------
 
+    /**
+     * Radios en dos niveles: carpetas arriba, contenido de la carpeta abajo.
+     *
+     *     🌎 Países · 🎪 Tomorrowland · 🎛️ Electrónica
+     *     └─ 🇪🇸 España · 🇺🇸 EE.UU. · 🇲🇽 México · ...
+     *
+     * Antes era una sola fila con España, Loca FM, Tomorrowland y doce países
+     * seguidos: marcas y lugares mezclados en la misma línea, y había que
+     * desplazarse un buen rato para llegar al final.
+     *
+     * Al volver a la sección se recupera la carpeta donde estaba el usuario, no
+     * se vuelve siempre a Países.
+     */
     private fun showRadio() {
         binding.tvSectionTitle.setText(R.string.section_radio)
         binding.tvSectionTitle.visibility = View.VISIBLE
-        renderRadioChips()
-        loadRadio(currentRadioSource ?: RadioCatalog.sources.first())
+
+        val carpeta = RadioCatalog.folderOf(currentRadioSource?.id) ?: RadioCatalog.defaultFolder
+        openRadioFolder(carpeta, currentRadioSource ?: carpeta.sources.first())
     }
 
-    private fun renderRadioChips() {
+    /** Abre una carpeta: repinta las dos filas y carga la fuente indicada. */
+    private fun openRadioFolder(
+        folder: RadioCatalog.Folder,
+        source: RadioCatalog.Source = folder.sources.first()
+    ) {
+        currentRadioFolder = folder
+        // Se fija antes de dibujar: si no, la segunda fila se pinta una vez con
+        // la fuente de la carpeta anterior todavía marcada y loadRadio tiene que
+        // corregirlo enseguida. Funciona igual, pero se ve el parpadeo.
+        currentRadioSource = source
+        renderRadioFolderChips()
+        renderRadioSourceChips(folder)
+        loadRadio(source)
+    }
+
+    private fun renderRadioFolderChips() {
         binding.categoryContainer.removeAllViews()
-        RadioCatalog.sources.forEach { source ->
+        RadioCatalog.folders.forEach { folder ->
             val chip: TextView =
                 ItemCategoryBinding.inflate(layoutInflater, binding.categoryContainer, false).root
+            chip.text = "${folder.icon}  ${folder.name}"
+            chip.tag = folder.id
+            Appearance.applyChipState(chip, folder.id == currentRadioFolder?.id)
+            chip.setOnClickListener { openRadioFolder(folder) }
+            binding.categoryContainer.addView(chip)
+        }
+    }
+
+    /**
+     * Segunda fila. Una carpeta con una sola fuente (Tomorrowland) no tiene
+     * nada que elegir: la fila se oculta en vez de mostrar un chip solitario
+     * que además ya estaría seleccionado.
+     */
+    private fun renderRadioSourceChips(folder: RadioCatalog.Folder) {
+        binding.radioSubContainer.removeAllViews()
+        binding.radioSubScroll.visibility = if (folder.hasChoices) View.VISIBLE else View.GONE
+        if (!folder.hasChoices) return
+
+        folder.sources.forEach { source ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.radioSubContainer, false).root
             chip.text = "${source.flag}  ${source.name}"
             chip.tag = source.id
             Appearance.applyChipState(chip, source.id == currentRadioSource?.id)
             chip.setOnClickListener { loadRadio(source) }
-            binding.categoryContainer.addView(chip)
+            binding.radioSubContainer.addView(chip)
         }
     }
 
     private fun loadRadio(source: RadioCatalog.Source) {
         currentRadioSource = source
-        // Repinta los chips para que se vea cuál está abierto
-        for (i in 0 until binding.categoryContainer.childCount) {
-            val chip = binding.categoryContainer.getChildAt(i) as? TextView ?: continue
+        // Repinta la fila de fuentes para que se vea cuál está abierta
+        for (i in 0 until binding.radioSubContainer.childCount) {
+            val chip = binding.radioSubContainer.getChildAt(i) as? TextView ?: continue
             Appearance.applyChipState(chip, chip.tag == source.id)
         }
         setLoading(true)

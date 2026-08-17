@@ -14,17 +14,43 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.miiptv.app.api.Session
+import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.databinding.ActivitySplashBinding
 
 /**
  * Pantalla de intro.
  * - Si existe res/raw/intro.mp4, lo reproduce a pantalla completa.
- * - Si no existe, muestra una animación por código: el logo aparece con
- *   fade + zoom, y debajo el nombre de la app ("PlayMix TV") se desliza
- *   hacia arriba con fade. Sin depender de ningún archivo externo.
+ * - Si no existe, muestra una animación por código, sin archivos externos.
+ *
+ * ---------------------------------------------------------------------------
+ * SOBRE EL TIEMPO DE ARRANQUE
+ *
+ * La intro antes duraba 2200 ms **fijos**, y eran 2200 ms de nada: la app no
+ * aprovechaba ese rato para hacer trabajo real, así que era tiempo de espera
+ * puro sumado al arranque.
+ *
+ * Ahora hace dos cosas distintas:
+ *
+ *  1. La animación dura [INTRO_MS] (menos de la mitad) y es más suave: entra
+ *     con un fundido corto en vez de un zoom marcado.
+ *  2. Mientras se ve la intro, **se empieza a bajar el catálogo**. Antes eso
+ *     arrancaba recién al abrir MainActivity, o sea después de la intro. Ahora
+ *     las dos cosas pasan a la vez, y el Inicio suele estar listo cuando la
+ *     intro termina.
+ *
+ * Sumado: la intro se ve, pero deja de costar tiempo.
+ *
+ * Además se puede tocar la pantalla para saltarla, cosa que antes solo
+ * funcionaba con el video.
+ * ---------------------------------------------------------------------------
  */
 class SplashActivity : AppCompatActivity() {
+
+    private companion object {
+        /** Cuánto se ve la intro animada. Antes eran 2200 ms. */
+        const val INTRO_MS = 900L
+    }
 
     private var player: ExoPlayer? = null
     private var proceeded = false
@@ -36,6 +62,11 @@ class SplashActivity : AppCompatActivity() {
         val binding = ActivitySplashBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        precargarCatalogo()
+
+        // Tocar en cualquier lado saltea la intro
+        binding.root.setOnClickListener { proceed() }
+
         val videoResId = resources.getIdentifier("intro", "raw", packageName)
 
         if (videoResId != 0) {
@@ -43,6 +74,23 @@ class SplashActivity : AppCompatActivity() {
         } else {
             playAnimatedIntro(binding)
         }
+    }
+
+    /**
+     * Arranca la descarga del catálogo mientras se ve la intro.
+     *
+     * Es lo que hace que la animación no cueste tiempo: el trabajo pesado del
+     * arranque (bajar canales, películas y series del panel) pasa a ocurrir
+     * DURANTE la intro en vez de después.
+     *
+     * [Catalog] es un objeto único que vive mientras vive el proceso, así que
+     * lo que se baje acá lo encuentra MainActivity ya cargado. Se pasa una
+     * función vacía como oyente: acá no hay nada que redibujar, y al no capturar
+     * nada de la Activity no deja ninguna referencia colgada al cerrarse.
+     */
+    private fun precargarCatalogo() {
+        if (!Session.isLoggedIn(this)) return
+        Catalog.ensureLoaded(applicationContext) { }
     }
 
     private fun playVideoIntro(binding: ActivitySplashBinding, videoResId: Int) {
@@ -68,35 +116,57 @@ class SplashActivity : AppCompatActivity() {
         handler.postDelayed({ proceed() }, 12000) // por si el video no termina nunca
     }
 
+    /**
+     * Intro por código: un resplandor que se abre, el logo que aparece y el
+     * nombre que sube. Todo en [INTRO_MS].
+     *
+     * La versión anterior arrancaba el logo al 60% de su tamaño y lo estiraba
+     * hasta el 100%: un salto grande, que en pantallas chicas se veía brusco.
+     * Ahora parte del 88%, así que se lee como que "se asienta" en lugar de
+     * saltar. Es la diferencia entre notar la animación y sentirla.
+     */
     private fun playAnimatedIntro(binding: ActivitySplashBinding) {
+        val glow = binding.introGlow
         val logo = binding.ivLogoFallback
         val name = binding.tvAppName
-
-        logo.scaleX = 0.6f
-        logo.scaleY = 0.6f
-        name.translationY = 40f
-
-        val logoFade = ObjectAnimator.ofFloat(logo, View.ALPHA, 0f, 1f).setDuration(500)
-        val logoZoomX = ObjectAnimator.ofFloat(logo, View.SCALE_X, 0.6f, 1f).setDuration(500)
-        val logoZoomY = ObjectAnimator.ofFloat(logo, View.SCALE_Y, 0.6f, 1f).setDuration(500)
-
-        val nameFade = ObjectAnimator.ofFloat(name, View.ALPHA, 0f, 1f).setDuration(450)
-        val nameSlide = ObjectAnimator.ofFloat(name, View.TRANSLATION_Y, 40f, 0f).setDuration(450)
-        nameFade.startDelay = 250
-        nameSlide.startDelay = 250
-
-        // El crédito entra último, más suave
         val by = binding.tvSplashBy
-        val byFade = ObjectAnimator.ofFloat(by, View.ALPHA, 0f, 1f).setDuration(400)
-        byFade.startDelay = 600
+
+        logo.scaleX = 0.88f
+        logo.scaleY = 0.88f
+        name.translationY = 18f
+
+        // Resplandor: se abre y se apaga solo, como un destello
+        glow.scaleX = 0.55f
+        glow.scaleY = 0.55f
+        val glowIn = ObjectAnimator.ofFloat(glow, View.ALPHA, 0f, 0.55f).setDuration(360)
+        val glowOut = ObjectAnimator.ofFloat(glow, View.ALPHA, 0.55f, 0f).setDuration(480)
+        glowOut.startDelay = 360
+        val glowX = ObjectAnimator.ofFloat(glow, View.SCALE_X, 0.55f, 1.3f).setDuration(840)
+        val glowY = ObjectAnimator.ofFloat(glow, View.SCALE_Y, 0.55f, 1.3f).setDuration(840)
+
+        val logoFade = ObjectAnimator.ofFloat(logo, View.ALPHA, 0f, 1f).setDuration(420)
+        val logoZoomX = ObjectAnimator.ofFloat(logo, View.SCALE_X, 0.88f, 1f).setDuration(520)
+        val logoZoomY = ObjectAnimator.ofFloat(logo, View.SCALE_Y, 0.88f, 1f).setDuration(520)
+
+        val nameFade = ObjectAnimator.ofFloat(name, View.ALPHA, 0f, 1f).setDuration(340)
+        val nameSlide = ObjectAnimator.ofFloat(name, View.TRANSLATION_Y, 18f, 0f).setDuration(340)
+        nameFade.startDelay = 170
+        nameSlide.startDelay = 170
+
+        val byFade = ObjectAnimator.ofFloat(by, View.ALPHA, 0f, 1f).setDuration(300)
+        byFade.startDelay = 330
 
         AnimatorSet().apply {
-            playTogether(logoFade, logoZoomX, logoZoomY, nameFade, nameSlide, byFade)
+            playTogether(
+                glowIn, glowOut, glowX, glowY,
+                logoFade, logoZoomX, logoZoomY,
+                nameFade, nameSlide, byFade
+            )
             interpolator = DecelerateInterpolator()
             start()
         }
 
-        handler.postDelayed({ proceed() }, 2200)
+        handler.postDelayed({ proceed() }, INTRO_MS)
     }
 
     private fun proceed() {
@@ -109,6 +179,10 @@ class SplashActivity : AppCompatActivity() {
             else -> LoginActivity::class.java
         }
         startActivity(Intent(this, next))
+        // Fundido entre la intro y la pantalla siguiente. Sin esto el cambio es
+        // un corte seco que hace que la intro se sienta más larga de lo que es.
+        @Suppress("DEPRECATION")
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         finish()
     }
 

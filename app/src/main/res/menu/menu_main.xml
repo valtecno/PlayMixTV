@@ -7,14 +7,14 @@
         android:title="@string/action_refresh"
         android:icon="@drawable/ic_refresh"
         app:iconTint="@color/star_active"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_search"
         android:title="@string/action_search"
         android:icon="@drawable/ic_search"
         app:iconTint="@color/text_light"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_parental"
@@ -36,5 +36,23 @@
         android:icon="@drawable/ic_account"
         app:iconTint="@color/text_light"
         app:showAsAction="ifRoom" />
+
+    <!--
+        Engranaje: SOLO se muestra en modo móvil (lo decide onPrepareOptionsMenu).
+
+        Reemplaza a los tres puntos del desbordamiento. Al no quedar ningún ítem
+        fuera de la barra, Android deja de dibujar los tres puntos por su cuenta:
+        no hay que ocultarlos, simplemente dejan de existir.
+
+        Detrás de él se agrupan control parental, multipantalla y cuenta, que en
+        móvil se ocultan de la barra. Así quedan exactamente tres iconos arriba:
+        actualizar, lupa y engranaje, en ese orden.
+    -->
+    <item
+        android:id="@+id/action_quick"
+        android:title="@string/action_quick"
+        android:icon="@drawable/ic_settings"
+        app:iconTint="@color/text_light"
+        app:showAsAction="always" />
 
 </menu>

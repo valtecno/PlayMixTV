@@ -51,4 +51,25 @@ interface RadioApi {
         @Query("reverse") reverse: Boolean = true,
         @Query("hidebroken") hideBroken: Boolean = true
     ): Call<List<RadioStation>>
+
+    /**
+     * Emisoras por etiqueta de género: "house", "techno", "trance"...
+     *
+     * Es lo que arma la carpeta Electrónica. Buscar por NOMBRE no sirve para un
+     * género: una emisora de house casi nunca se llama "house", y al revés
+     * aparecerían todas las que tengan esa palabra suelta en el nombre. La
+     * etiqueta la carga la propia comunidad del directorio y describe lo que la
+     * emisora realmente pincha.
+     *
+     * Se usa la variante *exact* a propósito: sin ella, "house" también trae
+     * "deep house progressive" y compañía, y la lista se llena de repetidos.
+     */
+    @GET("json/stations/bytagexact/{tag}")
+    fun byTag(
+        @Path("tag") tag: String,
+        @Query("limit") limit: Int = 120,
+        @Query("order") order: String = "votes",
+        @Query("reverse") reverse: Boolean = true,
+        @Query("hidebroken") hideBroken: Boolean = true
+    ): Call<List<RadioStation>>
 }

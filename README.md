@@ -183,6 +183,104 @@ de robarse el foco, que era lo que convertía la grilla en un laberinto (derecha
 te llevaba a la estrella de la misma película en vez de a la de al lado). A
 cambio, **pulsación larga del botón central** marca o desmarca el favorito.
 
+## 6.1.2 Imagen de marca en el Inicio (solo móvil)
+
+En **modo móvil** el Inicio muestra una imagen de marca a pantalla completa en
+lugar de los carruseles. En **modo TV** no cambia nada: siguen las dos columnas
+de "Novedades" y "Agregado recientemente" rotando como siempre.
+
+Va traslúcida (`alpha` 0.35) y con un velo que la funde con el fondo de la app
+por arriba y por abajo, para que no compita con el menú ni con la barra de
+título.
+
+**Dos garantías que no dependen del código.** La imagen vive dentro de
+`homeArea`, que en el layout es hermano del menú y va *después* de él en el
+LinearLayout vertical raíz. O sea:
+
+1. Empieza físicamente debajo del menú → no puede taparlo nunca.
+2. `homeArea` entero se oculta al salir del Inicio → no puede asomarse en otra
+   sección.
+
+Ninguna de las dos depende de que un `if` se acuerde de apagarla.
+
+**Cambiar la imagen:** reemplazá `app/src/main/res/drawable-nodpi/home_backdrop.jpg`.
+Conviene formato vertical (la actual es 768×1376) y JPEG, no PNG: la misma
+imagen pesa 140 KB en JPEG contra 1 MB en PNG.
+
+**Cambiar cuánto se ve:** `android:alpha` del `ImageView` con id `ivHomeBackdrop`
+en `activity_main.xml`. Referencia: 0.20 apenas insinuada · 0.35 actual ·
+0.60 bien presente.
+
+## 6.1.3 Intro y menú superior
+
+### Intro al abrir
+La intro pasó de **2200 ms a 900 ms**, y sobre todo dejó de ser tiempo muerto:
+mientras se ve, **ya se está bajando el catálogo**. Antes eso arrancaba recién
+al abrir el Inicio, o sea después de la intro; ahora las dos cosas pasan a la
+vez y el Inicio suele estar listo cuando la animación termina.
+
+La animación también es más suave: el logo entra al 88% de su tamaño en vez del
+60%, así se asienta en lugar de saltar, con un resplandor que se abre y se apaga
+detrás. Se sale con un fundido en vez de un corte seco, y se puede tocar la
+pantalla para saltearla (antes eso solo funcionaba con el video).
+
+Si existe `res/raw/intro.mp4` se reproduce ese video y nada de esto aplica.
+
+### Menú superior en móvil
+Quedan **tres iconos**: actualizar, lupa y engranaje. El engranaje reemplaza a
+los tres puntos, y detrás de él aparecen **candado** (control parental),
+**multipantalla** y **cuenta**, en fila y sin texto.
+
+Los tres puntos no hay que ocultarlos: al no quedar ningún ítem fuera de la
+barra, Android deja de dibujarlos solo.
+
+Un icono sin etiqueta se entiende igual, pero hay que dar la forma de
+averiguarlo: cada uno lleva `contentDescription` para lectores de pantalla y un
+mensaje emergente al mantenerlo pulsado.
+
+**En modo TV no cambia nada**: siguen los cinco iconos sueltos en la barra. En
+una pantalla ancha entran de sobra, y con control remoto esconder cosas detrás
+de un menú agrega pulsaciones en vez de ahorrarlas.
+
+## 6.1.4 Radios en carpetas
+
+La sección pasó de una fila única a **dos niveles**:
+
+```
+🌎 Países  ·  🎪 Tomorrowland  ·  🎛️ Electrónica
+└─ 🇪🇸 España · 🇺🇸 EE.UU. · 🇲🇽 México · 🇧🇷 Brasil · ...
+```
+
+Antes era una sola fila con España, Loca FM, Tomorrowland y doce países
+seguidos: marcas y lugares mezclados en la misma línea, y había que desplazarse
+un buen rato para llegar al final.
+
+**Países** se abre por defecto. **Tomorrowland** queda igual que estaba; al
+tener una sola fuente, no muestra la segunda fila (no hay nada que elegir).
+**Electrónica** agrupa Loca FM con cinco géneros: House, Techno, Trance, Dance
+y Electrónica general.
+
+Los géneros se buscan por **etiqueta** del directorio, no por nombre. Para eso
+se agregó `byTag` a `RadioApi`: una emisora de techno casi nunca se llama
+"techno", y buscar por nombre traería cualquiera que tenga esa palabra suelta.
+La etiqueta la carga la comunidad de Radio Browser y describe lo que la emisora
+realmente pincha.
+
+Las listas de marca (Loca FM, Tomorrowland) se ordenan alfabéticamente y se
+limpian de repetidos, porque ahí funcionan como un índice de estilos. Países y
+géneros no: ahí el orden por votos es información útil, las más escuchadas
+primero.
+
+**Agregar una carpeta o un género** es editar `RadioCatalog.folders`. No hay que
+tocar `MainActivity`: las dos filas se dibujan solas a partir de esa lista.
+
+### Favorito en el reproductor de radio
+Al lado de "Inicio" hay ahora un botón de favorito con etiqueta, que se rellena
+con el color de acento y cambia a "Guardada" cuando la emisora está marcada.
+Hace lo mismo que la estrella de la barra superior, que en una tele es diminuta
+y queda lejos de la mano. Los dos se mantienen sincronizados y siguen a la
+emisora que suena al pasar de una a otra.
+
 ## 6.2 Calidad del proyecto
 
 ### Tests

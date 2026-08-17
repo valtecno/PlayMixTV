@@ -584,15 +584,39 @@ class PlayerActivity : AppCompatActivity() {
         ).show()
     }
 
+    /**
+     * Deja los dos botones de favorito diciendo lo mismo.
+     *
+     * Son dos: la estrella de la barra superior y, en radio, el botón con
+     * etiqueta que está al lado de Inicio. Se pueden tocar los dos, así que si
+     * uno no se repintara quedarían contradiciéndose en pantalla.
+     */
     private fun refreshFavoriteIcon() {
         val item = favoriteItem ?: return
         val fav = Favorites.isFavorite(this, item)
+
         binding.btnFavorite.setImageResource(
             if (fav) android.R.drawable.star_big_on else android.R.drawable.star_big_off
         )
         binding.btnFavorite.setColorFilter(
             ContextCompat.getColor(this, if (fav) R.color.star_active else R.color.text_light)
         )
+
+        if (!isRadio) return
+        // Guardada: se rellena con el color de acento. Sin guardar: apagada.
+        // El texto también cambia, porque un corazón encendido puede leerse
+        // igual como "está guardada" que como "tocá acá para guardarla".
+        Appearance.applyLevel(
+            binding.btnRadioFavorite,
+            if (fav) Appearance.Level.PRIMARY else Appearance.Level.INACTIVE,
+            22f
+        )
+        binding.btnRadioFavorite.setText(
+            if (fav) R.string.radio_fav_saved else R.string.radio_fav_add
+        )
+        binding.btnRadioFavorite.compoundDrawablesRelative.forEach {
+            it?.mutate()?.setTint(binding.btnRadioFavorite.currentTextColor)
+        }
     }
 
     // ---------------- Pistas: audio, subtítulos y resolución ----------------
@@ -726,6 +750,15 @@ class PlayerActivity : AppCompatActivity() {
             )
             finish()
         }
+
+        // Favorito con etiqueta, al lado de Inicio. Hace lo mismo que la
+        // estrella de la barra de arriba, que en una tele es diminuta y queda
+        // lejos de la mano.
+        binding.btnRadioFavorite.visibility =
+            if (favoriteItem == null) View.GONE else View.VISIBLE
+        binding.btnRadioFavorite.setOnClickListener { toggleFavorite() }
+        // Deja el botón con el estado correcto de entrada (guardada o no)
+        refreshFavoriteIcon()
 
         binding.btnPrevStation.setOnClickListener { changeStation(-1) }
         binding.btnNextStation.setOnClickListener { changeStation(+1) }
