@@ -31,6 +31,7 @@ import com.miiptv.app.util.History
 import com.miiptv.app.util.KidsFilter
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
+import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.PlayerFactory
 import com.miiptv.app.util.PpvFilter
 import com.miiptv.app.util.RadioCatalog
@@ -112,6 +113,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         adapter = ContentAdapter(onClick = { item -> handleItemClick(item) })
+        // Con el remoto la tarjeta enfocada se pinta y se agranda un poco; con
+        // el dedo, todo queda como siempre.
+        adapter.remoteMode = RemoteControl.isEnabled(this)
         binding.recyclerChannels.layoutManager = GridLayoutManager(this, 1)
         binding.recyclerChannels.adapter = adapter
 
@@ -131,6 +135,20 @@ class MainActivity : AppCompatActivity() {
         applyKidsVisibility()
 
         selectSection(if (kidsMode) Section.LIVE else Section.HOME)
+
+        /*
+         * Foco inicial en el menú superior.
+         *
+         * Sin esto, al abrir la app con un control remoto no hay nada enfocado:
+         * la primera flecha que se pulsa se "pierde" (Android la usa para elegir
+         * un primer destino) y parece que el remoto no responde. Dejando el
+         * menú enfocado de entrada, la app arranca mostrando dónde está parado.
+         */
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(
+                if (kidsMode) binding.navLive else binding.navHome
+            )
+        }
         // Si la app abre directo en el perfil de niños (venía activo de antes),
         // hay que avisar la regla igual que cuando se activa con el botón.
         if (kidsMode) {
@@ -733,33 +751,25 @@ class MainActivity : AppCompatActivity() {
      * Pone primera en la lista (izquierda del todo) la carpeta/categoría que
      * corresponde según el sistema conectado ahora mismo (Sistema L / Sistema XL),
      * tanto para elegirla como contenido por defecto como para su posición visual
-     * en los chips. Estas carpetas existen con nombres distintos en cada panel:
-     *  - Canales: Sistema L trae "Cinema HD HQ", Sistema XL trae "Cinema Latino".
-     *  - PPV: Sistema L trae "PPV Futbol Sudamericano", Sistema XL trae "Chile Primera".
-     *  - Películas: Sistema XL trae "2026", Sistema L trae "VOD Estrenos".
+     * en los chips. Cuál es la carpeta preferida de cada servidor se declara en
+     * gradle.properties (playmix.servers), porque cambia de panel a panel:
+     * Sistema L trae "Cinema HD HQ" donde Sistema XL trae "Cinema Latino".
      * Si no se encuentra ninguna coincidencia (otro servidor, o el panel no la
      * trae esta vez), la lista queda igual que vino del servidor.
      */
     private fun reorderPreferredFirst(list: List<Category>): List<Category> {
-        val sistema = Servers.currentLabel(this)
+        // Qué carpeta prefiere cada servidor ya no está escrito acá: viene de
+        // gradle.properties, junto a la definición del servidor. Antes esto era
+        // un when contra Servers.all[0]/[1], o sea contra la POSICIÓN en la
+        // lista: agregar un tercer servidor al principio hacía que Sistema L
+        // empezara a abrir las carpetas de Sistema XL, sin ningún error visible.
+        val servidor = Servers.current(this)
         val candidatas: List<String> = when (section) {
-            Section.LIVE -> when (sistema) {
-                Servers.all[0].label -> listOf("cinema hd hq")
-                Servers.all[1].label -> listOf("cinema latino")
-                else -> emptyList()
-            }
-            Section.PPV -> when (sistema) {
-                Servers.all[0].label -> listOf("sudamericano", "sudamericana")
-                Servers.all[1].label -> listOf("chile primera")
-                else -> emptyList()
-            }
-            Section.MOVIES -> when (sistema) {
-                Servers.all[1].label -> listOf("2026")
-                Servers.all[0].label -> listOf("vod estrenos", "estrenos")
-                else -> emptyList()
-            }
-            else -> emptyList()
-        }
+            Section.LIVE -> servidor?.preferidas(Servers.Preferidas.CANALES)
+            Section.PPV -> servidor?.preferidas(Servers.Preferidas.PPV)
+            Section.MOVIES -> servidor?.preferidas(Servers.Preferidas.PELICULAS)
+            else -> null
+        }.orEmpty()
         if (candidatas.isEmpty()) return list
         // Para cada candidata, primero se busca una carpeta con el nombre EXACTO
         // (evita que "2026" agarre por error "Copa Mundial 2026" o "Nominados al

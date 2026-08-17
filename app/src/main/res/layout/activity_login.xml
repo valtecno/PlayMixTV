@@ -35,42 +35,18 @@
         android:textSize="13sp"
         android:layout_marginBottom="8dp" />
 
+    <!--
+        Contenedor vacío: LoginActivity mete acá un chip por cada servidor
+        configurado (ver gradle.properties -> playmix.servers). Antes eran dos
+        TextView fijos, o sea que agregar un tercer servidor obligaba a tocar
+        este archivo, LoginActivity y Servers.kt a la vez.
+    -->
     <LinearLayout
+        android:id="@+id/serverChips"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="2"
-        android:layout_marginBottom="20dp">
-
-        <TextView
-            android:id="@+id/chipServer1"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:gravity="center"
-            android:padding="14dp"
-            android:textColor="@color/text_light"
-            android:textStyle="bold"
-            android:text="Servidor 1"
-            android:focusable="true"
-            android:clickable="true" />
-
-        <TextView
-            android:id="@+id/chipServer2"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            android:gravity="center"
-            android:padding="14dp"
-            android:textColor="@color/text_light"
-            android:textStyle="bold"
-            android:text="Servidor 2"
-            android:focusable="true"
-            android:clickable="true" />
-
-    </LinearLayout>
+        android:layout_marginBottom="20dp" />
 
     <EditText
         android:id="@+id/etUsername"

@@ -9,6 +9,8 @@
     <string name="hint_password">Contraseña</string>
     <string name="btn_login">Conectar</string>
     <string name="login_error">No se pudo conectar. Revisa tus datos.</string>
+    <!-- Solo se ve si la app se compiló sin la lista de servidores (playmix.servers vacío) -->
+    <string name="login_sin_servidores">Esta versión se compiló sin servidores configurados.</string>
     <string name="loading">Cargando…</string>
     <string name="live_tv">TV en vivo</string>
 

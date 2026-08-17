@@ -14,6 +14,22 @@ Android TV (aparece en el launcher de TV gracias al filtro LEANBACK_LAUNCHER).
 2. Deja que Gradle sincronice (puede tardar unos minutos la primera vez, descarga dependencias).
 3. Conecta un celular Android (o usa un emulador) y presiona **Run ▶**.
 
+### Desde la terminal
+El proyecto trae el **wrapper de Gradle**, así que no hace falta tener Gradle
+instalado: el propio script descarga la versión exacta (8.7) la primera vez.
+
+```bash
+./gradlew test            # tests unitarios (segundos, sin emulador)
+./gradlew assembleDebug   # APK de depuración
+./gradlew assembleRelease # APK de publicación (minificado con R8)
+```
+
+En Windows es `gradlew.bat` en vez de `./gradlew`.
+
+> `gradle/wrapper/gradle-wrapper.jar` **tiene que estar en el repositorio**. Sin
+> ese archivo `./gradlew` no arranca en una máquina limpia ni en GitHub Actions.
+> El `.gitignore` lo protege explícitamente.
+
 ## 3. Personalizar con TU marca
 
 ### Nombre de la app
@@ -50,11 +66,42 @@ app/src/main/res/raw/intro.mp4
   material (grabado por vos, comprado con licencia, o de bancos libres).
 
 ## 4. Conectar tu servidor privado
-La app NO trae credenciales precargadas — al abrirla por primera vez pide:
-- **URL del servidor**: ej. `http://tuservidor.com:8080` (sin barra final)
-- **Usuario** y **Contraseña** de tu cuenta Xtream Codes
+La app NO trae credenciales precargadas — al abrirla por primera vez pide
+**usuario** y **contraseña** de la cuenta Xtream Codes, y con qué sistema
+conectarse. Esos datos se guardan solo en el dispositivo (SharedPreferences).
 
-Estos datos se guardan localmente en el dispositivo (SharedPreferences).
+La URL nunca se le muestra ni se le pide al usuario: elige "Sistema L" o
+"Sistema XL" y listo.
+
+### Editar la lista de servidores
+
+Se edita en **`gradle.properties`**, propiedad `playmix.servers`. No hay que
+tocar ni una línea de Kotlin, y la pantalla de login se adapta sola a la
+cantidad de servidores que haya (uno, dos o cinco).
+
+```properties
+playmix.servers=\
+  l|Sistema L|http://xdplayer.tv:8080|cinema hd hq|sudamericano,sudamericana|vod estrenos,estrenos;\
+  xl|Sistema XL|http://moontools.site:8080|cinema latino|chile primera|2026
+```
+
+Un servidor por bloque, separados por `;`, con los campos separados por `|`:
+
+| Campo | Qué es |
+|---|---|
+| `id` | Clave interna estable. **No la cambies una vez publicada**: es lo que usa el código para reconocer al servidor. |
+| `etiqueta` | Lo único que ve el usuario. |
+| `url` | Base del panel Xtream, sin barra final. |
+| `preferidas_canales` | Carpetas que se abren primero en Canales (separadas por comas). |
+| `preferidas_ppv` | Ídem para PPV. |
+| `preferidas_peliculas` | Ídem para Películas. |
+
+Los últimos tres son opcionales. Una entrada mal escrita se descarta sola sin
+tumbar a las demás (hay tests que lo verifican).
+
+**Para no dejar las direcciones en un repositorio público:** borrá el valor de
+`gradle.properties` y cargalo como secret `PLAYMIX_SERVERS` en GitHub. El
+workflow de publicación lo detecta y lo pasa con `-Pplaymix.servers=...`.
 
 > Si en vez de Xtream Codes usas una lista M3U simple, decime y te agrego
 > una segunda pantalla de login que solo pida la URL del .m3u — es un módulo aparte.
@@ -98,6 +145,81 @@ por la tienda.
 - **Multi-pantalla**: ícono en la barra superior abre una grilla de 4 canales en
   vivo simultáneos. Tocar un recuadro le da el audio; mantener presionado deja
   elegir qué canal va ahí (`MultiScreenActivity.kt`).
+
+## 6.1.1 Manejo con control remoto (modo TV)
+
+**Cuándo se activa.** Se deriva del modo elegido en la primera pantalla, no es
+un ajuste aparte:
+
+| Situación | Control remoto |
+|---|---|
+| Eligió **TV** | Activo, y **queda guardado** en el dispositivo |
+| Eligió **Móvil** | Inactivo: se usa el dedo |
+| Todavía no eligió | Se decide por hardware, así que en un televisor **funciona desde el primer arranque** |
+
+La detección mira tres señales, no una: que el aparato se declare televisor,
+que traiga la interfaz de Android TV (`FEATURE_LEANBACK`), o que **no tenga
+pantalla táctil**. Esta última salva a los decos baratos, que a veces no
+declaran ninguna de las dos primeras y solo se manejan con remoto.
+
+La pantalla de elección es la excepción: ahí el foco se resalta **siempre**,
+sin consultar nada. Es la única donde equivocarse deja al usuario encerrado —
+sin táctil y sin ver el foco, no hay forma de llegar hasta "TV" y confirmar.
+
+**Cómo se ve el foco.** El elemento sobre el que está el control remoto se pinta
+con un **lavado difuminado** del color de acento (el que el usuario eligió en
+Personalizar): un degradado que va de opaco a casi transparente, para que la
+carátula o el logo se sigan viendo por debajo, más un borde sólido y un leve
+relieve. Antes no se veía nada: los fondos se asignaban con un color plano, sin
+estado enfocado, y `selectableItemBackground` sobre una tarjeta de vidrio oscuro
+es invisible en un televisor.
+
+Cubre Películas, Series, PPV, Radios, Canales, Historial, Favoritos y el
+buscador (todo pasa por `ContentAdapter`), más los chips de categoría, los
+países de Radios, el menú superior y la pantalla de login.
+
+**Favoritos en TV.** Con el remoto la tarjeta se enfoca entera: la estrella deja
+de robarse el foco, que era lo que convertía la grilla en un laberinto (derecha
+te llevaba a la estrella de la misma película en vez de a la de al lado). A
+cambio, **pulsación larga del botón central** marca o desmarca el favorito.
+
+## 6.2 Calidad del proyecto
+
+### Tests
+```bash
+./gradlew test
+```
+Corren en la JVM, en segundos, sin emulador ni dispositivo. Cubren la lógica
+que puede fallar **en silencio**, que es la peligrosa:
+
+| Suite | Qué protege |
+|---|---|
+| `VersionTest` | Comparación de versiones del actualizador. Si se rompe, o la app nunca avisa que hay versión nueva, o avisa en bucle sobre una ya instalada. Incluye el caso clásico `1.10 > 1.9`. |
+| `ServersTest` | El parseo de `playmix.servers`. Un error de tipeo en `gradle.properties` no debe dejar la app sin servidores. |
+| `PpvFilterTest` | Qué categorías entran en PPV Fútbol. Cada palabra nueva en las listas puede meter o sacar carpetas enteras sin que se note. |
+| `KidsFilterTest` | Perfil de niños. Un falso positivo mete contenido no apto: los tests fijan que las exclusiones ganan sobre las palabras infantiles. |
+| `ModelsTest` | Mapeo Xtream → `ContentItem`, incluida la conversión del campo `added` que ordena "Novedades" y que llega como texto (a veces vacío). |
+
+El workflow de publicación **no publica si los tests están en rojo**.
+
+### Minificación (R8)
+El APK de release va minificado y ofuscado (`isMinifyEnabled` +
+`isShrinkResources`). Las reglas están en `app/proguard-rules.pro`, cada una con
+el motivo escrito al lado. Las dos que no se pueden tocar:
+
+1. **Decodificador FFmpeg.** Media3 lo carga por reflexión, así que ninguna línea
+   del proyecto lo nombra y R8 lo borraría. Sin la regla vuelve el "se ve pero no
+   se oye" — y solo en release, así que en depuración parecería que todo anda.
+2. **Modelos de `api/`.** `Favorites` e `History` guardan `ContentItem` en
+   SharedPreferences con los nombres reales de los campos. Si R8 los renombra,
+   los favoritos y el historial del usuario se pierden al actualizar.
+
+El mapa para desofuscar stack traces queda en
+`app/build/outputs/mapping/release/`; el workflow lo guarda como artifact
+privado (90 días), no lo adjunta a la Release pública.
+
+> Si aparece un fallo que **solo** pasa en release, el primer paso para
+> descartarlo es poner `isMinifyEnabled = false` en `app/build.gradle.kts`.
 
 ## 7. Próximos pasos posibles
 - Pantallas de VOD (películas) y Series (la API Xtream también las soporta:

@@ -3,6 +3,8 @@ name: Build APK
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:   # también podés lanzarlo a mano desde la pestaña "Actions"
 
 jobs:
@@ -21,8 +23,22 @@ jobs:
       - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      # Antes se llamaba a "gradle" a secas, o sea la versión que viniera
+      # instalada en el runner. Con el wrapper en el repositorio, acá y en
+      # cualquier máquina se compila con Gradle 8.7 exacto.
+      - name: Correr los tests
+        run: ./gradlew test --no-daemon
+
+      - name: Publicar el informe de tests
+        if: always()   # también cuando fallan, que es justo cuando hace falta
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-tests
+          path: app/build/reports/tests/
+          retention-days: 7
+
       - name: Compilar APK (debug, listo para instalar)
-        run: gradle assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Subir el APK como resultado
         uses: actions/upload-artifact@v4

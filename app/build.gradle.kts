@@ -23,6 +23,26 @@ android {
             "GITHUB_REPO",
             "\"" + (project.findProperty("playmix.repo") as String? ?: "") + "\""
         )
+
+        /*
+         * Lista de servidores (ver gradle.properties → playmix.servers).
+         *
+         * Antes estaba escrita dentro de Servers.kt. Al pasarla acá:
+         *  - agregar o mover un servidor no toca ni una línea de Kotlin;
+         *  - se puede sobreescribir en la compilación con -Pplaymix.servers=...,
+         *    así las direcciones reales no tienen por qué quedar en el repo.
+         *
+         * El escapado importa: el valor lleva "|" y ";" pero también podría
+         * llevar comillas, y esto termina inyectado tal cual dentro de un
+         * literal de Java en BuildConfig.
+         */
+        buildConfigField(
+            "String",
+            "SERVERS",
+            "\"" + (project.findProperty("playmix.servers") as String? ?: "")
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"") + "\""
+        )
     }
 
     /*
@@ -51,10 +71,37 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            /*
+             * R8: borra el código y los recursos que nadie usa, y renombra lo
+             * que queda. Sobre este proyecto son unos 25-40% menos de APK,
+             * porque Media3 + Retrofit + Gson + Picasso traen muchísimo más de
+             * lo que la app realmente toca.
+             *
+             * Lo que R8 NO puede adivinar es lo que se usa por reflexión: los
+             * modelos que viajan por Gson y el decodificador FFmpeg que Media3
+             * carga por nombre. Todo eso está protegido en proguard-rules.pro,
+             * con el motivo escrito al lado de cada regla.
+             *
+             * Si alguna vez hay un fallo que solo aparece en release, el primer
+             * paso para descartarlo es poner estas dos líneas en false.
+             */
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
             if (keystoreFile != null && keystoreFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
+        }
+
+        debug {
+            // Depuración siempre sin minificar: compila más rápido y los stack
+            // traces salen con los nombres reales.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 
@@ -70,8 +117,21 @@ android {
 
     buildFeatures {
         viewBinding = true
-        // Necesario para BuildConfig.GITHUB_REPO (AGP 8 lo pide explícito)
+        // Necesario para BuildConfig.GITHUB_REPO y BuildConfig.SERVERS (AGP 8 lo pide explícito)
         buildConfig = true
+    }
+
+    testOptions {
+        unitTests {
+            /*
+             * Los tests corren en la JVM, sin emulador. android.jar es un stub:
+             * cualquier método de Android lanza "Not mocked" al llamarse. Con
+             * esto devuelven el valor por defecto en vez de explotar, lo que
+             * evita tener que envolver todo en Robolectric para probar lógica
+             * que en realidad no toca Android.
+             */
+            isReturnDefaultValues = true
+        }
     }
 }
 
@@ -109,6 +169,9 @@ dependencies {
      * dependencia, tenés que ofrecer el código fuente bajo GPL-3.0. Para uso
      * personal no hay problema. Si preferís evitarlo, comentá esta línea: la
      * app compila igual, solo que sin soporte AC-3/DTS por software.
+     *
+     * OJO CON R8: este módulo se carga por reflexión. Ver la regla número 1 de
+     * proguard-rules.pro; sin ella el release se queda mudo.
      */
     implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.5.0+1")
 
@@ -119,4 +182,7 @@ dependencies {
 
     // Carga de imágenes (logos de canales)
     implementation("com.squareup.picasso:picasso:2.71828")
+
+    // ---- Tests de JVM (./gradlew test) ----
+    testImplementation("junit:junit:4.13.2")
 }

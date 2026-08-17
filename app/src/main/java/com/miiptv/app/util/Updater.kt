@@ -129,8 +129,8 @@ object Updater {
                     return Result.Failed("la versión publicada no trae APK")
                 }
 
-                val nueva = normalizar(etiqueta)
-                if (compare(nueva, normalizar(BuildConfig.VERSION_NAME)) <= 0) {
+                val nueva = Version.normalize(etiqueta)
+                if (!Version.isNewer(nueva, BuildConfig.VERSION_NAME)) {
                     Result.UpToDate
                 } else {
                     Result.Available(
@@ -143,23 +143,8 @@ object Updater {
         }
     }
 
-    /** "v1.4.2" y "V1.4.2 " son la misma versión que "1.4.2". */
-    private fun normalizar(v: String): String = v.trim().trimStart('v', 'V').trim()
-
-    /**
-     * Compara versiones por tramos numéricos: 1.10 es MAYOR que 1.9, cosa que
-     * una comparación de texto entendería al revés.
-     */
-    private fun compare(a: String, b: String): Int {
-        val pa = a.split('.', '-')
-        val pb = b.split('.', '-')
-        for (i in 0 until maxOf(pa.size, pb.size)) {
-            val na = pa.getOrNull(i)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-            val nb = pb.getOrNull(i)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-            if (na != nb) return na - nb
-        }
-        return 0
-    }
+    // normalizar() y compare() se mudaron a Version.kt: son lógica pura y ahí
+    // se pueden probar con tests de JVM, sin arrastrar Context ni OkHttp.
 
     // ---------------- Descarga e instalación ----------------
 

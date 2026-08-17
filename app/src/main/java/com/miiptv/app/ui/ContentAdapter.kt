@@ -4,6 +4,7 @@ import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.miiptv.app.R
@@ -12,15 +13,20 @@ import com.miiptv.app.databinding.ItemChannelBinding
 import com.miiptv.app.databinding.ItemPosterGridBinding
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.Parental
+import com.miiptv.app.util.RemoteControl
 import com.squareup.picasso.Picasso
 
 /**
  * Adapter unificado para canales, películas y series.
  *
  * Tiene dos presentaciones:
- *  - fila (por defecto): logo + nombre, para canales, historial y favoritos.
+ *  - fila (por defecto): logo + nombre, para canales, PPV, radios, historial y
+ *    favoritos.
  *  - póster (grilla): carátula grande, para Películas y Series, con la densidad
  *    de columnas que el usuario elija en "Personalizar".
+ *
+ * Las dos pasan por [RemoteControl.applyItemFocus], que es lo que hace que en
+ * TV se vea sobre qué tarjeta está parado el control remoto.
  */
 class ContentAdapter(
     private val onClick: (ContentItem) -> Unit,
@@ -35,6 +41,19 @@ class ContentAdapter(
     private val items = mutableListOf<ContentItem>()
 
     var posterMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
+    /**
+     * Manejo con control remoto. Lo fija MainActivity desde
+     * [RemoteControl.isEnabled]; acá solo cambia cómo se enfoca y cómo se marca
+     * un favorito, no el aspecto en reposo.
+     */
+    var remoteMode: Boolean = false
         set(value) {
             if (field != value) {
                 field = value
@@ -86,6 +105,8 @@ class ContentAdapter(
                 ivFavorite.imageTintList = starTint
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
+                // Fila a lo ancho: crece apenas, el color hace todo el trabajo
+                setupFocus(holder, item, root, escalaFoco = 1.02f)
             }
 
             is PosterHolder -> with(holder.binding) {
@@ -96,7 +117,44 @@ class ContentAdapter(
                 ivFavorite.imageTintList = starTint
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
+                // Póster de grilla: puede crecer más sin pisar a los vecinos
+                setupFocus(holder, item, root, escalaFoco = 1.05f)
             }
+        }
+    }
+
+    /**
+     * Resalte de foco y, en TV, forma alternativa de marcar favoritos.
+     *
+     * Con el remoto la tarjeta se enfoca entera (ver [RemoteControl.applyItemFocus]),
+     * así que la estrella deja de ser alcanzable con las flechas. A cambio, la
+     * pulsación larga del botón central marca o desmarca el favorito. Sin esto,
+     * arreglar la navegación habría dejado a los usuarios de TV sin poder usar
+     * favoritos, que es de las funciones más usadas de la app.
+     */
+    private fun setupFocus(
+        holder: RecyclerView.ViewHolder,
+        item: ContentItem,
+        root: View,
+        escalaFoco: Float
+    ) {
+        RemoteControl.applyItemFocus(root, remoteMode, escalaFoco = escalaFoco)
+
+        if (remoteMode) {
+            root.setOnLongClickListener {
+                val ahoraEsFavorito = toggleFavorite(holder, item)
+                Toast.makeText(
+                    root.context,
+                    if (ahoraEsFavorito) R.string.fav_added else R.string.fav_removed,
+                    Toast.LENGTH_SHORT
+                ).show()
+                true
+            }
+        } else {
+            // Las vistas se reciclan: hay que quitarlo explícitamente al volver
+            // a modo táctil, o una tarjeta reutilizada conservaría el listener.
+            root.setOnLongClickListener(null)
+            root.isLongClickable = false
         }
     }
 
@@ -108,10 +166,12 @@ class ContentAdapter(
         }
     }
 
-    private fun toggleFavorite(holder: RecyclerView.ViewHolder, item: ContentItem) {
-        Favorites.toggle(holder.itemView.context, item)
+    /** @return true si el ítem quedó marcado como favorito. */
+    private fun toggleFavorite(holder: RecyclerView.ViewHolder, item: ContentItem): Boolean {
+        val ahoraEsFavorito = Favorites.toggle(holder.itemView.context, item)
         val pos = holder.bindingAdapterPosition
         if (pos != RecyclerView.NO_POSITION) notifyItemChanged(pos)
         onFavoriteToggled?.invoke()
+        return ahoraEsFavorito
     }
 }

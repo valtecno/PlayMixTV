@@ -21,6 +21,7 @@ import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.History
 import com.miiptv.app.util.RecentSearches
+import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PinDialog
 import java.util.concurrent.Executors
@@ -60,7 +61,11 @@ class SearchActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
 
         adapter = ContentAdapter(onClick = { item -> openItem(item) })
+        // Igual que en el inicio: con control remoto hay que ver sobre qué
+        // resultado está parado el foco.
+        adapter.remoteMode = RemoteControl.isEnabled(this)
         binding.recyclerResults.layoutManager = LinearLayoutManager(this)
+        binding.recyclerResults.clipChildren = false
         binding.recyclerResults.adapter = adapter
         binding.recyclerResults.setHasFixedSize(true)
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Separación entre los chips de servidor de la pantalla de login.
+         Los chips se crean por código, así que la medida vive acá y no
+         suelta como un "6dp" perdido dentro de LoginActivity. -->
+    <dimen name="server_chip_gap">6dp</dimen>
+</resources>

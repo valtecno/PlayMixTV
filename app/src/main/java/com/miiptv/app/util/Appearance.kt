@@ -1,7 +1,10 @@
 package com.miiptv.app.util
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.util.TypedValue
 
 /**
@@ -143,9 +146,134 @@ object Appearance {
 
         fondo.shape = GradientDrawable.RECTANGLE
         fondo.cornerRadius = radio
-        view.background = fondo
-        view.setTextColor(textoColor)
+
+        /*
+         * El fondo ya no es un drawable suelto sino un StateListDrawable con un
+         * estado de foco.
+         *
+         * Antes, con el control remoto no se veía nada: moverse por los chips de
+         * categoría, por los países de Radios o por el menú superior no cambiaba
+         * un solo pixel, porque acá se asignaba un color plano sin estados. En
+         * pantalla táctil daba igual (en modo táctil las vistas no reciben foco),
+         * pero en TV dejaba al usuario a ciegas.
+         *
+         * El estado enfocado se distingue de los otros dos niveles por el ANILLO
+         * blanco: "seleccionado" es color profundo sin anillo, "sección abierta"
+         * es degradado sin anillo, y "acá está el control remoto" es degradado
+         * CON anillo.
+         */
+        view.background = withFocusState(view.context, fondo, cornerRadiusDp)
+
+        // Con el foco encima, el texto atenuado de los chips inactivos queda
+        // flojo sobre el degradado: en ese estado pasa a blanco.
+        view.setTextColor(
+            ColorStateList(
+                arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()),
+                intArrayOf(
+                    androidx.core.content.ContextCompat.getColor(
+                        c, com.miiptv.app.R.color.text_light
+                    ),
+                    textoColor
+                )
+            )
+        )
         view.alpha = alpha
+
+        /*
+         * Los ítems del menú superior llevan ícono a la izquierda. El color del
+         * texto ahora cambia con el foco, pero el tinte de un drawable no sigue
+         * a un ColorStateList por su cuenta: sin esto, un ítem enfocado quedaba
+         * con el texto en blanco y el ícono en lavanda apagado, como a medio
+         * pintar. Se retiñe cuando entra o sale el foco.
+         */
+        view.setOnFocusChangeListener { v, _ ->
+            val tv = v as android.widget.TextView
+            tv.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(tv.currentTextColor) }
+        }
+    }
+
+    // ---------------- Foco del control remoto ----------------
+
+    /** Mismo color con otra transparencia (0..255). */
+    private fun withAlpha(color: Int, alpha: Int): Int =
+        (color and 0x00FFFFFF) or (alpha shl 24)
+
+    private fun px(c: Context, dp: Float): Float = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, dp, c.resources.displayMetrics
+    )
+
+    /**
+     * Relleno del elemento sobre el que está parado el control remoto.
+     *
+     * Es un **lavado difuminado** del color de acento, no un bloque plano: el
+     * degradado va de opaco en una esquina a casi transparente en la otra, así
+     * que la carátula o el logo del canal siguen viéndose por debajo en vez de
+     * quedar tapados. El borde sólido es lo que define el recuadro.
+     */
+    fun focusFill(c: Context, cornerRadiusDp: Float): GradientDrawable {
+        val p = palette(c)
+        return GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(
+                withAlpha(p.start, 0xD0),
+                withAlpha(p.end, 0x7A),
+                withAlpha(p.end, 0x2E)
+            )
+        ).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = px(c, cornerRadiusDp)
+            setStroke(px(c, 2.5f).toInt(), p.start)
+        }
+    }
+
+    /** Degradado pleno con anillo blanco: el foco sobre chips y botones. */
+    private fun focusRing(c: Context, cornerRadiusDp: Float): GradientDrawable {
+        val p = palette(c)
+        return GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(p.start, p.end)
+        ).apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = px(c, cornerRadiusDp)
+            setStroke(px(c, 2.5f).toInt(), withAlpha(0xFFFFFF, 0xE0))
+        }
+    }
+
+    /** Envuelve un fondo cualquiera para que gane estado enfocado. */
+    fun withFocusState(c: Context, normal: Drawable, cornerRadiusDp: Float): StateListDrawable =
+        StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), focusRing(c, cornerRadiusDp))
+            addState(intArrayOf(), normal)
+        }
+
+    /**
+     * Fondo completo para una tarjeta de la lista (canal, película, serie,
+     * emisora): vidrio cuando está en reposo, lavado difuminado del acento
+     * cuando el control remoto está encima.
+     */
+    fun cardFocusBackground(c: Context, cornerRadiusDp: Float = 14f): StateListDrawable {
+        val reposo = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = px(c, cornerRadiusDp)
+            setColor(
+                androidx.core.content.ContextCompat.getColor(
+                    c, com.miiptv.app.R.color.glass_card
+                )
+            )
+            setStroke(
+                px(c, 0.6f).toInt(),
+                androidx.core.content.ContextCompat.getColor(
+                    c, com.miiptv.app.R.color.glass_border
+                )
+            )
+        }
+        val enfocado = focusFill(c, cornerRadiusDp)
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), enfocado)
+            // state_selected para poder marcar el ítem que se está previsualizando
+            addState(intArrayOf(android.R.attr.state_selected), enfocado)
+            addState(intArrayOf(), reposo)
+        }
     }
 
     /**

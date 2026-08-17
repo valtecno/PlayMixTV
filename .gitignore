@@ -11,3 +11,13 @@ app/build/
 *.apk
 *.ap_
 *.dex
+
+# El keystore de firma NUNCA se sube: sin él nadie puede publicar
+# actualizaciones que Android acepte como esta misma app.
+*.jks
+*.keystore
+
+# OJO: el wrapper de Gradle SÍ va al repositorio.
+# Sin gradle-wrapper.jar, ./gradlew no funciona en ninguna máquina limpia
+# ni en GitHub Actions. La regla de abajo lo protege de un "*.jar" global.
+!gradle/wrapper/gradle-wrapper.jar

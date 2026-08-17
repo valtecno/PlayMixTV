@@ -18,6 +18,13 @@ jobs:
   publicar:
     runs-on: ubuntu-latest
 
+    # Los secrets no se pueden consultar desde un "if:" de un step, así que se
+    # copian acá: en el env del job sí se pueden leer. Es lo que permite que el
+    # workflow funcione igual en un fork que no tenga los secrets cargados.
+    env:
+      KEYSTORE_B64: ${{ secrets.PLAYMIX_KEYSTORE_BASE64 }}
+      SERVERS: ${{ secrets.PLAYMIX_SERVERS }}
+
     steps:
       - name: Descargar el código
         uses: actions/checkout@v4
@@ -45,14 +52,32 @@ jobs:
       - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      # Una versión no se publica si los tests están en rojo. Corren en la JVM,
+      # tardan segundos, y cubren justo lo que rompe en silencio: comparación de
+      # versiones del propio actualizador, filtros y lista de servidores.
+      - name: Correr los tests
+        run: ./gradlew test --no-daemon
+
       # El keystore va en los secrets en base64:
       #   base64 -w0 playmix.jks   (macOS: base64 -i playmix.jks)
       # y se pega el resultado en el secret PLAYMIX_KEYSTORE_BASE64.
       - name: Restaurar el keystore
         if: ${{ env.KEYSTORE_B64 != '' }}
-        env:
-          KEYSTORE_B64: ${{ secrets.PLAYMIX_KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/playmix.jks"
+
+      # Si existe el secret PLAYMIX_SERVERS, la lista de servidores sale de ahí
+      # y las direcciones reales nunca quedan escritas en el repositorio.
+      # Si no existe, se usa la de gradle.properties y todo sigue igual.
+      - name: Elegir la lista de servidores
+        id: servidores
+        run: |
+          if [ -n "$SERVERS" ]; then
+            echo "arg=-Pplaymix.servers=$SERVERS" >> "$GITHUB_OUTPUT"
+            echo "Usando la lista de servidores del secret."
+          else
+            echo "arg=" >> "$GITHUB_OUTPUT"
+            echo "Usando la lista de gradle.properties."
+          fi
 
       - name: Compilar el APK firmado
         env:
@@ -61,15 +86,27 @@ jobs:
           PLAYMIX_KEY_ALIAS: ${{ secrets.PLAYMIX_KEY_ALIAS }}
           PLAYMIX_KEY_PASSWORD: ${{ secrets.PLAYMIX_KEY_PASSWORD }}
         run: |
-          gradle assembleRelease --no-daemon \
+          ./gradlew assembleRelease --no-daemon \
             -PversionName=${{ steps.version.outputs.nombre }} \
             -PversionCode=${{ steps.version.outputs.codigo }} \
-            -Pplaymix.repo=${{ github.repository }}
+            -Pplaymix.repo=${{ github.repository }} \
+            "${{ steps.servidores.outputs.arg }}"
 
       - name: Renombrar el APK
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
           cp "$APK" "PlayMixTV-${{ steps.version.outputs.nombre }}.apk"
+
+      # El APK de release va minificado y ofuscado por R8. Sin este mapping,
+      # un stack trace que reporte un usuario es ilegible: los nombres de clase
+      # y método aparecen como a(), b(), c(). Se guarda como artifact del
+      # workflow (privado), NO se adjunta a la Release pública.
+      - name: Guardar el mapping de R8
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-${{ steps.version.outputs.nombre }}
+          path: app/build/outputs/mapping/release/
+          retention-days: 90
 
       # La app lee ESTA Release. Los "artifacts" del otro workflow no sirven:
       # solo se descargan autenticado, así que la app no puede acceder a ellos.

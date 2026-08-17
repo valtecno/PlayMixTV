@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    El shrinker de recursos borra todo lo que no encuentre referenciado desde el
+    código o desde otro XML. SplashActivity busca el video de intro así:
+
+        resources.getIdentifier("intro", "raw", packageName)
+
+    Es una búsqueda por NOMBRE, en tiempo de ejecución: no hay ningún R.raw.intro
+    escrito en el código, así que el shrinker daría el archivo por muerto y lo
+    sacaría del APK. La app compilaría igual y el intro simplemente no aparecería
+    en release (en depuración sí, porque ahí no se minifica).
+
+    Esta regla lo protege. Vale aunque todavía no exista res/raw/intro.mp4: si no
+    hay coincidencia, no pasa nada.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/intro,@raw/intro_*"
+    tools:shrinkMode="safe" />

@@ -3,6 +3,7 @@ package com.miiptv.app.util
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 
 /**
@@ -35,13 +36,33 @@ object DeviceMode {
     fun isMobile(c: Context): Boolean = get(c) == MOBILE
 
     /**
-     * Sugerencia inicial, solo para preseleccionar la opción más probable:
-     * si el aparato se declara como televisor, TV; si no, móvil.
+     * Sugerencia inicial: es lo que vale **antes** de que el usuario elija, así
+     * que de esto depende que el control remoto funcione ya en el primer
+     * arranque (ver [RemoteControl]).
+     *
+     * Se miran tres señales, no una:
+     *
+     *  1. El aparato se declara como televisor (`UI_MODE_TYPE_TELEVISION`).
+     *  2. Trae la interfaz de Android TV (`FEATURE_LEANBACK`).
+     *  3. No tiene pantalla táctil. Esta es la que salva los casos raros: hay
+     *     decos y mini-PC con Android que no declaran ninguna de las dos
+     *     anteriores, pero que solo se pueden manejar con el remoto. Antes esos
+     *     aparatos arrancaban en modo móvil.
+     *
+     * Sigue siendo solo una sugerencia: lo que el usuario elija manda y queda
+     * guardado.
      */
     fun suggest(c: Context): String {
         val uiMode = c.resources.configuration.uiMode and Configuration.UI_MODE_TYPE_MASK
-        return if (uiMode == Configuration.UI_MODE_TYPE_TELEVISION) TV else MOBILE
+        val esTelevisor = uiMode == Configuration.UI_MODE_TYPE_TELEVISION
+        val pm = c.packageManager
+        val tieneLeanback = pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        val sinTactil = !pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
+        return if (esTelevisor || tieneLeanback || sinTactil) TV else MOBILE
     }
+
+    /** Atajo legible: lo contrario de [isMobile]. */
+    fun isTv(c: Context): Boolean = get(c) == TV
 
     fun label(c: Context, mode: String): String =
         if (mode == TV) c.getString(com.miiptv.app.R.string.mode_tv)
