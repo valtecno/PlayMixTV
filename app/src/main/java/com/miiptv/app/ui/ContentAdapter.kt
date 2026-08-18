@@ -9,8 +9,10 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.miiptv.app.R
 import com.miiptv.app.api.ContentItem
+import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ItemChannelBinding
 import com.miiptv.app.databinding.ItemPosterGridBinding
+import com.miiptv.app.databinding.ItemSearchResultBinding
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.RemoteControl
@@ -19,11 +21,13 @@ import com.squareup.picasso.Picasso
 /**
  * Adapter unificado para canales, películas y series.
  *
- * Tiene dos presentaciones:
+ * Tiene tres presentaciones:
  *  - fila (por defecto): logo + nombre, para canales, PPV, radios, historial y
  *    favoritos.
  *  - póster (grilla): carátula grande, para Películas y Series, con la densidad
  *    de columnas que el usuario elija en "Personalizar".
+ *  - búsqueda: fila con miniatura vertical y etiqueta de tipo, porque ahí se
+ *    mezclan los tres tipos de contenido en una misma lista.
  *
  * Las dos pasan por [RemoteControl.applyItemFocus], que es lo que hace que en
  * TV se vea sobre qué tarjeta está parado el control remoto.
@@ -36,6 +40,7 @@ class ContentAdapter(
     private companion object {
         const val TYPE_ROW = 0
         const val TYPE_POSTER = 1
+        const val TYPE_SEARCH = 2
     }
 
     private val items = mutableListOf<ContentItem>()
@@ -53,6 +58,22 @@ class ContentAdapter(
      * [RemoteControl.isEnabled]; acá solo cambia cómo se enfoca y cómo se marca
      * un favorito, no el aspecto en reposo.
      */
+    /**
+     * Fila de búsqueda: miniatura vertical con la carátula y etiqueta de tipo.
+     *
+     * La búsqueda mezcla canales, películas y series en una misma lista, así que
+     * necesita las dos cosas que la fila normal no da: una imagen con forma de
+     * carátula (la de canales es un cuadrado de 48dp pensado para logos, donde
+     * un póster se veía diminuto) y decir de qué tipo es cada resultado.
+     */
+    var searchMode: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyDataSetChanged()
+            }
+        }
+
     var remoteMode: Boolean = false
         set(value) {
             if (field != value) {
@@ -70,19 +91,24 @@ class ContentAdapter(
     /** Lo que se está mostrando ahora, para armar listas de reproducción. */
     val currentItems: List<ContentItem> get() = items.toList()
 
-    override fun getItemViewType(position: Int) = if (posterMode) TYPE_POSTER else TYPE_ROW
+    override fun getItemViewType(position: Int) = when {
+        posterMode -> TYPE_POSTER
+        searchMode -> TYPE_SEARCH
+        else -> TYPE_ROW
+    }
 
     override fun getItemCount() = items.size
 
     inner class RowHolder(val binding: ItemChannelBinding) : RecyclerView.ViewHolder(binding.root)
     inner class PosterHolder(val binding: ItemPosterGridBinding) : RecyclerView.ViewHolder(binding.root)
+    inner class SearchHolder(val binding: ItemSearchResultBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        return if (viewType == TYPE_POSTER) {
-            PosterHolder(ItemPosterGridBinding.inflate(inflater, parent, false))
-        } else {
-            RowHolder(ItemChannelBinding.inflate(inflater, parent, false))
+        return when (viewType) {
+            TYPE_POSTER -> PosterHolder(ItemPosterGridBinding.inflate(inflater, parent, false))
+            TYPE_SEARCH -> SearchHolder(ItemSearchResultBinding.inflate(inflater, parent, false))
+            else -> RowHolder(ItemChannelBinding.inflate(inflater, parent, false))
         }
     }
 
@@ -119,6 +145,42 @@ class ContentAdapter(
                 root.setOnClickListener { onClick(item) }
                 // Póster de grilla: puede crecer más sin pisar a los vecinos
                 setupFocus(holder, item, root, escalaFoco = 1.05f)
+            }
+
+            is SearchHolder -> with(holder.binding) {
+                tvName.text = item.name
+                tvType.setText(
+                    when (item.type) {
+                        ContentType.MOVIE -> R.string.type_movie
+                        ContentType.SERIES -> R.string.type_series
+                        else -> R.string.type_live
+                    }
+                )
+
+                /*
+                 * El recorte depende del tipo, y esto importa:
+                 *  - Carátula de película o serie: es vertical como el hueco, así
+                 *    que centerCrop lo llena entero sin deformar.
+                 *  - Logo de canal o emisora: es apaisado o cuadrado. Con
+                 *    centerCrop se le comerían los costados y quedaría un trozo
+                 *    de logo irreconocible, así que entra completo con fitCenter.
+                 */
+                ivCover.scaleType =
+                    if (item.type == ContentType.MOVIE || item.type == ContentType.SERIES) {
+                        android.widget.ImageView.ScaleType.CENTER_CROP
+                    } else {
+                        android.widget.ImageView.ScaleType.FIT_CENTER
+                    }
+                // Recorta la imagen con las esquinas redondeadas del marco
+                ivCover.clipToOutline = true
+                loadImage(item.icon, ivCover)
+
+                ivLock.visibility = if (locked) View.VISIBLE else View.GONE
+                ivFavorite.setImageResource(starRes)
+                ivFavorite.imageTintList = starTint
+                ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
+                root.setOnClickListener { onClick(item) }
+                setupFocus(holder, item, root, escalaFoco = 1.02f)
             }
         }
     }
@@ -162,6 +224,11 @@ class ContentAdapter(
         if (!url.isNullOrBlank()) {
             Picasso.get().load(url).into(target)
         } else {
+            // Cancelar la petición anterior antes de vaciar: la vista viene
+            // reciclada y podía tener una descarga a medio camino de OTRO ítem.
+            // Sin esto, al terminar esa descarga la imagen aparecía sobre la
+            // fila equivocada.
+            Picasso.get().cancelRequest(target)
             target.setImageDrawable(null)
         }
     }

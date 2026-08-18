@@ -64,6 +64,9 @@ class SearchActivity : AppCompatActivity() {
         // Igual que en el inicio: con control remoto hay que ver sobre qué
         // resultado está parado el foco.
         adapter.remoteMode = RemoteControl.isEnabled(this)
+        // Fila con carátula y etiqueta de tipo: acá se mezclan canales,
+        // películas y series, y la fila normal no mostraba ni una cosa ni otra.
+        adapter.searchMode = true
         binding.recyclerResults.layoutManager = LinearLayoutManager(this)
         binding.recyclerResults.clipChildren = false
         binding.recyclerResults.adapter = adapter

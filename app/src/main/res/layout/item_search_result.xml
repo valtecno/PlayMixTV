@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Resultado de búsqueda.
+
+    Es una fila propia y no la de canales porque la búsqueda mezcla los tres
+    tipos de contenido a la vez. Cambian dos cosas respecto de aquella:
+
+     1. La miniatura es VERTICAL (54x74dp), con la proporción de una carátula.
+        La de canales es un cuadrado de 48dp pensado para el logo de una
+        emisora: un póster metido ahí se veía diminuto y con franjas arriba y
+        abajo.
+     2. Debajo del nombre va una etiqueta que dice si es canal, película o
+        serie. Buscando "Titanic" pueden salir las tres cosas, y hasta ahora
+        no había forma de distinguirlas sin abrirlas.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_glass_card"
+    android:focusable="true"
+    android:clickable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:layout_marginHorizontal="4dp"
+    android:layout_marginVertical="5dp"
+    android:padding="10dp">
+
+    <ImageView
+        android:id="@+id/ivCover"
+        android:layout_width="54dp"
+        android:layout_height="74dp"
+        android:background="@drawable/bg_cover_thumb"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="14dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textColor="@color/text_light"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/tvType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/ivLock"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="12dp"
+        android:src="@android:drawable/ic_lock_lock"
+        android:contentDescription="@null"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/ivFavorite"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:padding="2dp"
+        android:src="@android:drawable/star_big_off"
+        android:contentDescription="@string/tab_favorites"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+
+</LinearLayout>

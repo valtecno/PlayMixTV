@@ -186,9 +186,20 @@ object Appearance {
          * con el texto en blanco y el ícono en lavanda apagado, como a medio
          * pintar. Se retiñe cuando entra o sale el foco.
          */
-        view.setOnFocusChangeListener { v, _ ->
+        val conRemoto = RemoteControl.isEnabled(c)
+        view.setOnFocusChangeListener { v, tieneFoco ->
             val tv = v as android.widget.TextView
             tv.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(tv.currentTextColor) }
+
+            // Relieve además del color. Sobre un televisor, a tres metros, el
+            // cambio de color solo se nota poco; el movimiento se ve enseguida.
+            // Sobre todo en el reproductor, donde estos botones flotan encima
+            // del video y compiten con la imagen.
+            if (conRemoto) {
+                val escala = if (tieneFoco) 1.10f else 1f
+                v.animate().scaleX(escala).scaleY(escala).setDuration(130).start()
+                v.elevation = if (tieneFoco) 10f * v.resources.displayMetrics.density else 0f
+            }
         }
     }
 
@@ -247,12 +258,56 @@ object Appearance {
         }
 
     /**
+     * Fondo para un botón de icono del reproductor cuando tiene el foco.
+     *
+     * Acá el resalte es MUCHO más marcado que en las listas, y es a propósito:
+     * los botones del reproductor flotan sobre el video, que puede ser de
+     * cualquier color y estar en movimiento. Un lavado translúcido como el de
+     * las tarjetas se pierde sobre una escena clara. Por eso va relleno opaco
+     * del color de acento más un anillo blanco: se ve sobre cualquier imagen.
+     *
+     * @param normal lo que el botón ya tenía de fondo, que se conserva para el
+     *        estado en reposo. Así los botones de zapping no pierden su círculo
+     *        naranja ni los demás su fondo transparente.
+     */
+    fun iconFocusBackground(
+        c: Context,
+        normal: Drawable?,
+        circular: Boolean = true,
+        cornerRadiusDp: Float = 12f
+    ): StateListDrawable {
+        val p = palette(c)
+        val enfocado = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(p.start, p.end)
+        ).apply {
+            shape = if (circular) GradientDrawable.OVAL else GradientDrawable.RECTANGLE
+            if (!circular) cornerRadius = px(c, cornerRadiusDp)
+            setStroke(px(c, 3f).toInt(), withAlpha(0xFFFFFF, 0xF0))
+        }
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), enfocado)
+            if (normal != null) addState(intArrayOf(), normal)
+        }
+    }
+
+    /**
      * Fondo completo para una tarjeta de la lista (canal, película, serie,
      * emisora): vidrio cuando está en reposo, lavado difuminado del acento
      * cuando el control remoto está encima.
      */
-    fun cardFocusBackground(c: Context, cornerRadiusDp: Float = 14f): StateListDrawable {
-        val reposo = GradientDrawable().apply {
+    fun cardFocusBackground(
+        c: Context,
+        cornerRadiusDp: Float = 14f,
+        /**
+         * Fondo a conservar para el estado en reposo. Si es null se usa el
+         * vidrio de siempre. Lo usan las filas de Cuenta y Personalizar, que ya
+         * traen su propio fondo desde el estilo del XML y no deberían cambiar
+         * de aspecto solo por ganar un estado enfocado.
+         */
+        normal: Drawable? = null
+    ): StateListDrawable {
+        val reposo = normal ?: GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = px(c, cornerRadiusDp)
             setColor(
@@ -324,8 +379,20 @@ object Appearance {
 
     // ---------------- Densidad de las grillas ----------------
 
-    /** En móvil 4 columnas dejan carátulas ilegibles, así que el valor por defecto baja a 2. */
-    private fun defaultColumns(c: Context) = if (DeviceMode.isMobile(c)) 2 else 4
+    /**
+     * Columnas con las que arranca la grilla de Películas y Series.
+     *
+     * En TV son 6, el máximo de [gridOptionsTv]: en una pantalla de 40 pulgadas
+     * o más, 4 carátulas quedaban enormes y obligaban a desplazarse mucho para
+     * recorrer un catálogo. A esa distancia el título se lee igual.
+     *
+     * En móvil siguen siendo 2: ahí 4 columnas dejan las carátulas ilegibles.
+     *
+     * Es solo el valor inicial. Quien ya haya elegido su densidad en
+     * Personalizar conserva la suya, porque esto es el `default` de la
+     * preferencia guardada y no la pisa.
+     */
+    private fun defaultColumns(c: Context) = if (DeviceMode.isMobile(c)) 2 else 6
 
     fun getMoviesColumns(c: Context): Int =
         clampColumns(c, prefs(c).getInt("movies_cols", defaultColumns(c)))

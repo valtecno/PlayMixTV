@@ -97,6 +97,129 @@ object RemoteControl {
     }
 
     /**
+     * Resalta un botón de icono del reproductor.
+     *
+     * Se distingue de [applyItemFocus] en la fuerza: acá el relleno es OPACO y
+     * el anillo más grueso, porque estos botones flotan sobre el video. Con un
+     * resalte suave, sobre una escena clara no se ve nada.
+     *
+     * Conserva el fondo que el botón ya tuviera para el estado en reposo, así
+     * que los de zapping no pierden su círculo naranja.
+     *
+     * @param circular false para botones con forma de pastilla o rectángulo.
+     */
+    fun applyIconFocus(
+        view: View,
+        remoto: Boolean,
+        circular: Boolean = true,
+        cornerRadiusDp: Float = 12f,
+        escalaFoco: Float = 1.18f
+    ) {
+        if (!remoto) return
+        view.background =
+            Appearance.iconFocusBackground(view.context, view.background, circular, cornerRadiusDp)
+        addFocusPop(view, escalaFoco)
+    }
+
+    /**
+     * Igual que [applyIconFocus] pero recorriendo una jerarquía entera.
+     *
+     * Es para los controles centrales del reproductor (retroceder, reproducir,
+     * adelantar): los infla Media3 dentro del PlayerView, así que buscarlos por
+     * id obligaría a depender de los identificadores internos de la librería,
+     * que pueden cambiar de versión. Recorriendo el árbol se resaltan solos.
+     *
+     * Solo toca ImageView e ImageButton: así la barra de tiempo, que también se
+     * puede enfocar, conserva su aspecto propio en vez de recibir un círculo.
+     */
+    fun applyIconFocusToTree(root: View, remoto: Boolean) {
+        if (!remoto) return
+        if (root is android.widget.ImageView && root.isClickable && root.isFocusable) {
+            applyIconFocus(root, true)
+            return
+        }
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) applyIconFocusToTree(root.getChildAt(i), true)
+        }
+    }
+
+    /**
+     * Solo el relieve: crece y se levanta al recibir el foco, sin tocar el
+     * fondo.
+     *
+     * Es para las vistas que YA tienen estado enfocado propio (los botones con
+     * estilo NavItem, que lo reciben de Appearance.applyLevel). En una tele el
+     * cambio de color solo es poco: el movimiento es lo que se ve de lejos.
+     */
+    fun addFocusPop(view: View, escalaFoco: Float = 1.12f) {
+        view.animate().cancel()
+        view.scaleX = 1f
+        view.scaleY = 1f
+        // Se encadena con el que ya estuviera puesto en vez de pisarlo: varias
+        // vistas ya usan el suyo para reteñir el icono al enfocarse, y
+        // reemplazarlo las dejaría con el texto blanco y el icono apagado.
+        val previo = view.onFocusChangeListener
+        view.setOnFocusChangeListener { v, tieneFoco ->
+            previo?.onFocusChange(v, tieneFoco)
+            val escala = if (tieneFoco) escalaFoco else 1f
+            v.animate().scaleX(escala).scaleY(escala).setDuration(130).start()
+            v.elevation = if (tieneFoco) 10f * v.resources.displayMetrics.density else 0f
+        }
+    }
+
+    /**
+     * Recorre una pantalla entera y resalta todo lo que se pueda enfocar.
+     *
+     * Existe para las pantallas armadas con filas repetidas en XML —Cuenta y
+     * Personalizar—, donde el fondo viene de un `style` compartido sin estado
+     * enfocado. Ir vista por vista sería una lista larga de ids que además
+     * habría que acordarse de ampliar cada vez que se agrega una fila; así el
+     * resalte lo hereda cualquier fila nueva sin tocar nada.
+     *
+     * Las filas que son contenedores además bloquean el foco de sus hijos: sin
+     * eso el interruptor de adentro se lo roba y con las flechas hay que pasar
+     * dos veces por cada fila. La fila entera ya alterna el interruptor al
+     * pulsarla, así que no se pierde nada.
+     */
+    fun applyFocusToTree(root: View, remoto: Boolean, cornerRadiusDp: Float = 14f) {
+        if (!remoto) return
+
+        if (root.isClickable && root.isFocusable) {
+            /*
+             * Filas que se pueden enfocar pero no hacen nada.
+             *
+             * El estilo SettingsRow marca focusable y clickable para TODAS las
+             * filas, incluidas las que solo muestran un dato (el servidor, el
+             * usuario). Con el remoto eso obligaba a pasar por ellas sin que
+             * pasara nada, y ahora encima se iluminarían prometiendo una acción
+             * que no existe. Si no tienen a quién avisar, se sacan del recorrido.
+             */
+            if (!root.hasOnClickListeners()) {
+                root.isFocusable = false
+                root.isClickable = false
+            } else {
+                if (root is ViewGroup) {
+                    // Fila completa: lavado suave sobre el vidrio que ya tenía
+                    root.background =
+                        Appearance.cardFocusBackground(root.context, cornerRadiusDp, root.background)
+                    addFocusPop(root, 1.03f)
+                    // El interruptor de adentro no debe robarse el foco: la fila
+                    // entera ya lo alterna al pulsarla.
+                    root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                    return
+                }
+                // Botón suelto: relleno opaco con anillo, que es más rotundo
+                applyIconFocus(root, true, circular = root is android.widget.ImageView, cornerRadiusDp = 12f)
+                return
+            }
+        }
+
+        if (root is ViewGroup) {
+            for (i in 0 until root.childCount) applyFocusToTree(root.getChildAt(i), remoto, cornerRadiusDp)
+        }
+    }
+
+    /**
      * Pide el foco cuando la vista ya esté puesta en pantalla.
      *
      * `requestFocus()` a secas dentro de `onCreate` no hace nada: todavía no hay

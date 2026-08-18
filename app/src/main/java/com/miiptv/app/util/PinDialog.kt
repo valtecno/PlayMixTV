@@ -149,7 +149,30 @@ object PinDialog {
             goHome(context)
         }
 
+        /*
+         * Resalte del foco con control remoto.
+         *
+         * El estilo PinKey trae un fondo con estado `pressed` pero NO `focused`.
+         * Con el dedo se ve al tocar; con el mando, moverse por el teclado no
+         * cambiaba nada y había que escribir el PIN a ciegas, contando
+         * posiciones. Es de las peores pantallas donde puede pasar: un dígito
+         * mal y la única señal es que el PIN no funciona.
+         *
+         * Las teclas son óvalos (ver bg_pin_key), de ahí el resalte circular.
+         */
+        val remoto = RemoteControl.isEnabled(context)
+        if (remoto) {
+            (keys.map { it.first } + binding.pinKeyBackspace).forEach {
+                RemoteControl.applyIconFocus(it, true)
+            }
+            RemoteControl.applyIconFocus(binding.tvPinCancel, true, circular = false, cornerRadiusDp = 16f)
+        }
+
         dialog.show()
         dialog.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+
+        // Con el mando, empezar con el foco en el centro del teclado: desde el 5
+        // se llega a cualquier dígito en dos pulsaciones.
+        if (remoto) RemoteControl.focusWhenReady(binding.pinKey5)
     }
 }

@@ -327,6 +327,97 @@ y el logo centrado al 80% del alto.
 No lleva texto añadido: el logo ya trae "play mix TV" con su tipografía. Un
 segundo texto en otra fuente se notaría.
 
+## 6.1.6 Foco en modo TV: reproductor, Cuenta y grillas
+
+### Reproductor
+Los botones del reproductor son el peor caso de toda la app: flotan sobre el
+video, que puede ser de cualquier color y estar en movimiento, y su único fondo
+era `selectableItemBackgroundBorderless` — un destello pensado para el dedo, que
+en un televisor no se ve.
+
+Ahí el resalte es **más fuerte** que en las listas: relleno **opaco** del color
+de acento, anillo blanco de 3dp y la vista un 18% más grande. Se ve igual sobre
+una escena negra que sobre una nevada.
+
+Cubre la barra superior (favorito, audio, subtítulos, calidad, encuadre, buffer,
+bloqueo), el zapping, desbloquear, el aviso de siguiente episodio, los tres
+botones de la barra de radio y los controles centrales — retroceder, reproducir
+y adelantar, que los infla Media3 y se resaltan recorriendo el árbol en vez de
+depender de los ids internos de la librería.
+
+Los botones con estilo `NavItem` (Volver, Inicio, Favorito de radio) ya cambiaban
+de color al enfocarse; ahora además **se levantan**. En una tele, a tres metros,
+el color solo se nota poco: el movimiento se ve enseguida.
+
+### Cuenta y Personalizar
+Estas pantallas se arman con filas que comparten un `style` con fondo fijo, sin
+estado enfocado: moverse por ellas con el mando no cambiaba un solo píxel.
+
+Se resuelve **recorriendo el árbol de vistas**, no listando ids: una fila que se
+agregue mañana hereda el resalte sin tocar nada. El recorrido además:
+
+- **Bloquea el foco de los hijos** en las filas con interruptor. Antes el
+  interruptor se lo robaba y había que pasar dos veces por cada fila; la fila
+  entera ya lo alterna al pulsarla.
+- **Saca del recorrido las filas que no hacen nada.** El estilo marca todas las
+  filas como enfocables, incluidas las que solo muestran un dato (servidor,
+  usuario). Con el mando obligaban a pasar por ellas sin resultado, y al
+  iluminarse prometerían una acción que no existe.
+
+### Grillas en TV: 6 columnas
+Películas y Series arrancan en **6 columnas** en TV (antes 4). En una pantalla
+de 40 pulgadas o más, 4 carátulas quedaban enormes y obligaban a desplazarse
+mucho; a esa distancia el título se lee igual. En móvil siguen siendo 2.
+
+Es solo el valor inicial: quien ya eligió su densidad en Personalizar conserva
+la suya.
+
+## 6.1.7 Búsqueda con carátula · PIN · favorito de radio
+
+### Carátula en los resultados de búsqueda
+La búsqueda usaba la fila de canales: un cuadrado de 48dp pensado para el logo
+de una emisora, donde un póster de película se veía diminuto y con franjas.
+
+Ahora tiene fila propia (`item_search_result.xml`) con miniatura **vertical** de
+54×74dp y esquinas redondeadas, más una etiqueta que dice si es canal, película
+o serie — buscando "Titanic" pueden salir las tres cosas y antes no había forma
+de distinguirlas sin abrirlas.
+
+El recorte depende del tipo: las carátulas van con `centerCrop` (son verticales
+como el hueco, lo llenan sin deformarse) y los logos de canal con `fitCenter`
+(son apaisados; con `centerCrop` se les comerían los costados).
+
+De paso se corrigió que `loadImage` no cancelaba la descarga anterior al
+reciclar una fila: si la nueva no tenía imagen, la descarga vieja terminaba
+después y pintaba la carátula sobre la fila equivocada.
+
+### PIN con control remoto
+El estilo `PinKey` traía estado `pressed` pero no `focused`: con el dedo se veía
+al tocar, con el mando había que escribir el PIN **a ciegas**, contando
+posiciones. Es de las peores pantallas donde puede pasar, porque un dígito mal
+solo se nota en que el PIN no funciona.
+
+Ahora las teclas se resaltan al enfocarse y el foco arranca en el **5**, desde
+donde se llega a cualquier dígito en dos pulsaciones.
+
+### Botón de favorito de radio: por qué aparecía a veces
+No era del botón nuevo: el de la barra superior tenía el mismo problema desde
+antes.
+
+`readFavoriteItem()` comprobaba `if (id < 0) return`, usando el −1 por defecto de
+`getIntExtra` como señal de "no vino el dato". Pero los ids de las emisoras
+salen de `String.hashCode()` (ver `RadioCatalog`), y un hashCode es **negativo
+más o menos la mitad de las veces**.
+
+O sea que en una emisora de cada dos, un id perfectamente válido se confundía
+con "falta el dato", `favoriteItem` quedaba en null y los dos botones
+desaparecían. Y como al cambiar de emisora se hace `favoriteItem?.copy(...)`, un
+null seguía siendo null: no se recuperaba ni pasando a la siguiente.
+
+Se cambió por `intent.hasExtra(...)`, que responde exactamente lo que hay que
+preguntar sin reservarse ningún valor. **Los ids guardados no cambian**, así que
+los favoritos que ya existan se siguen reconociendo.
+
 ## 6.2 Calidad del proyecto
 
 ### Tests

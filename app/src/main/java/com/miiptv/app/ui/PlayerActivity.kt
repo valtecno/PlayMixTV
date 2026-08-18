@@ -43,6 +43,7 @@ import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.History
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.PlayerFactory
@@ -231,6 +232,7 @@ class PlayerActivity : AppCompatActivity() {
 
         setupControls()
         setupRadioMode()
+        setupTvFocus()
         askNotificationPermission()
         registerPipReceiver()
 
@@ -438,9 +440,31 @@ class PlayerActivity : AppCompatActivity() {
         if (playlistIndex !in 0 until largo) playlistIndex = 0
     }
 
+    /**
+     * Arma el ítem con el que trabajan los botones de favorito.
+     *
+     * ---------------------------------------------------------------------
+     * OJO CON LA COMPROBACIÓN DE ABAJO
+     *
+     * Antes decía `if (id < 0) return`, usando el -1 por defecto de
+     * getIntExtra como señal de "no vino el dato". El problema: los ids de las
+     * emisoras de radio salen de String.hashCode() (ver RadioCatalog), y un
+     * hashCode es NEGATIVO más o menos la mitad de las veces.
+     *
+     * O sea que en una emisora de cada dos, un id perfectamente válido se
+     * confundía con "falta el dato", favoriteItem quedaba en null y los dos
+     * botones de favorito desaparecían. Y como al cambiar de emisora se hace
+     * `favoriteItem?.copy(...)`, un null seguía siendo null: no se recuperaba
+     * ni pasando a la siguiente.
+     *
+     * hasExtra() responde exactamente lo que hay que preguntar —si el dato vino
+     * o no— sin reservarse ningún valor. Los ids guardados no cambian, así que
+     * los favoritos que ya existan se siguen reconociendo.
+     * ---------------------------------------------------------------------
+     */
     private fun readFavoriteItem() {
-        val id = intent.getIntExtra(EXTRA_ITEM_ID, -1)
-        if (id < 0) return
+        if (!intent.hasExtra(EXTRA_ITEM_ID)) return
+        val id = intent.getIntExtra(EXTRA_ITEM_ID, 0)
         val type = itemType
 
         favoriteItem = ContentItem(
@@ -713,6 +737,45 @@ class PlayerActivity : AppCompatActivity() {
      * en medio y en su lugar queda el fondo de la sección, con el logo de la
      * emisora, su nombre y un ecualizador que se mueve mientras hay audio.
      */
+    /**
+     * Resalte fuerte del botón enfocado, solo con control remoto.
+     *
+     * Los botones del reproductor son el peor caso de toda la app: flotan sobre
+     * el video, que puede ser de cualquier color y estar en movimiento, y hasta
+     * ahora su único fondo era `selectableItemBackgroundBorderless`, un
+     * destello pensado para el dedo que en un televisor no se ve. Con el mando
+     * no había forma de saber sobre cuál estabas parado.
+     *
+     * Por eso acá el resalte es más rotundo que en las listas: relleno OPACO del
+     * color de acento, anillo blanco de 3dp y la vista un 18% más grande. Se ve
+     * lo mismo sobre una escena negra que sobre una nevada.
+     */
+    private fun setupTvFocus() {
+        val remoto = RemoteControl.isEnabled(this)
+        if (!remoto) return
+
+        // Redondos: los iconos de la barra superior, el zapping y la radio
+        listOf(
+            binding.btnFavorite, binding.btnAudio, binding.btnSubtitles,
+            binding.btnQuality, binding.btnAspect, binding.btnBuffer, binding.btnLock,
+            binding.btnChannelPrev, binding.btnChannelNext,
+            binding.btnPrevStation, binding.btnRadioPlayPause, binding.btnNextStation
+        ).forEach { RemoteControl.applyIconFocus(it, true) }
+
+        // Rectangulares
+        RemoteControl.applyIconFocus(binding.btnUnlock, true, circular = false)
+        RemoteControl.applyIconFocus(binding.btnPlayNextNow, true, circular = false, cornerRadiusDp = 18f)
+        RemoteControl.applyIconFocus(binding.btnCancelNext, true, circular = false, cornerRadiusDp = 18f)
+
+        // Retroceder / reproducir / adelantar: los infla Media3 dentro del
+        // PlayerView, así que se recorre el árbol en vez de depender de los
+        // identificadores internos de la librería.
+        RemoteControl.applyIconFocusToTree(binding.playerView, true)
+
+        // btnBack, btnRadioHome y btnRadioFavorite no entran acá: llevan estilo
+        // NavItem y ya reciben color y relieve desde Appearance.applyLevel.
+    }
+
     private fun setupRadioMode() {
         if (!isRadio) return
 

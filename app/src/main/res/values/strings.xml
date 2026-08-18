@@ -55,6 +55,10 @@
     <string name="setting_personalize">Personalizar apariencia</string>
     <string name="setting_personalize_desc">Colores, subtítulos y vistas</string>
     <string name="ppv_search_hint">Buscar equipo, liga, país o evento…</string>
+    <!-- Etiqueta de tipo en los resultados de busqueda (en singular) -->
+    <string name="type_live">Canal</string>
+    <string name="type_movie">Pelicula</string>
+    <string name="type_series">Serie</string>
     <string name="fav_all">Todos</string>
     <string name="fav_radios">Radios</string>
     <string name="ppv_no_match">Nada coincide con esa búsqueda</string>

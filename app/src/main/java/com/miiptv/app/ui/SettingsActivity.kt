@@ -12,6 +12,7 @@ import com.miiptv.app.databinding.ActivitySettingsBinding
 import com.miiptv.app.databinding.DialogAccountsBinding
 import com.miiptv.app.databinding.ItemAccountBinding
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
@@ -95,6 +96,22 @@ class SettingsActivity : AppCompatActivity() {
         binding.tvUser.text = Session.username(this).ifBlank { "—" }
         binding.rowSwitchAccount.setOnClickListener { switchAccount() }
         binding.btnLogout.setOnClickListener { confirmLogout() }
+
+        /*
+         * Resalte del foco con control remoto.
+         *
+         * Esta pantalla se arma con filas que comparten el estilo SettingsRow,
+         * que trae un fondo fijo sin estado enfocado: moverse por ella con el
+         * mando no cambiaba un solo pixel.
+         *
+         * Se resuelve recorriendo el árbol en vez de listar los ids uno por uno,
+         * así una fila que se agregue mañana hereda el resalte sin tocar nada.
+         *
+         * TIENE QUE IR AL FINAL de onCreate: el recorrido usa
+         * hasOnClickListeners() para descartar las filas que solo muestran un
+         * dato (servidor, usuario), y esos listeners se asignan justo arriba.
+         */
+        RemoteControl.applyFocusToTree(binding.root, RemoteControl.isEnabled(this))
 
         binding.tvVersion.text = getString(R.string.settings_version, appVersion())
 

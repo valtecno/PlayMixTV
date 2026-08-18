@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import com.miiptv.app.R
 import com.miiptv.app.databinding.ActivityPersonalizeBinding
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.DeviceMode
 
 /**
@@ -36,6 +37,12 @@ class PersonalizeActivity : AppCompatActivity() {
         buildGridOptions()
 
         refreshAll()
+
+        // Mismo problema que en Cuenta: las filas de esta pantalla traen su
+        // fondo de un estilo compartido, sin estado enfocado. Va después de
+        // construir los controles, porque el recorrido descarta lo que no tenga
+        // listener asignado.
+        RemoteControl.applyFocusToTree(binding.root, RemoteControl.isEnabled(this))
     }
 
     private fun dp(value: Float): Int = TypedValue.applyDimension(
