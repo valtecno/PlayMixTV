@@ -773,7 +773,7 @@ class PlayerActivity : AppCompatActivity() {
         RemoteControl.applyIconFocusToTree(binding.playerView, true)
 
         // btnBack, btnRadioHome y btnRadioFavorite no entran acá: llevan estilo
-        // NavItem y ya reciben color y relieve desde Appearance.applyLevel.
+        // NavItem y ya reciben su color de foco desde Appearance.applyLevel.
     }
 
     private fun setupRadioMode() {

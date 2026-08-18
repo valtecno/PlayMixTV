@@ -131,8 +131,7 @@ class ContentAdapter(
                 ivFavorite.imageTintList = starTint
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
-                // Fila a lo ancho: crece apenas, el color hace todo el trabajo
-                setupFocus(holder, item, root, escalaFoco = 1.02f)
+                setupFocus(holder, item, root)
             }
 
             is PosterHolder -> with(holder.binding) {
@@ -143,8 +142,7 @@ class ContentAdapter(
                 ivFavorite.imageTintList = starTint
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
-                // Póster de grilla: puede crecer más sin pisar a los vecinos
-                setupFocus(holder, item, root, escalaFoco = 1.05f)
+                setupFocus(holder, item, root)
             }
 
             is SearchHolder -> with(holder.binding) {
@@ -180,7 +178,7 @@ class ContentAdapter(
                 ivFavorite.imageTintList = starTint
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
-                setupFocus(holder, item, root, escalaFoco = 1.02f)
+                setupFocus(holder, item, root)
             }
         }
     }
@@ -197,10 +195,9 @@ class ContentAdapter(
     private fun setupFocus(
         holder: RecyclerView.ViewHolder,
         item: ContentItem,
-        root: View,
-        escalaFoco: Float
+        root: View
     ) {
-        RemoteControl.applyItemFocus(root, remoteMode, escalaFoco = escalaFoco)
+        RemoteControl.applyItemFocus(root, remoteMode)
 
         if (remoteMode) {
             root.setOnLongClickListener {
