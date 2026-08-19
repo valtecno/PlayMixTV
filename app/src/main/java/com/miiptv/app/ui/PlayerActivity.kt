@@ -43,6 +43,7 @@ import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.Epg
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.History
 import com.miiptv.app.util.Favorites
@@ -220,6 +221,9 @@ class PlayerActivity : AppCompatActivity() {
 
         binding.tvNowPlaying.text = contentTitle
         binding.tvNowPlaying.isSelected = true   // activa el desplazamiento del texto largo
+        if (!isRadio && itemType == ContentType.LIVE && intent.hasExtra(EXTRA_ITEM_ID)) {
+            refreshEpgNow(intent.getIntExtra(EXTRA_ITEM_ID, 0))
+        }
 
         if (PlayerPrefs.getKeepScreenOn(this)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -479,6 +483,23 @@ class PlayerActivity : AppCompatActivity() {
             // ponerla desde Favoritos.
             streamUrl = if (isRadio) streamUrl else null
         )
+    }
+
+    /**
+     * Programa que está al aire ahora en el canal [streamId], mostrado bajo el
+     * nombre del canal en la barra superior. Solo eso: sin horarios ni
+     * programación futura. Se oculta si el panel no tiene EPG para ese canal.
+     */
+    private fun refreshEpgNow(streamId: Int) {
+        binding.tvEpgNow.visibility = View.GONE
+        binding.tvEpgNow.tag = streamId
+        Epg.nowPlaying(this, streamId) { titulo ->
+            if (isFinishing || isDestroyed) return@nowPlaying
+            if (binding.tvEpgNow.tag == streamId) {
+                binding.tvEpgNow.text = titulo
+                binding.tvEpgNow.visibility = if (titulo.isNullOrBlank()) View.GONE else View.VISIBLE
+            }
+        }
     }
 
     // ---------------- Controles ----------------
@@ -913,6 +934,7 @@ class PlayerActivity : AppCompatActivity() {
         audioAvisado = false
 
         binding.tvNowPlaying.text = contentTitle
+        refreshEpgNow(id)
         // La estrella tiene que marcar el canal que se ve ahora, no el anterior
         favoriteItem = favoriteItem?.copy(id = id, name = contentTitle, streamUrl = null)
         refreshFavoriteIcon()

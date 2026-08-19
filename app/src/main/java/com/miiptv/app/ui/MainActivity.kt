@@ -98,6 +98,9 @@ class MainActivity : AppCompatActivity() {
      * un segundo. Sin esta espera se abriría una conexión por cada uno.
      */
     private val previewDelay = Handler(Looper.getMainLooper())
+
+    /** Temporizador del refresco diario de las 3 AM (ver programarRefrescoDiario). */
+    private val refrescoDiario = Handler(Looper.getMainLooper())
     private var pendingPreview: Runnable? = null
 
     /** Perfil de niños: filtra a solo contenido infantil y oculta las secciones no aptas. */
@@ -638,8 +641,22 @@ class MainActivity : AppCompatActivity() {
         novedades.attach()
         recientes.attach()
 
-        // El catálogo se carga una sola vez y lo reutiliza también el buscador
-        Catalog.ensureLoaded(this, onUpdate = catalogListener)
+        /*
+         * El catálogo se carga una sola vez y lo reutiliza también el buscador.
+         *
+         * Si es la primera apertura después de las 3 AM de Chile, se pide con
+         * `force`: eso manda "no-cache" y va al panel de verdad, saltándose la
+         * caché de disco de OkHttp. Sin el force, abrir la app a las 8 AM podía
+         * devolver la copia guardada de anoche y el usuario no vería lo que el
+         * panel agregó de madrugada, que es justo cuando los paneles cargan las
+         * novedades del día.
+         */
+        val tocaRefrescoDelDia = DailyRefresh.toca(this)
+        if (tocaRefrescoDelDia) DailyRefresh.marcarHecho(this)
+        Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
+
+        // Y se deja programado el corte de esta noche por si la app queda abierta.
+        programarRefrescoDiario()
 
         // Búsqueda de actualizaciones en segundo plano. Con manual = false solo
         // avisa si hay algo nuevo, y como mucho una vez cada 12 horas.
@@ -802,6 +819,52 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.catalog_refreshing, Toast.LENGTH_SHORT).show()
         Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
         selectSection(section)
+    }
+
+    // ---------------- Refresco diario (3 AM de Chile) ----------------
+
+    /**
+     * Refresco automático del catálogo, una vez al día.
+     *
+     * Hay dos caminos hacia el mismo sitio, y los dos preguntan lo mismo a
+     * [DailyRefresh]:
+     *
+     *  - **App cerrada.** En `setupCarousel`, la primera carga del catálogo se
+     *    pide con `force` si el día lógico cambió.
+     *  - **App abierta.** Este temporizador, que despierta en el próximo corte.
+     *
+     * Se reprograma también en `onResume`. Eso cubre lo que el temporizador por
+     * sí solo no puede: `postDelayed` cuenta con el reloj de actividad del
+     * aparato, que **se congela mientras el aparato duerme**, así que un deco
+     * suspendido a las 2 AM despertaría tarde. Al volver a primer plano se
+     * vuelve a preguntar por la fecha real y se recalcula la espera, con lo que
+     * un aparato dormido, un reloj recién puesto en hora o un cambio de horario
+     * de verano quedan resueltos igual.
+     */
+    private fun programarRefrescoDiario() {
+        refrescoDiario.removeCallbacks(tareaRefrescoDiario)
+        // Cinco segundos de margen para no despertar justo en el filo del minuto
+        // y que el cálculo del día lógico caiga todavía en el día anterior.
+        refrescoDiario.postDelayed(
+            tareaRefrescoDiario,
+            DailyRefresh.msHastaProximoCorte() + 5_000L
+        )
+    }
+
+    private val tareaRefrescoDiario = Runnable { comprobarRefrescoDiario() }
+
+    /** Refresca si cambió el día lógico, y deja programado el corte siguiente. */
+    private fun comprobarRefrescoDiario() {
+        val listo = ::adapter.isInitialized && !isFinishing && !isDestroyed
+        if (listo && DailyRefresh.toca(this)) {
+            DailyRefresh.marcarHecho(this)
+            Toast.makeText(this, R.string.catalog_daily_refresh, Toast.LENGTH_SHORT).show()
+            Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
+            selectSection(section)
+        }
+        // Siempre se reprograma, haya tocado o no: si no tocó es que otro camino
+        // ya lo hizo, y de todos modos hay que dejar puesto el corte de mañana.
+        programarRefrescoDiario()
     }
 
     private fun openParentalSettings() {
@@ -1540,6 +1603,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Al volver a primer plano puede haber pasado la noche entera con el
+        // aparato dormido, así que se recalcula el corte contra la fecha real.
+        // Si mientras tanto cambió el día lógico, esto lo detecta y refresca.
+        comprobarRefrescoDiario()
         if (::adapter.isInitialized) {
             applyHomeOrientation()
             binding.tvToolbarTitle.applyBrandGradient()
@@ -1577,6 +1644,9 @@ class MainActivity : AppCompatActivity() {
         // ventana filtrada (WindowLeaked en el log).
         exitDialog?.dismiss()
         exitDialog = null
+        // El temporizador del refresco diario tiene por delante hasta 24 horas
+        // de espera y captura la activity: sin quitarlo, la mantiene viva.
+        refrescoDiario.removeCallbacks(tareaRefrescoDiario)
         releasePreview()
         RadioCatalog.cancel()
         stopCarousel()

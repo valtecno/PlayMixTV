@@ -584,6 +584,76 @@ que va a seguir funcionando. No hace falta ninguna dependencia nueva: viene con
 > `PlayerActivity` sigue con `onBackPressed()` porque ahí Atrás hace otra cosa
 > (quitar el bloqueo de pantalla). Conviene migrarlo también cuando se toque.
 
+## 6.1.12 Refresco automático del catálogo: 3 AM hora de Chile
+
+El catálogo se vuelve a traer entero del panel **una vez al día, a las 3 de la
+mañana hora de Chile**. Si la app estaba cerrada a esa hora, se hace en la
+primera apertura del día. La lógica vive en `util/DailyRefresh.kt`.
+
+### La idea: "día lógico", no "cada 24 horas"
+Guardar la última hora de refresco y comparar contra 24 h no sirve: el momento
+se iría corriendo solo. Si un día abro a las 21:00, al siguiente no tocaría
+hasta las 21:00, y en una semana el refresco estaría a cualquier hora.
+
+En vez de eso se guarda **qué día lógico** se refrescó, donde el día lógico
+cambia a las 3 AM en lugar de a medianoche:
+
+```
+lunes 02:59  →  día lógico DOMINGO
+lunes 03:00  →  día lógico LUNES
+lunes 23:00  →  día lógico LUNES
+```
+
+Toca refrescar cuando el día lógico guardado no es el de ahora. Los dos casos
+pedidos salen del mismo cálculo, sin código aparte:
+
+| Situación | Qué pasa |
+|---|---|
+| App abierta, cruza las 3 AM | Cambia el día lógico → refresca |
+| App cerrada, se abre a las 9 AM | El día guardado es el de ayer → refresca al abrir |
+| Se abre otras cinco veces ese día | El día ya coincide → no refresca |
+| Instalación nueva | No hay nada guardado → refresca |
+
+### Por qué la zona va fija a Chile
+Se usa `America/Santiago` explícitamente, **no la zona del aparato**. Los decos
+baratos llegan de fábrica en UTC o en una zona de Asia y mucha gente nunca lo
+corrige; con la hora local del aparato el refresco caería a cualquier hora. La
+hora que importa es la del panel.
+
+`America/Santiago` ya contempla el horario de verano, así que las 3 AM son las 3
+AM del reloj todo el año. Un aparato con la base de zonas horarias vieja puede
+desviarse una hora en las semanas del cambio, y para un refresco de madrugada
+eso da igual.
+
+### Dos decisiones que no se ven
+
+**Se marca el día al lanzar la descarga, no al terminarla.** Si se marcara al
+terminar, un panel caído a las 3 AM dejaría el día sin marcar y *cada* apertura
+posterior volvería a forzar la descarga completa — justo el castigo que no hay
+que darle a alguien con mala conexión. Si falla, se reintenta al día siguiente;
+mientras tanto siguen en pie el TTL normal de 30 minutos y el botón de
+actualizar a mano.
+
+**Se comprueba también en `onResume`, no solo con el temporizador.**
+`Handler.postDelayed` cuenta con el reloj de actividad del aparato, que **se
+congela mientras el aparato duerme**: un deco suspendido a las 2 AM despertaría
+tarde. Al volver a primer plano se pregunta por la fecha real, lo que además
+cubre un reloj recién puesto en hora y los cambios de horario de verano.
+
+### Sobre `Calendar` y no `java.time`
+`LocalDate` necesita API 26 o desugaring. El proyecto está en minSdk 21 sin
+desugaring, así que `java.time` ni siquiera compilaría.
+
+### Verificación
+`DailyRefreshTest` cubre lo que no se puede probar a mano sin quedarse
+despierto: el corte de las 3, que medianoche *no* cambie el día, los cruces de
+mes/año/bisiesto, que la zona del aparato sea indiferente, y un barrido hora a
+hora de un año entero comprobando que no se repita ni se saltee ningún día.
+
+En el barrido, la espera máxima hasta el corte siguiente es de **25 h**: el
+sábado del cambio de abril, cuando Chile atrasa el reloj y ese día tiene 25
+horas. Es correcto, y por eso el test tolera hasta 36.
+
 ## 6.2 Calidad del proyecto
 
 ### Tests
@@ -601,6 +671,7 @@ que puede fallar **en silencio**, que es la peligrosa:
 | `KidsFilterTest` | Perfil de niños. Un falso positivo mete contenido no apto: los tests fijan que las exclusiones ganan sobre las palabras infantiles. |
 | `ModelsTest` | Mapeo Xtream → `ContentItem`, incluida la conversión del campo `added` que ordena "Novedades" y que llega como texto (a veces vacío). |
 | `FavoritesKeysTest` | El formato de la clave de favoritos. Es el contrato con lo que ya está guardado en los dispositivos: si cambia, todos pierden sus favoritos al actualizar, sin ningún error visible. Incluye el caso de los ids negativos de las radios. |
+| `DailyRefreshTest` | El corte diario de las 3 AM de Chile. Lo que no se puede probar a mano sin quedarse despierto: que medianoche no cambie el día lógico, los cruces de mes/año/bisiesto, que la zona del aparato sea indiferente, y un barrido hora a hora de un año entero (con los dos cambios de horario) comprobando que no se repita ni se saltee ningún día. |
 
 El workflow de publicación **no publica si los tests están en rojo**.
 

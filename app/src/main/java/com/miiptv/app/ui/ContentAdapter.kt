@@ -13,6 +13,7 @@ import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ItemChannelBinding
 import com.miiptv.app.databinding.ItemPosterGridBinding
 import com.miiptv.app.databinding.ItemSearchResultBinding
+import com.miiptv.app.util.Epg
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.RemoteControl
@@ -132,6 +133,7 @@ class ContentAdapter(
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
                 setupFocus(holder, item, root)
+                bindEpgNow(tvEpgNow, item)
             }
 
             is PosterHolder -> with(holder.binding) {
@@ -227,6 +229,27 @@ class ContentAdapter(
             // fila equivocada.
             Picasso.get().cancelRequest(target)
             target.setImageDrawable(null)
+        }
+    }
+
+    /**
+     * Solo canales en vivo tienen programa actual. La respuesta llega async
+     * (a veces ya cacheada, a veces recién pedida al panel), y para entonces
+     * la fila reciclada puede estar mostrando otro canal — por eso se guarda
+     * qué stream_id la pidió y se descarta la respuesta si ya no coincide.
+     */
+    private fun bindEpgNow(tvEpgNow: android.widget.TextView, item: ContentItem) {
+        if (item.type != ContentType.LIVE) {
+            tvEpgNow.visibility = View.GONE
+            return
+        }
+        tvEpgNow.visibility = View.GONE
+        tvEpgNow.tag = item.id
+        Epg.nowPlaying(tvEpgNow.context, item.id) { titulo ->
+            if (tvEpgNow.tag == item.id) {
+                tvEpgNow.text = titulo
+                tvEpgNow.visibility = if (titulo.isNullOrBlank()) View.GONE else View.VISIBLE
+            }
         }
     }
 

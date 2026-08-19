@@ -81,6 +81,23 @@ data class Episode(
     @SerializedName("season") val season: Int?
 )
 
+/**
+ * Respuesta de get_short_epg: la mini-guía que da Xtream para un canal
+ * (normalmente el programa actual y el siguiente). Acá solo se usa el
+ * primer elemento, que es el que está al aire ahora.
+ */
+data class EpgResponse(
+    @SerializedName("epg_listings") val epgListings: List<EpgListing>?
+)
+
+data class EpgListing(
+    /** Viene codificado en base64, como manda el estándar Xtream. */
+    @SerializedName("title") val title: String?,
+    @SerializedName("start") val start: String?,
+    @SerializedName("end") val end: String?,
+    @SerializedName("now_playing") val nowPlaying: Int?
+)
+
 /** Tipo de contenido, para poder usar una sola lista/adapter para todo. */
 enum class ContentType { LIVE, MOVIE, SERIES }
 
