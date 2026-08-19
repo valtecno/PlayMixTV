@@ -54,6 +54,7 @@ jobs:
           echo -n "$KEYSTORE_BASE64" | base64 --decode > playmix-release.keystore
           
       - name: Compilar APK Release firmado
+       -Pplaymix.repo=${{ github.repository }} \ entre -PversionCode=$VERSION_CODE \ y --no-daemon
         env:
           PLAYMIX_KEYSTORE: ${{ github.workspace }}/playmix-release.keystore
           PLAYMIX_STORE_PASSWORD: ${{ secrets.PLAYMIX_STORE_PASSWORD }}
