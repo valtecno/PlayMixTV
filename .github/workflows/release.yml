@@ -85,12 +85,32 @@ jobs:
           PLAYMIX_STORE_PASSWORD: ${{ secrets.PLAYMIX_STORE_PASSWORD }}
           PLAYMIX_KEY_ALIAS: ${{ secrets.PLAYMIX_KEY_ALIAS }}
           PLAYMIX_KEY_PASSWORD: ${{ secrets.PLAYMIX_KEY_PASSWORD }}
+          # Se pasan como variables de entorno (no interpoladas a mano en el
+          # texto del comando) justamente para no repetir el bug que rompió
+          # este paso: mezclar "${{ }}" con continuaciones de línea "\" es
+          # frágil -un espacio de más después de la barra invertida corta el
+          # comando ahí mismo- y terminó mandándole a Gradle "3.0" como si
+          # fuera el nombre de una tarea en vez de como valor de -PversionName.
+          VERSION_NAME: ${{ steps.version.outputs.nombre }}
+          VERSION_CODE: ${{ steps.version.outputs.codigo }}
+          REPO_ARG: ${{ github.repository }}
+          SERVERS_ARG: ${{ steps.servidores.outputs.arg }}
         run: |
-          ./gradlew assembleRelease --no-daemon \
-            -PversionName=${{ steps.version.outputs.nombre }} \
-            -PversionCode=${{ steps.version.outputs.codigo }} \
-            -Pplaymix.repo=${{ github.repository }} \
-            "${{ steps.servidores.outputs.arg }}"
+          # Arreglo en vez de una sola línea larga: así, si SERVERS_ARG viene
+          # vacío (no hay secret PLAYMIX_SERVERS cargado), simplemente no se
+          # agrega ningún argumento -en vez de mandarle a Gradle un "" suelto,
+          # que es otra forma de que interprete cualquier cosa como tarea.
+          args=(
+            assembleRelease --no-daemon
+            "-PversionName=$VERSION_NAME"
+            "-PversionCode=$VERSION_CODE"
+            "-Pplaymix.repo=$REPO_ARG"
+          )
+          if [ -n "$SERVERS_ARG" ]; then
+            args+=("$SERVERS_ARG")
+          fi
+          echo "Ejecutando: ./gradlew ${args[*]}"
+          ./gradlew "${args[@]}"
 
       - name: Renombrar el APK
         run: |
