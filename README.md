@@ -418,6 +418,242 @@ Se cambió por `intent.hasExtra(...)`, que responde exactamente lo que hay que
 preguntar sin reservarse ningún valor. **Los ids guardados no cambian**, así que
 los favoritos que ya existan se siguen reconociendo.
 
+## 6.1.8 Favoritos y control parental: caché en memoria
+
+Dos funciones se llamaban **una vez por fila** desde
+`ContentAdapter.onBindViewHolder`, y las dos iban al disco cada vez.
+
+### `Favorites.isFavorite`
+Era el caso caro. En cada llamada abría SharedPreferences, leía el JSON entero
+de favoritos, **lo deserializaba con Gson** y lo recorría buscando el ítem. En
+un desplazamiento rápido eso son unas diez deserializaciones completas por
+frame. En un teléfono no se nota; en un deco de Android TV de gama baja es
+exactamente el tirón que aparecía al recorrer la grilla con el control remoto.
+
+Ahora el JSON se lee y se parsea una vez, y se mantiene además un índice de
+claves (`Set<String>`) para que la consulta sea O(1) sin tocar disco ni Gson.
+
+### `Parental.isCategoryLocked`
+Cada llamada era un `getStringSet`. Más barato que Gson, pero se repite
+muchísimas más veces: además del adaptador, lo usa `Catalog.newest`, que
+**recorre el catálogo entero**. Armar el Inicio significaba una consulta a
+preferencias por cada película y cada serie del panel.
+
+El set se lee una vez y queda en memoria. El **PIN no se cachea a propósito**:
+se consulta pocas veces y no hay razón para tener su hash dando vueltas.
+
+### Dos detalles que importan
+- El **formato de clave `"TIPO:ID"` no se tocó**. Es lo que ya está escrito en
+  los dispositivos; cambiarlo borraría los favoritos de todos al actualizar.
+  Hay tests que lo fijan.
+- `getStringSet` devuelve la instancia interna de SharedPreferences, y Android
+  documenta que no se debe conservar ni modificar. Por eso la caché guarda una
+  **copia**, no la referencia.
+
+Las dos clases exponen `invalidate()` para releer del disco si algo cambia por
+fuera (restauración de copia de seguridad, borrado de datos).
+
+## 6.1.9 La contraseña ya no sale del dispositivo
+
+`Session` guarda servidor, usuario y contraseña del panel en texto plano dentro
+de `miiptv_prefs`. El manifiesto tenía `allowBackup="true"` **sin reglas**, y
+eso significa que Android subía ese archivo tal cual a la cuenta de Google Drive
+del usuario: la contraseña del panel salía del aparato sin que nadie lo pidiera.
+
+Ahora la copia de seguridad **sigue activada** pero con `miiptv_prefs` excluido:
+
+| Archivo | Para qué |
+|---|---|
+| `res/xml/backup_rules.xml` | Android 5.0 – 11 (`android:fullBackupContent`) |
+| `res/xml/data_extraction_rules.xml` | Android 12+ (`android:dataExtractionRules`) |
+
+Hacen falta **los dos**. Android 12 dejó de leer el primero, y el que falte se
+queda con el comportamiento por defecto, que es respaldarlo todo.
+
+El segundo separa dos casos que antes iban juntos: `cloud-backup` (lo que sube a
+Drive) y `device-transfer` (copia directa entre dos teléfonos, sin nube). Se
+excluye en los dos: la diferencia sería escribir la contraseña una vez menos, y
+no vale la pena tener dos criterios distintos para el mismo archivo.
+
+**Lo que sí se sigue respaldando:** favoritos, historial, ajustes del
+reproductor, apariencia y control parental — los datos que duele perder y que no
+contienen secretos (el PIN se guarda como hash SHA-256, no en claro).
+
+**El costo para el usuario** es volver a escribir usuario y contraseña una vez
+al cambiar de aparato, que es lo que hace cualquier app con sesión.
+
+> Cifrar las credenciales con `EncryptedSharedPreferences` sería el paso
+> siguiente, pero `androidx.security:security-crypto` exige **minSdk 23** y este
+> proyecto está en 21. Habría que decidir antes si se deja fuera a Android 5.
+
+## 6.1.10 Foco en modo TV: solo color, sin agrandar
+
+El resalte de foco **dejó de escalar la vista**. Ahora es solo el cambio de
+color del fondo.
+
+### Qué estaba mal
+Cinco lugares distintos agrandaban la vista enfocada, entre un 3% y un 18%.
+`scaleX/scaleY` agranda el **dibujo** pero no el hueco que la vista ocupa en el
+layout, y de ahí salían tres fallas a la vez:
+
+1. El padre recorta lo que se sale (`clipChildren` viene en `true`), así que el
+   borde crecido quedaba cortado en seco.
+2. Lo que no se recortaba se salía de la pantalla: en el menú superior el último
+   ítem se iba por el borde derecho; en las filas de Cuenta la fila enfocada se
+   comía los márgenes de los dos lados y quedaba pegada al borde.
+3. Escalar interpola píxeles ya dibujados, así que el texto de la vista
+   enfocada se veía **borroso** — justo el que hay que poder leer.
+
+Y se acumulaba: una fila de Cuenta recibía escala de `Appearance.applyLevel` y
+otra más del recorrido de `RemoteControl`, así que crecía el doble de lo que
+decía cualquiera de los dos.
+
+### Dónde se quitó
+
+| Lugar | Escala que tenía | Qué afectaba |
+|---|---|---|
+| `Appearance.applyLevel` | 1.10 | Menú superior, chips de categoría, botones NavItem |
+| `RemoteControl.applyItemFocus` | 1.02 – 1.05 | Tarjetas de canales, películas, series, radios |
+| `RemoteControl.applyIconFocus` | 1.18 | Botones del reproductor |
+| `RemoteControl.addFocusPop` | 1.12 | *(función eliminada: solo servía para escalar)* |
+| `RemoteControl.applyFocusToTree` | 1.03 | Filas de Cuenta y Personalizar |
+
+`applyItemFocus` además se quedó **sin listener de foco**: el
+`StateListDrawable` del fondo ya hace todo, y sin animación no hay estado que
+limpiar al reciclar la vista.
+
+### Si en el futuro hace falta más presencia
+La respuesta **no** es volver a escalar. Es subir el contraste del estado
+enfocado en `Appearance`, o —si de verdad tiene que crecer— poner
+`android:clipChildren="false"` en el contenedor **y** reservar el margen en el
+layout. Escalar sin esas dos cosas trae de vuelta los tres problemas de arriba.
+
+## 6.1.11 Botón Atrás: se retrocede paso a paso, y se avisa antes de cerrar
+
+### Qué pasaba
+`MainActivity` no interceptaba Atrás, así que el sistema hacía `finish()` de la
+activity. Y como Splash y Login ya se cerraron a sí mismas, la pila quedaba
+vacía: **la app entera saltaba al escritorio desde cualquier punto**, incluso
+estando dentro de una categoría.
+
+Con el dedo casi no se nota, porque nadie usa Atrás para navegar. Con el control
+remoto es el botón que uno pulsa cien veces por sesión, y perder la app cada vez
+es exasperante.
+
+### Cómo funciona ahora
+Atrás deshace la navegación en el orden inverso al que se hizo:
+
+```
+búsqueda escrita → categoría/carpeta → sección → Inicio → ¿cerrar?
+```
+
+| Dónde estás | Atrás te lleva a |
+|---|---|
+| PPV o Niños con algo escrito en el buscador | La misma sección, sin búsqueda |
+| Favoritos con un filtro de tipo | Favoritos, "Todos" |
+| Radios, en una emisora que no es la primera | La primera emisora de la carpeta |
+| Radios, en una carpeta que no es Países | Países |
+| Canales / PPV / Películas / Series, en otra categoría | La categoría que se abre al entrar |
+| Cualquier sección | Inicio (o Canales en el perfil de niños) |
+| Inicio | Diálogo de confirmación |
+
+Son **como mucho tres pulsaciones** hasta el Inicio, sin importar por cuántas
+secciones haya pasado el usuario. Por eso el nivel se deduce del estado actual
+en vez de apilar un historial: con una pila, alternar veinte veces entre Canales
+y Películas obligaría a pulsar Atrás veinte veces para poder salir.
+
+### Dos detalles que no se ven pero importan
+
+**El foco vuelve a un sitio estable.** Al retroceder, la lista se recarga y la
+tarjeta que tenía el foco desaparece. Sin devolverlo a mano, Android se queda
+sin nadie a quien pasárselo: la siguiente flecha se pierde eligiendo un destino
+y parece que el mando dejó de responder justo después de volver atrás.
+
+**El diálogo arranca enfocado en "Seguir aquí"**, no en "Cerrar". Quien llega
+hasta ahí suele venir de pulsar Atrás varias veces seguidas, y los remotos
+baratos rebotan: una pulsación de más no debería cerrar la app. Salir cuesta un
+movimiento del mando; salir sin querer costaba volver a abrir todo.
+
+### Sobre la API
+Se usa `OnBackPressedDispatcher` en vez de sobrescribir `onBackPressed()`, que
+está obsoleto desde Android 13 y deja de llamarse en cuanto se active el gesto
+predictivo (`android:enableOnBackInvokedCallback`). El despachador es el camino
+que va a seguir funcionando. No hace falta ninguna dependencia nueva: viene con
+`appcompat`, porque `AppCompatActivity` ya hereda de `ComponentActivity`.
+
+> `PlayerActivity` sigue con `onBackPressed()` porque ahí Atrás hace otra cosa
+> (quitar el bloqueo de pantalla). Conviene migrarlo también cuando se toque.
+
+## 6.1.12 Refresco automático del catálogo: 3 AM hora de Chile
+
+El catálogo se vuelve a traer entero del panel **una vez al día, a las 3 de la
+mañana hora de Chile**. Si la app estaba cerrada a esa hora, se hace en la
+primera apertura del día. La lógica vive en `util/DailyRefresh.kt`.
+
+### La idea: "día lógico", no "cada 24 horas"
+Guardar la última hora de refresco y comparar contra 24 h no sirve: el momento
+se iría corriendo solo. Si un día abro a las 21:00, al siguiente no tocaría
+hasta las 21:00, y en una semana el refresco estaría a cualquier hora.
+
+En vez de eso se guarda **qué día lógico** se refrescó, donde el día lógico
+cambia a las 3 AM en lugar de a medianoche:
+
+```
+lunes 02:59  →  día lógico DOMINGO
+lunes 03:00  →  día lógico LUNES
+lunes 23:00  →  día lógico LUNES
+```
+
+Toca refrescar cuando el día lógico guardado no es el de ahora. Los dos casos
+pedidos salen del mismo cálculo, sin código aparte:
+
+| Situación | Qué pasa |
+|---|---|
+| App abierta, cruza las 3 AM | Cambia el día lógico → refresca |
+| App cerrada, se abre a las 9 AM | El día guardado es el de ayer → refresca al abrir |
+| Se abre otras cinco veces ese día | El día ya coincide → no refresca |
+| Instalación nueva | No hay nada guardado → refresca |
+
+### Por qué la zona va fija a Chile
+Se usa `America/Santiago` explícitamente, **no la zona del aparato**. Los decos
+baratos llegan de fábrica en UTC o en una zona de Asia y mucha gente nunca lo
+corrige; con la hora local del aparato el refresco caería a cualquier hora. La
+hora que importa es la del panel.
+
+`America/Santiago` ya contempla el horario de verano, así que las 3 AM son las 3
+AM del reloj todo el año. Un aparato con la base de zonas horarias vieja puede
+desviarse una hora en las semanas del cambio, y para un refresco de madrugada
+eso da igual.
+
+### Dos decisiones que no se ven
+
+**Se marca el día al lanzar la descarga, no al terminarla.** Si se marcara al
+terminar, un panel caído a las 3 AM dejaría el día sin marcar y *cada* apertura
+posterior volvería a forzar la descarga completa — justo el castigo que no hay
+que darle a alguien con mala conexión. Si falla, se reintenta al día siguiente;
+mientras tanto siguen en pie el TTL normal de 30 minutos y el botón de
+actualizar a mano.
+
+**Se comprueba también en `onResume`, no solo con el temporizador.**
+`Handler.postDelayed` cuenta con el reloj de actividad del aparato, que **se
+congela mientras el aparato duerme**: un deco suspendido a las 2 AM despertaría
+tarde. Al volver a primer plano se pregunta por la fecha real, lo que además
+cubre un reloj recién puesto en hora y los cambios de horario de verano.
+
+### Sobre `Calendar` y no `java.time`
+`LocalDate` necesita API 26 o desugaring. El proyecto está en minSdk 21 sin
+desugaring, así que `java.time` ni siquiera compilaría.
+
+### Verificación
+`DailyRefreshTest` cubre lo que no se puede probar a mano sin quedarse
+despierto: el corte de las 3, que medianoche *no* cambie el día, los cruces de
+mes/año/bisiesto, que la zona del aparato sea indiferente, y un barrido hora a
+hora de un año entero comprobando que no se repita ni se saltee ningún día.
+
+En el barrido, la espera máxima hasta el corte siguiente es de **25 h**: el
+sábado del cambio de abril, cuando Chile atrasa el reloj y ese día tiene 25
+horas. Es correcto, y por eso el test tolera hasta 36.
+
 ## 6.2 Calidad del proyecto
 
 ### Tests
@@ -434,6 +670,8 @@ que puede fallar **en silencio**, que es la peligrosa:
 | `PpvFilterTest` | Qué categorías entran en PPV Fútbol. Cada palabra nueva en las listas puede meter o sacar carpetas enteras sin que se note. |
 | `KidsFilterTest` | Perfil de niños. Un falso positivo mete contenido no apto: los tests fijan que las exclusiones ganan sobre las palabras infantiles. |
 | `ModelsTest` | Mapeo Xtream → `ContentItem`, incluida la conversión del campo `added` que ordena "Novedades" y que llega como texto (a veces vacío). |
+| `FavoritesKeysTest` | El formato de la clave de favoritos. Es el contrato con lo que ya está guardado en los dispositivos: si cambia, todos pierden sus favoritos al actualizar, sin ningún error visible. Incluye el caso de los ids negativos de las radios. |
+| `DailyRefreshTest` | El corte diario de las 3 AM de Chile. Lo que no se puede probar a mano sin quedarse despierto: que medianoche no cambie el día lógico, los cruces de mes/año/bisiesto, que la zona del aparato sea indiferente, y un barrido hora a hora de un año entero (con los dos cambios de horario) comprobando que no se repita ni se saltee ningún día. |
 
 El workflow de publicación **no publica si los tests están en rojo**.
 

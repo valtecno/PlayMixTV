@@ -277,4 +277,11 @@
     <string name="update_failed">No se pudo actualizar (%1$s)</string>
     <string name="update_need_permission">Permite instalar aplicaciones de esta app y vuelve a intentarlo</string>
     <string name="home_loading">Cargando el contenido, espere un momento</string>
+    <string name="catalog_daily_refresh">Actualizando el catálogo del día…</string>
+
+    <!-- Confirmación al salir de la app (botón Atrás desde el Inicio) -->
+    <string name="exit_title">¿Cerrar PlayMix TV?</string>
+    <string name="exit_message">Se cerrará la aplicación y volverás al inicio del dispositivo.</string>
+    <string name="exit_confirm">Cerrar</string>
+    <string name="exit_cancel">Seguir aquí</string>
 </resources>
