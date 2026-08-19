@@ -81,6 +81,32 @@ data class Episode(
     @SerializedName("season") val season: Int?
 )
 
+/**
+ * Respuesta de get_short_epg: la mini-guía que da Xtream para un canal
+ * (normalmente el programa actual y el siguiente). Acá solo se usa el
+ * primer elemento, que es el que está al aire ahora.
+ */
+data class EpgResponse(
+    @SerializedName("epg_listings") val epgListings: List<EpgListing>?
+)
+
+data class EpgListing(
+    /** Viene codificado en base64, como manda el estándar Xtream. */
+    @SerializedName("title") val title: String?,
+    @SerializedName("start") val start: String?,
+    @SerializedName("end") val end: String?,
+    /**
+     * Unix epoch (segundos), independiente del huso horario del panel. Es lo
+     * único confiable para saber si un programa está vigente "ahora": el texto
+     * de start/end viene formateado con el horario que tenga configurado el
+     * panel, que no tiene por qué coincidir con el del país donde se instaló
+     * la app.
+     */
+    @SerializedName("start_timestamp") val startTimestamp: Long = 0L,
+    @SerializedName("stop_timestamp") val stopTimestamp: Long = 0L,
+    @SerializedName("now_playing") val nowPlaying: Int?
+)
+
 /** Tipo de contenido, para poder usar una sola lista/adapter para todo. */
 enum class ContentType { LIVE, MOVIE, SERIES }
 
