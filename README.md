@@ -1,4 +1,4 @@
-# Mi IPTV — App personalizada (Android)
+# playmixtv — App personalizada (Android) tv y moviles
 
 App nativa en Kotlin para conectarte a tu servidor **Xtream Codes** privado.
 Incluye: intro/splash con logo, login, listado de categorías y canales en vivo,
