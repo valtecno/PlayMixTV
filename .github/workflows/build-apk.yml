@@ -1,11 +1,7 @@
 name: Build APK
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:   # también podés lanzarlo a mano desde la pestaña "Actions"
+  workflow_dispatch:   # Se ejecutará únicamente cuando lo lances a mano desde Actions
 
 jobs:
   build:
