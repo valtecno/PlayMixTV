@@ -59,14 +59,13 @@ android {
      */
     val keystoreFile = System.getenv("PLAYMIX_KEYSTORE")?.let { file(it) }
     signingConfigs {
-        if (keystoreFile != null && keystoreFile.exists()) {
-            create("release") {
-                storeFile = keystoreFile
-                storePassword = System.getenv("PLAYMIX_STORE_PASSWORD")
-                keyAlias = System.getenv("PLAYMIX_KEY_ALIAS")
-                keyPassword = System.getenv("PLAYMIX_KEY_PASSWORD")
-            }
-        }
+    create("release") {
+        storeFile = file(System.getenv("PLAYMIX_KEYSTORE") ?: "playmix-release.keystore")
+        storePassword = System.getenv("PLAYMIX_STORE_PASSWORD")
+        keyAlias = System.getenv("PLAYMIX_KEY_ALIAS") ?: "playmix"
+        keyPassword = System.getenv("PLAYMIX_STORE_PASSWORD")
+    }
+}
     }
 
     buildTypes {
