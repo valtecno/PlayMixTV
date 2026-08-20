@@ -144,6 +144,7 @@ object Epg {
 
     private fun EpgListing.tituloLegible(): String? = title?.decodeEpgText()
 
+
     /** Xtream manda título y descripción en base64; si algún panel no lo hace, se devuelve tal cual. */
     private fun String.decodeEpgText(): String? {
         val decodificado = runCatching {
