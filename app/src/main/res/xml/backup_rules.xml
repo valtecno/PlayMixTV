@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copia de seguridad automática (Android 5.0 - 11).
+
+    QUÉ PROBLEMA RESUELVE
+
+    Session guarda servidor, usuario y CONTRASEÑA del panel en texto plano
+    dentro de miiptv_prefs. Con la copia de seguridad automática activada y sin
+    reglas, Android sube ese archivo tal cual a la cuenta de Google Drive del
+    usuario. O sea: la contraseña del panel sale del dispositivo sin que nadie
+    lo pida.
+
+    Excluyendo miiptv_prefs, la credencial no viaja. El precio es que al
+    cambiar de teléfono hay que volver a escribir usuario y contraseña una vez,
+    que es exactamente lo que hace cualquier app con sesión.
+
+    QUÉ SÍ SE SIGUE RESPALDANDO
+
+    Todo lo demás: favoritos, historial, ajustes del reproductor, apariencia y
+    control parental. Son los datos que duele perder y no contienen secretos.
+    (El PIN se guarda como hash SHA-256, no en claro.)
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="miiptv_prefs.xml" />
+</full-backup-content>

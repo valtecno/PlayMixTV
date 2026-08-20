@@ -18,6 +18,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Rational
 import android.util.TypedValue
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
@@ -43,6 +44,7 @@ import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.Epg
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.History
 import com.miiptv.app.util.Favorites
@@ -66,6 +68,8 @@ class PlayerActivity : AppCompatActivity() {
 
         // Datos del contenido, para poder marcarlo como favorito desde el reproductor
         const val EXTRA_ITEM_ID = "extra_item_id"
+        /** El EPG solo se muestra si viene en true: lo pone MainActivity cuando se entra desde Canales o PPV. */
+        const val EXTRA_EPG_ALLOWED = "extra_epg_allowed"
         const val EXTRA_ITEM_ICON = "extra_item_icon"
         const val EXTRA_ITEM_CATEGORY = "extra_item_category"
         const val EXTRA_ITEM_TYPE = "extra_item_type"
@@ -121,6 +125,8 @@ class PlayerActivity : AppCompatActivity() {
 
     /** Tipo del contenido que se está viendo. Decide si hay zapping de canales. */
     private var itemType: ContentType = ContentType.LIVE
+    /** true solo si se entró desde Canales o PPV (lo decide MainActivity). */
+    private var epgAllowed = false
     private var radioSourceLabel: String? = null
     /** Animaciones del ecualizador; se cancelan al pausar y al salir. */
     private val eqAnimators = mutableListOf<ObjectAnimator>()
@@ -220,6 +226,10 @@ class PlayerActivity : AppCompatActivity() {
 
         binding.tvNowPlaying.text = contentTitle
         binding.tvNowPlaying.isSelected = true   // activa el desplazamiento del texto largo
+        epgAllowed = itemType == ContentType.LIVE && intent.getBooleanExtra(EXTRA_EPG_ALLOWED, false)
+        if (epgAllowed && intent.hasExtra(EXTRA_ITEM_ID)) {
+            refreshEpgNow(intent.getIntExtra(EXTRA_ITEM_ID, 0))
+        }
 
         if (PlayerPrefs.getKeepScreenOn(this)) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -481,6 +491,23 @@ class PlayerActivity : AppCompatActivity() {
         )
     }
 
+    /**
+     * Programa que está al aire ahora en el canal [streamId], mostrado bajo el
+     * nombre del canal en la barra superior. Solo eso: sin horarios ni
+     * programación futura. Se oculta si el panel no tiene EPG para ese canal.
+     */
+    private fun refreshEpgNow(streamId: Int) {
+        binding.tvEpgNow.visibility = View.GONE
+        binding.tvEpgNow.tag = streamId
+        Epg.nowPlaying(this, streamId) { titulo ->
+            if (isFinishing || isDestroyed) return@nowPlaying
+            if (binding.tvEpgNow.tag == streamId) {
+                binding.tvEpgNow.text = titulo
+                binding.tvEpgNow.visibility = if (titulo.isNullOrBlank()) View.GONE else View.VISIBLE
+            }
+        }
+    }
+
     // ---------------- Controles ----------------
 
     private fun setupControls() {
@@ -594,6 +621,38 @@ class PlayerActivity : AppCompatActivity() {
         }
         return super.dispatchTouchEvent(ev)
     }
+
+    /**
+     * Con la pantalla bloqueada también hay que descartar el control remoto, no
+     * solo el toque — si no, en modo TV (sin pantalla táctil) el candado se
+     * activaba pero después no había ninguna forma de destrabarlo: dispatchTouchEvent
+     * se tragaba los toques, pero nada frenaba ni reaccionaba a las teclas del
+     * control. Mismo criterio en dos pasos: la primera pulsación de cualquier
+     * tecla solo revela el candado; con el candado visible, Aceptar/Centro del
+     * D-pad lo abre. Atrás queda afuera para no pisar el aviso que ya muestra
+     * onBackPressed.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (locked && event.keyCode != KeyEvent.KEYCODE_BACK) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                if (binding.btnUnlock.visibility != View.VISIBLE) {
+                    showLockIconTemporarily()
+                } else if (esTeclaConfirmar(event.keyCode)) {
+                    setLocked(false)
+                } else {
+                    showLockIconTemporarily() // refresca el tiempo que queda visible
+                }
+            }
+            return true // se traga tanto la bajada como la subida de la tecla
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    /** Aceptar/centro del D-pad: el equivalente en control remoto a tocar el candado. */
+    private fun esTeclaConfirmar(keyCode: Int) =
+        keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+            keyCode == KeyEvent.KEYCODE_ENTER ||
+            keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
 
     // ---------------- Favoritos ----------------
 
@@ -773,7 +832,7 @@ class PlayerActivity : AppCompatActivity() {
         RemoteControl.applyIconFocusToTree(binding.playerView, true)
 
         // btnBack, btnRadioHome y btnRadioFavorite no entran acá: llevan estilo
-        // NavItem y ya reciben color y relieve desde Appearance.applyLevel.
+        // NavItem y ya reciben su color de foco desde Appearance.applyLevel.
     }
 
     private fun setupRadioMode() {
@@ -913,6 +972,7 @@ class PlayerActivity : AppCompatActivity() {
         audioAvisado = false
 
         binding.tvNowPlaying.text = contentTitle
+        if (epgAllowed) refreshEpgNow(id)
         // La estrella tiene que marcar el canal que se ve ahora, no el anterior
         favoriteItem = favoriteItem?.copy(id = id, name = contentTitle, streamUrl = null)
         refreshFavoriteIcon()

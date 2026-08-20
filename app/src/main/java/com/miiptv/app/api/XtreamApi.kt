@@ -61,6 +61,17 @@ interface XtreamApi {
         @Query("vod_id") vodId: Int
     ): Call<VodInfoResponse>
 
+    // ---- EPG (solo "qué se está viendo ahora") ----
+    @GET("player_api.php")
+    fun getShortEpg(
+        @Query("username") username: String,
+        @Query("password") password: String,
+        @Query("action") action: String = "get_short_epg",
+        @Query("stream_id") streamId: Int,
+        /** 2: el programa actual y el siguiente. Nada más — ni grilla ni horarios futuros. */
+        @Query("limit") limit: Int = 2
+    ): Call<EpgResponse>
+
     // ---- Series ----
     @GET("player_api.php")
     fun getSeriesCategories(
