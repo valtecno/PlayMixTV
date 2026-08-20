@@ -226,7 +226,7 @@ class PlayerActivity : AppCompatActivity() {
 
         binding.tvNowPlaying.text = contentTitle
         binding.tvNowPlaying.isSelected = true   // activa el desplazamiento del texto largo
-        epgAllowed = itemType == ContentType.LIVE && intent.getBooleanExtra(EXTRA_EPG_ALLOWED, false)
+        epgAllowed = !isRadio && itemType == ContentType.LIVE && intent.getBooleanExtra(EXTRA_EPG_ALLOWED, false)
         if (epgAllowed && intent.hasExtra(EXTRA_ITEM_ID)) {
             refreshEpgNow(intent.getIntExtra(EXTRA_ITEM_ID, 0))
         }

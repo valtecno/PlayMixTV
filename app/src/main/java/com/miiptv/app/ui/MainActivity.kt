@@ -2,6 +2,7 @@ package com.miiptv.app.ui
 
 import android.app.AlertDialog
 import android.content.Intent
+import com.miiptv.app.util.DailyRefresh
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
