@@ -84,6 +84,7 @@
     <string name="radio_connecting">Conectando…</string>
     <string name="radio_prev_station">Emisora anterior</string>
     <string name="radio_next_station">Emisora siguiente</string>
+    <string name="radio_open">Abrir</string>
     <string name="radio_position">Emisora %1$d de %2$d</string>
     <string name="radio_only_station">Emisora única</string>
     <string name="radio_no_more">No hay más emisoras en esta lista</string>
@@ -208,6 +209,11 @@
     <string name="player_no_subtitles">Este contenido no trae subtítulos</string>
     <string name="track_disabled">Desactivado</string>
     <string name="track_auto">Automática</string>
+    <string name="track_try_alt_audio">Buscar más idiomas (probar otra señal)…</string>
+    <string name="audio_try_alt_source_title">Buscar más idiomas de audio</string>
+    <string name="audio_try_alt_source_confirm">Esta señal solo trae un idioma de audio. Algunos canales traen más idiomas por la vía alternativa (%1$s). ¿Probarla? El canal se va a reconectar.</string>
+    <string name="audio_try_alt_source_positive">Probar</string>
+    <string name="audio_alt_source_no_more">La vía alternativa tampoco trae más idiomas de audio en este canal.</string>
     <!-- Boton de favorito del reproductor de radio (al lado de Inicio) -->
     <string name="radio_fav_add">Favorito</string>
     <string name="radio_fav_saved">Guardada</string>

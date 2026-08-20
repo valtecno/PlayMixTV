@@ -38,6 +38,7 @@ import com.miiptv.app.util.History
 import com.miiptv.app.util.KidsFilter
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
+import com.miiptv.app.util.PlaybackHolder
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.PlayerFactory
 import com.miiptv.app.util.PpvFilter
@@ -132,7 +133,10 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        adapter = ContentAdapter(onClick = { item -> handleItemClick(item) })
+        adapter = ContentAdapter(
+            onClick = { item -> handleItemClick(item) },
+            onPreview = { item -> previewRadio(item) }
+        )
         // Con el remoto la tarjeta enfocada se pinta y se agranda un poco; con
         // el dedo, todo queda como siempre.
         adapter.remoteMode = RemoteControl.isEnabled(this)
@@ -227,10 +231,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectSection(newSection: Section) {
+        // Cambiar de sección deja atrás la lista de radios: si había una
+        // sonando en preview, no tiene sentido que siga (además, en otra
+        // sección ese id ya no corresponde a ninguna fila visible).
+        if (section == Section.RADIO && newSection != Section.RADIO) stopRadioPreview()
         section = newSection
-        // El EPG (ahora + próximo) solo corre en Canales y PPV; en el resto
-        // de secciones el adapter ni siquiera lo pide.
-        adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV
+        // El EPG (ahora + próximo) corre en Canales, PPV y Favoritos; en el
+        // resto de secciones el adapter ni siquiera lo pide. Dentro de
+        // Favoritos, bindEpgNow() igual lo filtra por ContentType.LIVE, así
+        // que una película o serie favorita nunca dispara la consulta.
+        adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV || newSection == Section.FAVORITES
         highlightNav()
         binding.tvEmpty.visibility = View.GONE
         binding.tvSectionTitle.visibility = View.GONE
@@ -307,6 +317,46 @@ class MainActivity : AppCompatActivity() {
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
+
+    /**
+     * Preview de radio: al tocar una fila en la lista de Radios, suena antes
+     * de agrandar la pantalla (a diferencia del preview de canales, esto no
+     * usa un reproductor propio de esta pantalla: engancha directo a
+     * [PlaybackHolder], el mismo que usa PlayerActivity. Así, si después se
+     * toca "Abrir", el reproductor de pantalla completa retoma el audio que
+     * ya estaba sonando sin reiniciar el stream (ver PlaybackHolder.canResume).
+     *
+     * Un segundo toque sobre la fila que ya está sonando abre directo, igual
+     * que el atajo del preview de canales.
+     */
+    private fun previewRadio(item: ContentItem) {
+        val url = item.streamUrl ?: return
+        if (adapter.previewingId == item.id && PlaybackHolder.canResume(url)) {
+            openItem(item)
+            return
+        }
+        if (!PlaybackHolder.canResume(url)) {
+            PlaybackHolder.release()
+            val exo = PlayerFactory.build(this)
+            exo.setMediaItem(MediaItem.fromUri(url))
+            exo.prepare()
+            exo.playWhenReady = true
+            PlaybackHolder.attach(exo, url, item.name)
+        }
+        adapter.setPreviewing(item.id)
+    }
+
+    /**
+     * Corta el preview de radio. Se puede llamar sin condiciones (onStop,
+     * onDestroy, cambio de sección o de fuente): si ya no había nada en
+     * preview, o si el id se limpió antes de pasarle el reproductor a
+     * PlayerActivity (ver reallyOpen), no hace nada.
+     */
+    private fun stopRadioPreview() {
+        if (!::adapter.isInitialized || adapter.previewingId == null) return
+        adapter.setPreviewing(null)
+        PlaybackHolder.release()
+    }
 
     /** Ficha del primer canal de [items] en el panel de previsualización, o lo limpia si no hay ninguno. */
     private fun refreshPreviewCard(items: List<ContentItem>) {
@@ -1218,6 +1268,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadRadio(source: RadioCatalog.Source) {
+        // La lista que viene va a ser otra: si algo sonaba en preview de la
+        // fuente anterior, cortarlo antes de repintar.
+        stopRadioPreview()
         currentRadioSource = source
         // Repinta la fila de fuentes para que se vea cuál está abierta
         for (i in 0 until binding.radioSubContainer.childCount) {
@@ -1323,6 +1376,11 @@ class MainActivity : AppCompatActivity() {
         }
         // Las radios ya traen su URL; el resto se arma con los datos de la sesión
         item.streamUrl?.let { url ->
+            // Si esta radio estaba sonando en preview, el id ya no debe seguir
+            // marcado: PlayerActivity toma el mismo PlaybackHolder tal cual
+            // (ver previewRadio/PlaybackHolder.canResume), así que acá solo se
+            // limpia el estado visual de la lista, sin tocar el reproductor.
+            if (::adapter.isInitialized) adapter.setPreviewing(null)
             startActivity(radioIntent(item, url))
             return
         }
@@ -1652,6 +1710,10 @@ class MainActivity : AppCompatActivity() {
         // y si la previsualización siguiera conectada el panel podría rechazar
         // el canal por tope de conexiones simultáneas.
         releasePreview()
+        // Ídem para el preview de radio: si se llegó hasta acá habiendo
+        // tocado "Abrir", reallyOpen ya limpió el id antes, así que esto no
+        // hace nada y no corta el audio que PlayerActivity acaba de tomar.
+        stopRadioPreview()
     }
 
     override fun onPause() {
@@ -1668,6 +1730,7 @@ class MainActivity : AppCompatActivity() {
         // de espera y captura la activity: sin quitarlo, la mantiene viva.
         refrescoDiario.removeCallbacks(tareaRefrescoDiario)
         releasePreview()
+        stopRadioPreview()
         RadioCatalog.cancel()
         stopCarousel()
         Catalog.removeListener(catalogListener)

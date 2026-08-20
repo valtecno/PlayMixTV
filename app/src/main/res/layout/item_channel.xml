@@ -55,6 +55,28 @@
         android:src="@android:drawable/ic_lock_lock"
         android:visibility="gone" />
 
+    <!--
+      Solo aparece en la fila de la radio que está sonando en preview (ver
+      ContentAdapter.setPreviewing). Al tocarlo abre esa emisora a pantalla
+      completa; como ya está sonando por PlaybackHolder, PlayerActivity se
+      engancha al mismo reproductor sin reiniciar el stream.
+    -->
+    <TextView
+        android:id="@+id/btnOpen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:background="@drawable/bg_button_gradient"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp"
+        android:text="@string/radio_open"
+        android:textColor="@color/text_light"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:focusable="true"
+        android:clickable="true"
+        android:visibility="gone" />
+
     <ImageView
         android:id="@+id/ivFavorite"
         android:layout_width="24dp"

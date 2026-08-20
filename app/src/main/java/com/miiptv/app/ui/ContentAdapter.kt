@@ -35,7 +35,13 @@ import com.squareup.picasso.Picasso
  */
 class ContentAdapter(
     private val onClick: (ContentItem) -> Unit,
-    private val onFavoriteToggled: (() -> Unit)? = null
+    private val onFavoriteToggled: (() -> Unit)? = null,
+    /**
+     * Solo para radios (ver [esRadio]): tocar la fila arranca el preview en
+     * vez de abrir de una. Si es null (canales, películas, series, etc.) la
+     * fila se comporta como siempre: tocar = onClick directo.
+     */
+    private val onPreview: ((ContentItem) -> Unit)? = null
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     /**
@@ -45,6 +51,25 @@ class ContentAdapter(
      * prende/apaga MainActivity según la sección en la que esté parado.
      */
     var epgEnabled: Boolean = false
+
+    /**
+     * Id de la radio que está sonando en preview (ver MainActivity.previewRadio).
+     * Solo esa fila muestra el botón "Abrir"; se usa [setPreviewing] en vez de
+     * asignar directo para no repintar la lista entera en cada tap.
+     */
+    var previewingId: Int? = null
+        private set
+
+    fun setPreviewing(id: Int?) {
+        if (previewingId == id) return
+        val anterior = previewingId
+        previewingId = id
+        items.indexOfFirst { it.id == anterior }.takeIf { it >= 0 }?.let { notifyItemChanged(it) }
+        items.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { notifyItemChanged(it) }
+    }
+
+    /** Radios: mismo ContentType.LIVE que los canales, pero con streamUrl propio. */
+    private fun esRadio(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl != null
 
     private companion object {
         const val TYPE_ROW = 0
@@ -139,9 +164,23 @@ class ContentAdapter(
                 ivFavorite.setImageResource(starRes)
                 ivFavorite.imageTintList = starTint
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
-                root.setOnClickListener { onClick(item) }
                 setupFocus(holder, item, root)
                 bindEpgNow(tvEpgNow, item)
+
+                if (esRadio(item) && onPreview != null) {
+                    val enPreview = item.id == previewingId
+                    root.setOnClickListener { onPreview.invoke(item) }
+                    root.setBackgroundResource(
+                        if (enPreview) R.drawable.bg_option_selected else R.drawable.bg_glass_card
+                    )
+                    btnOpen.visibility = if (enPreview) View.VISIBLE else View.GONE
+                    btnOpen.setOnClickListener { onClick(item) }
+                } else {
+                    root.setOnClickListener { onClick(item) }
+                    root.setBackgroundResource(R.drawable.bg_glass_card)
+                    btnOpen.visibility = View.GONE
+                    btnOpen.setOnClickListener(null)
+                }
             }
 
             is PosterHolder -> with(holder.binding) {
@@ -247,7 +286,11 @@ class ContentAdapter(
      * qué stream_id la pidió y se descarta la respuesta si ya no coincide.
      */
     private fun bindEpgNow(tvEpgNow: android.widget.TextView, item: ContentItem) {
-        if (!epgEnabled || item.type != ContentType.LIVE) {
+        // item.streamUrl != null identifica una radio: comparte ContentType.LIVE
+        // con los canales, pero su id es un hash propio (ver RadioCatalog), no
+        // el stream_id de Xtream que espera get_short_epg. Esto no pasaba antes
+        // porque Canales/PPV nunca mezclan radios; Favoritos sí puede.
+        if (!epgEnabled || item.type != ContentType.LIVE || item.streamUrl != null) {
             tvEpgNow.visibility = View.GONE
             return
         }

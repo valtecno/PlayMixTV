@@ -113,6 +113,15 @@ class PlayerActivity : AppCompatActivity() {
     private var retries = 0
     /** Evita repetir el aviso de audio incompatible en cada cambio de pistas. */
     private var audioAvisado = false
+    /**
+     * Un canal en vivo solo prueba la señal alternativa (.ts <-> .m3u8) una
+     * vez en busca de más idiomas de audio: si tampoco trae nada nuevo, no
+     * tiene sentido seguir alternando en cada tap. Se resetea al cambiar de
+     * canal (changeChannel), porque cada señal es independiente.
+     */
+    private var usingAltAudioSource = false
+    /** Tras recargar por más idiomas, reabre el diálogo de audio solo. */
+    private var reopenAudioDialogOnTracks = false
 
     /** Episodios encadenados (vacío si no viene de una serie). */
     private var playlistUrls: List<String> = emptyList()
@@ -714,6 +723,10 @@ class PlayerActivity : AppCompatActivity() {
         val grupos = exo.currentTracks.groups.filter { it.type == trackType && it.isSupported }
 
         if (grupos.isEmpty()) {
+            if (trackType == C.TRACK_TYPE_AUDIO && puedeProbarAudioAlternativo()) {
+                offerAlternateAudioSource()
+                return
+            }
             val msg = if (trackType == C.TRACK_TYPE_TEXT) R.string.player_no_subtitles
             else R.string.player_no_tracks
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
@@ -735,6 +748,15 @@ class PlayerActivity : AppCompatActivity() {
             }
         }
 
+        // "Auto" + una sola pista real = un solo idioma de audio disponible.
+        // Muchos paneles Xtream exponen más idiomas por .ts que por .m3u8 (o
+        // viceversa) porque el repaquetado HLS del panel a veces se queda con
+        // uno solo; el multiplex .ts crudo trae el original completo. Antes
+        // de resignarse, ofrecer probar la otra vía (ver swapLiveExtension).
+        if (trackType == C.TRACK_TYPE_AUDIO && opciones.size <= 2 && puedeProbarAudioAlternativo()) {
+            opciones.add(Opcion(getString(R.string.track_try_alt_audio), null, -3))
+        }
+
         val seleccionado = opciones.indexOfFirst {
             it.grupo != null && it.indice >= 0 && it.grupo.isTrackSelected(it.indice)
         }.takeIf { it >= 0 } ?: 0
@@ -746,6 +768,11 @@ class PlayerActivity : AppCompatActivity() {
                 seleccionado
             ) { dialog, which ->
                 val opcion = opciones[which]
+                if (opcion.indice == -3) {
+                    dialog.dismiss()
+                    offerAlternateAudioSource()
+                    return@setSingleChoiceItems
+                }
                 exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
                     .clearOverridesOfType(trackType)
                     .setTrackTypeDisabled(trackType, opcion.indice == -2)
@@ -759,6 +786,50 @@ class PlayerActivity : AppCompatActivity() {
                     }
                     .build()
                 dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Solo canales en vivo (no radio) con URL .ts/.m3u8 y sin haber probado ya la otra vía. */
+    private fun puedeProbarAudioAlternativo(): Boolean =
+        !isRadio && itemType == ContentType.LIVE && !usingAltAudioSource &&
+            swapLiveExtension(streamUrl) != null
+
+    /**
+     * Alterna la extensión de una URL de canal en vivo entre .ts y .m3u8.
+     * PlayerFactory ya trae el extractor TS preparado para leer varias pistas
+     * de audio (AC-3/E-AC-3/DTS incluidas); esto solo decide por cuál de las
+     * dos vías del panel se pide el canal. Devuelve null para URLs que no son
+     * de este tipo (radios, películas, episodios), donde no aplica.
+     */
+    private fun swapLiveExtension(url: String): String? = when {
+        url.endsWith(".ts") -> url.removeSuffix(".ts") + ".m3u8"
+        url.endsWith(".m3u8") -> url.removeSuffix(".m3u8") + ".ts"
+        else -> null
+    }
+
+    /**
+     * Reconecta el mismo canal por la vía alternativa. Una sola vez por
+     * canal (usingAltAudioSource): si tampoco trae más idiomas, no insiste.
+     * Al reconectar deja pendiente reabrir el diálogo de audio en cuanto
+     * lleguen las pistas nuevas (ver onTracksChanged en startPlayback).
+     */
+    private fun offerAlternateAudioSource() {
+        val nuevaUrl = swapLiveExtension(streamUrl) ?: return
+        val etiquetaVia = if (nuevaUrl.endsWith(".ts")) "TS" else "HLS"
+        AlertDialog.Builder(this)
+            .setTitle(R.string.audio_try_alt_source_title)
+            .setMessage(getString(R.string.audio_try_alt_source_confirm, etiquetaVia))
+            .setPositiveButton(R.string.audio_try_alt_source_positive) { dialog, _ ->
+                dialog.dismiss()
+                usingAltAudioSource = true
+                reopenAudioDialogOnTracks = true
+                streamUrl = nuevaUrl
+                retries = 0
+                audioAvisado = false
+                PlaybackHolder.release()
+                startPlayback(streamUrl, resumeAtMs = 0L)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -970,6 +1041,10 @@ class PlayerActivity : AppCompatActivity() {
         contentTitle = playlistTitles.getOrElse(destino) { contentTitle }
         retries = 0
         audioAvisado = false
+        // Cada canal es una señal distinta: si en el anterior probamos la vía
+        // alternativa, eso no dice nada de este.
+        usingAltAudioSource = false
+        reopenAudioDialogOnTracks = false
 
         binding.tvNowPlaying.text = contentTitle
         if (epgAllowed) refreshEpgNow(id)
@@ -1198,6 +1273,29 @@ class PlayerActivity : AppCompatActivity() {
                  * (por ejemplo una AAC), se cambia sola.
                  */
                 override fun onTracksChanged(tracks: Tracks) {
+                    // Se pidió la vía alternativa buscando más idiomas de audio:
+                    // en cuanto lleguen pistas de audio reales, reabrir el
+                    // diálogo solo, para no obligar a un segundo tap manual.
+                    if (reopenAudioDialogOnTracks) {
+                        val gruposAudio = tracks.groups.filter {
+                            it.type == C.TRACK_TYPE_AUDIO && it.isSupported
+                        }
+                        if (gruposAudio.isNotEmpty()) {
+                            reopenAudioDialogOnTracks = false
+                            val totalPistas = gruposAudio.sumOf { it.length }
+                            if (totalPistas <= 1) {
+                                Toast.makeText(
+                                    this@PlayerActivity,
+                                    R.string.audio_alt_source_no_more,
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                showTrackDialog(C.TRACK_TYPE_AUDIO)
+                            }
+                            return
+                        }
+                    }
+
                     if (audioAvisado) return
                     val grupos = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
                     if (grupos.isEmpty()) return   // todavía no llegaron las pistas
@@ -1249,6 +1347,28 @@ class PlayerActivity : AppCompatActivity() {
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
+                    // La vía alternativa (buscando más idiomas de audio) ni
+                    // siquiera conecta: mejor volver a la que sí funcionaba
+                    // que dejar el canal caído.
+                    if (reopenAudioDialogOnTracks) {
+                        reopenAudioDialogOnTracks = false
+                        val original = swapLiveExtension(url)
+                        if (original != null) {
+                            streamUrl = original
+                            retries = 0
+                            binding.progressBar.visibility = View.VISIBLE
+                            exo.stop()
+                            exo.setMediaItem(MediaItem.fromUri(original))
+                            exo.prepare()
+                            exo.playWhenReady = true
+                            Toast.makeText(
+                                this@PlayerActivity,
+                                R.string.audio_alt_source_no_more,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return
+                        }
+                    }
                     if (PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES) {
                         retries++
                         binding.progressBar.visibility = View.VISIBLE
