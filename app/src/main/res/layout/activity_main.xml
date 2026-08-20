@@ -410,9 +410,9 @@
 
         </LinearLayout>
 
-        <!-- ===== Previsualización: se ve solo en Canales, en TV (control remoto) =====
+        <!-- ===== Previsualización: Canales, PPV y Favoritos (solo canales) =====
              Muestra el canal recién enfocado sin cortar la reproducción actual;
-             hay que tocar "Reproducir" para recién ahí abrir el reproductor. -->
+             hay que tocar "Ampliar" para recién ahí abrir el reproductor. -->
         <LinearLayout
             android:id="@+id/previewPanel"
             android:layout_width="0dp"

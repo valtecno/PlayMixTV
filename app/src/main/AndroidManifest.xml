@@ -35,8 +35,21 @@
         por eso PlayMix TV salia como un cuadradito con el nombre debajo,
         mientras las demas apps mostraban una tarjeta ancha.
     -->
+    <!--
+        COPIA DE SEGURIDAD
+
+        Sigue activada (favoritos, historial y ajustes se conservan al cambiar
+        de aparato), pero con reglas: miiptv_prefs queda excluido porque ahí
+        vive la contraseña del panel en texto plano. Sin estas dos lineas
+        Android la subiria a Google Drive.
+
+        Hacen falta las dos: fullBackupContent lo lee Android 5.0-11 y
+        dataExtractionRules lo lee Android 12 en adelante.
+    -->
     <application
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:largeHeap="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

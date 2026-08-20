@@ -185,21 +185,17 @@ object Appearance {
          * a un ColorStateList por su cuenta: sin esto, un ítem enfocado quedaba
          * con el texto en blanco y el ícono en lavanda apagado, como a medio
          * pintar. Se retiñe cuando entra o sale el foco.
+         *
+         * ACÁ NO SE ESCALA NADA. Antes el ítem enfocado crecía un 10%, y eso
+         * rompía la barra: `scaleX/scaleY` agranda el dibujo pero NO el hueco
+         * que la vista ocupa en el layout, así que el ítem crecido se salía de
+         * su sitio, el padre lo recortaba (clipChildren viene en true) y el
+         * texto quedaba interpolado, o sea borroso. El color ya dice dónde está
+         * el foco; el tamaño no hacía falta.
          */
-        val conRemoto = RemoteControl.isEnabled(c)
-        view.setOnFocusChangeListener { v, tieneFoco ->
+        view.setOnFocusChangeListener { v, _ ->
             val tv = v as android.widget.TextView
             tv.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(tv.currentTextColor) }
-
-            // Relieve además del color. Sobre un televisor, a tres metros, el
-            // cambio de color solo se nota poco; el movimiento se ve enseguida.
-            // Sobre todo en el reproductor, donde estos botones flotan encima
-            // del video y compiten con la imagen.
-            if (conRemoto) {
-                val escala = if (tieneFoco) 1.10f else 1f
-                v.animate().scaleX(escala).scaleY(escala).setDuration(130).start()
-                v.elevation = if (tieneFoco) 10f * v.resources.displayMetrics.density else 0f
-            }
         }
     }
 
