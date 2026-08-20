@@ -34,6 +34,38 @@ import android.view.ViewGroup
  * encerrado — si el aparato no tiene pantalla táctil y tampoco se ve el foco,
  * no hay forma de elegir "TV" y salir de ahí. Pasa de verdad con los decos
  * baratos, que no siempre se declaran como televisores.
+ *
+ * ---------------------------------------------------------------------------
+ * POR QUÉ NO SE ESCALA NADA
+ *
+ * El resalte de foco es **solo color**. Nada crece, nada se levanta.
+ *
+ * La versión anterior agrandaba la vista enfocada (entre 3% y 18% según el
+ * caso) buscando que se leyera de lejos. El problema es que `scaleX/scaleY`
+ * agranda el DIBUJO pero no el hueco que la vista ocupa en el layout, y de ahí
+ * salían tres fallas a la vez:
+ *
+ *  1. El padre recorta lo que se sale (`clipChildren` viene en true), así que
+ *     el borde crecido quedaba cortado en seco.
+ *  2. Lo que no se recortaba se salía de la pantalla: en el menú superior el
+ *     último ítem se iba por el borde derecho, y en las filas de Cuenta la fila
+ *     enfocada se comía los márgenes de los dos lados.
+ *  3. Escalar interpola los píxeles ya dibujados, así que el texto de la vista
+ *     enfocada se veía borroso — justo la que hay que poder leer.
+ *
+ * Además se acumulaba: una fila podía recibir escala de `Appearance.applyLevel`
+ * y otra más del recorrido de esta clase, y terminaba creciendo el doble de lo
+ * previsto.
+ *
+ * El color, en cambio, no ocupa espacio. Los `StateListDrawable` de
+ * [Appearance] ya distinguen el estado enfocado con degradado y anillo blanco,
+ * que se ve perfectamente desde el sillón y no puede desbordar nada.
+ *
+ * **Si en el futuro hace falta más presencia**, la respuesta NO es volver a
+ * escalar: es subir el contraste del estado enfocado en [Appearance], o —si de
+ * verdad hiciera falta que crezca— poner `android:clipChildren="false"` en el
+ * contenedor y reservar el margen en el layout. Escalar sin eso vuelve a traer
+ * los tres problemas de arriba.
  * ---------------------------------------------------------------------------
  */
 object RemoteControl {
@@ -45,27 +77,18 @@ object RemoteControl {
      * Prepara una tarjeta de lista (canal, película, serie, emisora) para que se
      * vea cuál tiene el foco.
      *
+     * El resalte es **solo color**: el fondo cambia de estado y nada más. Ver
+     * la nota "POR QUÉ NO SE ESCALA NADA" arriba.
+     *
      * @param remoto si es false solo se deja el fondo con estados (inofensivo:
      *        en modo táctil las vistas no reciben foco) y no se toca nada más.
-     * @param escalaFoco cuánto crece la tarjeta enfocada. Un póster de grilla
-     *        aguanta 1.05 sin tocar a sus vecinos; una fila a lo ancho de la
-     *        pantalla, no: ese 5% son decenas de píxeles que se salen del
-     *        recuadro. Por eso las filas usan un valor mucho más chico.
      */
     fun applyItemFocus(
         view: View,
         remoto: Boolean,
-        cornerRadiusDp: Float = 14f,
-        escalaFoco: Float = 1.05f
+        cornerRadiusDp: Float = 14f
     ) {
         view.background = Appearance.cardFocusBackground(view.context, cornerRadiusDp)
-
-        // Las vistas se reciclan: si una quedó agrandada de cuando tenía el
-        // foco, hay que devolverla a su tamaño antes de reutilizarla.
-        view.animate().cancel()
-        view.scaleX = 1f
-        view.scaleY = 1f
-        view.elevation = 0f
 
         if (!remoto) {
             view.onFocusChangeListener = null
@@ -86,14 +109,9 @@ object RemoteControl {
         (view as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         view.isFocusable = true
 
-        view.setOnFocusChangeListener { v, tieneFoco ->
-            // El color ya lo cambia el StateListDrawable del fondo. Esto agrega
-            // el relieve: un poco más grande y por encima de las vecinas, que es
-            // lo que hace que se lea de lejos, sentado en un sillón.
-            val escala = if (tieneFoco) escalaFoco else 1f
-            v.animate().scaleX(escala).scaleY(escala).setDuration(140).start()
-            v.elevation = if (tieneFoco) 8f * v.resources.displayMetrics.density else 0f
-        }
+        // Sin listener de foco: el StateListDrawable del fondo ya hace todo el
+        // trabajo, y lo hace sin código y sin animación que limpiar al reciclar.
+        view.onFocusChangeListener = null
     }
 
     /**
@@ -112,13 +130,11 @@ object RemoteControl {
         view: View,
         remoto: Boolean,
         circular: Boolean = true,
-        cornerRadiusDp: Float = 12f,
-        escalaFoco: Float = 1.18f
+        cornerRadiusDp: Float = 12f
     ) {
         if (!remoto) return
         view.background =
             Appearance.iconFocusBackground(view.context, view.background, circular, cornerRadiusDp)
-        addFocusPop(view, escalaFoco)
     }
 
     /**
@@ -140,30 +156,6 @@ object RemoteControl {
         }
         if (root is ViewGroup) {
             for (i in 0 until root.childCount) applyIconFocusToTree(root.getChildAt(i), true)
-        }
-    }
-
-    /**
-     * Solo el relieve: crece y se levanta al recibir el foco, sin tocar el
-     * fondo.
-     *
-     * Es para las vistas que YA tienen estado enfocado propio (los botones con
-     * estilo NavItem, que lo reciben de Appearance.applyLevel). En una tele el
-     * cambio de color solo es poco: el movimiento es lo que se ve de lejos.
-     */
-    fun addFocusPop(view: View, escalaFoco: Float = 1.12f) {
-        view.animate().cancel()
-        view.scaleX = 1f
-        view.scaleY = 1f
-        // Se encadena con el que ya estuviera puesto en vez de pisarlo: varias
-        // vistas ya usan el suyo para reteñir el icono al enfocarse, y
-        // reemplazarlo las dejaría con el texto blanco y el icono apagado.
-        val previo = view.onFocusChangeListener
-        view.setOnFocusChangeListener { v, tieneFoco ->
-            previo?.onFocusChange(v, tieneFoco)
-            val escala = if (tieneFoco) escalaFoco else 1f
-            v.animate().scaleX(escala).scaleY(escala).setDuration(130).start()
-            v.elevation = if (tieneFoco) 10f * v.resources.displayMetrics.density else 0f
         }
     }
 
@@ -199,10 +191,15 @@ object RemoteControl {
                 root.isClickable = false
             } else {
                 if (root is ViewGroup) {
-                    // Fila completa: lavado suave sobre el vidrio que ya tenía
+                    // Fila completa: lavado suave sobre el vidrio que ya tenía.
+                    //
+                    // Solo el fondo. Estas filas ocupan el ancho de la pantalla,
+                    // así que hasta un 3% de escala eran ~20 px por lado que se
+                    // salían del margen y quedaban pegados al borde, con el
+                    // texto interpolado. Es lo que se ve en la pantalla de
+                    // Cuenta cuando el remoto se para sobre "Buffer".
                     root.background =
                         Appearance.cardFocusBackground(root.context, cornerRadiusDp, root.background)
-                    addFocusPop(root, 1.03f)
                     // El interruptor de adentro no debe robarse el foco: la fila
                     // entera ya lo alterna al pulsarla.
                     root.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS

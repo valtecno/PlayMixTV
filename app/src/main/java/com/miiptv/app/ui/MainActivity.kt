@@ -1,5 +1,6 @@
 package com.miiptv.app.ui
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -15,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.TooltipCompat
 import androidx.core.content.ContextCompat
@@ -96,10 +98,22 @@ class MainActivity : AppCompatActivity() {
      * un segundo. Sin esta espera se abriría una conexión por cada uno.
      */
     private val previewDelay = Handler(Looper.getMainLooper())
+
+    /** Temporizador del refresco diario de las 3 AM (ver programarRefrescoDiario). */
+    private val refrescoDiario = Handler(Looper.getMainLooper())
     private var pendingPreview: Runnable? = null
 
     /** Perfil de niños: filtra a solo contenido infantil y oculta las secciones no aptas. */
     private var kidsMode: Boolean = false
+
+    /**
+     * Diálogo de "¿cerrar la app?" mientras está en pantalla.
+     *
+     * Se guarda por dos motivos: para no apilar dos si el mando repite la
+     * pulsación de Atrás, y para poder cerrarlo en onDestroy — un diálogo vivo
+     * cuando la activity se destruye es una ventana filtrada.
+     */
+    private var exitDialog: AlertDialog? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,6 +151,7 @@ class MainActivity : AppCompatActivity() {
         setupPpvSearch()
         setupKidsSearch()
         setupCarousel()
+        setupBackNavigation()
         applyKidsVisibility()
 
         selectSection(if (kidsMode) Section.LIVE else Section.HOME)
@@ -149,11 +164,7 @@ class MainActivity : AppCompatActivity() {
          * un primer destino) y parece que el remoto no responde. Dejando el
          * menú enfocado de entrada, la app arranca mostrando dónde está parado.
          */
-        if (RemoteControl.isEnabled(this)) {
-            RemoteControl.focusWhenReady(
-                if (kidsMode) binding.navLive else binding.navHome
-            )
-        }
+        enfocarSiTV(if (kidsMode) binding.navLive else binding.navHome)
         // Si la app abre directo en el perfil de niños (venía activo de antes),
         // hay que avisar la regla igual que cuando se activa con el botón.
         if (kidsMode) {
@@ -216,6 +227,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun selectSection(newSection: Section) {
         section = newSection
+        // El EPG (ahora + próximo) solo corre en Canales y PPV; en el resto
+        // de secciones el adapter ni siquiera lo pide.
+        adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV
         highlightNav()
         binding.tvEmpty.visibility = View.GONE
         binding.tvSectionTitle.visibility = View.GONE
@@ -630,8 +644,22 @@ class MainActivity : AppCompatActivity() {
         novedades.attach()
         recientes.attach()
 
-        // El catálogo se carga una sola vez y lo reutiliza también el buscador
-        Catalog.ensureLoaded(this, onUpdate = catalogListener)
+        /*
+         * El catálogo se carga una sola vez y lo reutiliza también el buscador.
+         *
+         * Si es la primera apertura después de las 3 AM de Chile, se pide con
+         * `force`: eso manda "no-cache" y va al panel de verdad, saltándose la
+         * caché de disco de OkHttp. Sin el force, abrir la app a las 8 AM podía
+         * devolver la copia guardada de anoche y el usuario no vería lo que el
+         * panel agregó de madrugada, que es justo cuando los paneles cargan las
+         * novedades del día.
+         */
+        val tocaRefrescoDelDia = DailyRefresh.toca(this)
+        if (tocaRefrescoDelDia) DailyRefresh.marcarHecho(this)
+        Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
+
+        // Y se deja programado el corte de esta noche por si la app queda abierta.
+        programarRefrescoDiario()
 
         // Búsqueda de actualizaciones en segundo plano. Con manual = false solo
         // avisa si hay algo nuevo, y como mucho una vez cada 12 horas.
@@ -794,6 +822,52 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.catalog_refreshing, Toast.LENGTH_SHORT).show()
         Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
         selectSection(section)
+    }
+
+    // ---------------- Refresco diario (3 AM de Chile) ----------------
+
+    /**
+     * Refresco automático del catálogo, una vez al día.
+     *
+     * Hay dos caminos hacia el mismo sitio, y los dos preguntan lo mismo a
+     * [DailyRefresh]:
+     *
+     *  - **App cerrada.** En `setupCarousel`, la primera carga del catálogo se
+     *    pide con `force` si el día lógico cambió.
+     *  - **App abierta.** Este temporizador, que despierta en el próximo corte.
+     *
+     * Se reprograma también en `onResume`. Eso cubre lo que el temporizador por
+     * sí solo no puede: `postDelayed` cuenta con el reloj de actividad del
+     * aparato, que **se congela mientras el aparato duerme**, así que un deco
+     * suspendido a las 2 AM despertaría tarde. Al volver a primer plano se
+     * vuelve a preguntar por la fecha real y se recalcula la espera, con lo que
+     * un aparato dormido, un reloj recién puesto en hora o un cambio de horario
+     * de verano quedan resueltos igual.
+     */
+    private fun programarRefrescoDiario() {
+        refrescoDiario.removeCallbacks(tareaRefrescoDiario)
+        // Cinco segundos de margen para no despertar justo en el filo del minuto
+        // y que el cálculo del día lógico caiga todavía en el día anterior.
+        refrescoDiario.postDelayed(
+            tareaRefrescoDiario,
+            DailyRefresh.msHastaProximoCorte() + 5_000L
+        )
+    }
+
+    private val tareaRefrescoDiario = Runnable { comprobarRefrescoDiario() }
+
+    /** Refresca si cambió el día lógico, y deja programado el corte siguiente. */
+    private fun comprobarRefrescoDiario() {
+        val listo = ::adapter.isInitialized && !isFinishing && !isDestroyed
+        if (listo && DailyRefresh.toca(this)) {
+            DailyRefresh.marcarHecho(this)
+            Toast.makeText(this, R.string.catalog_daily_refresh, Toast.LENGTH_SHORT).show()
+            Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
+            selectSection(section)
+        }
+        // Siempre se reprograma, haya tocado o no: si no tocó es que otro camino
+        // ya lo hizo, y de todos modos hay que dejar puesto el corte de mañana.
+        programarRefrescoDiario()
     }
 
     private fun openParentalSettings() {
@@ -1347,6 +1421,9 @@ class MainActivity : AppCompatActivity() {
             .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
             .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
             .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
+            // El EPG solo corre si se entró desde Canales o PPV: abrir el mismo
+            // canal desde Favoritos o Historial no debe mostrarlo.
+            .putExtra(PlayerActivity.EXTRA_EPG_ALLOWED, section == Section.LIVE || section == Section.PPV)
 
         val lista = currentItems.filter { it.type == ContentType.LIVE }
         val actual = lista.indexOfFirst { it.id == item.id }
@@ -1370,10 +1447,172 @@ class MainActivity : AppCompatActivity() {
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
     }
 
+    // ---------------- Botón Atrás ----------------
+
+    /**
+     * Navegación hacia atrás, paso a paso.
+     *
+     * ANTES: `MainActivity` no interceptaba Atrás, así que el sistema hacía
+     * `finish()` de la activity. Y como Splash y Login ya se cerraron a sí
+     * mismas, la pila quedaba vacía: **la app entera saltaba al escritorio**
+     * desde cualquier punto. Con el dedo casi no se nota, porque nadie usa
+     * Atrás para navegar; con el control remoto es el botón que uno pulsa cien
+     * veces por sesión, y perder la app cada vez es exasperante.
+     *
+     * AHORA se deshace la navegación en el orden inverso al que se hizo:
+     *
+     *     búsqueda escrita  →  categoría/carpeta  →  sección  →  Inicio  →  ¿cerrar?
+     *
+     * Es la misma escalera de la entrada, recorrida al revés, y son como mucho
+     * tres pulsaciones hasta el Inicio, sin importar por cuántas secciones haya
+     * pasado el usuario. Por eso se deduce el nivel del estado actual en vez de
+     * apilar un historial: con una pila, alternar veinte veces entre Canales y
+     * Películas obligaría a pulsar Atrás veinte veces para salir.
+     *
+     * SOBRE LA API: se usa el `OnBackPressedDispatcher` en vez de sobrescribir
+     * `onBackPressed()`, que está obsoleto desde Android 13 y deja de llamarse
+     * cuando se active el gesto predictivo. El despachador es el camino que
+     * seguirá funcionando.
+     */
+    private fun setupBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                retrocederUnPaso()
+            }
+        })
+    }
+
+    /** Sección a la que se vuelve desde cualquier otra. En el perfil de niños el Inicio está oculto. */
+    private fun seccionBase(): Section = if (kidsMode) Section.LIVE else Section.HOME
+
+    private fun retrocederUnPaso() {
+        // 1. Una búsqueda escrita es lo último que hizo el usuario: se borra primero.
+        if (section == Section.PPV && binding.etPpvSearch.text?.isNotEmpty() == true) {
+            binding.etPpvSearch.setText("")   // el TextWatcher repuebla las carpetas
+            enfocarPrimerChip()
+            return
+        }
+        if (binding.etKidsSearch.visibility == View.VISIBLE &&
+            binding.etKidsSearch.text?.isNotEmpty() == true
+        ) {
+            binding.etKidsSearch.setText("")
+            enfocarPrimerChip()
+            return
+        }
+
+        // 2. Favoritos: quitar el filtro de tipo antes de abandonar la sección.
+        if (section == Section.FAVORITES && favFilter != null) {
+            favFilter = null
+            favIsRadio = false
+            renderFavoriteFilters()
+            applyFavoriteFilter()
+            enfocarSiTV(binding.favFilterContainer.getChildAt(0))
+            return
+        }
+
+        // 3. Radios: dos niveles propios (carpeta y fuente), así que dos pasos.
+        if (section == Section.RADIO && retrocederEnRadio()) return
+
+        // 4. Categoría abierta que no es la que se abre por defecto al entrar.
+        if (section in listOf(Section.LIVE, Section.PPV, Section.MOVIES, Section.SERIES)) {
+            val porDefecto = categories.firstOrNull()?.categoryId
+            if (porDefecto != null && currentCategoryId != porDefecto) {
+                loadContent(currentType(), porDefecto)
+                enfocarPrimerChip()
+                return
+            }
+        }
+
+        // 5. Cualquier sección que no sea la base vuelve a la base.
+        val base = seccionBase()
+        if (section != base) {
+            selectSection(base)
+            enfocarSiTV(if (kidsMode) binding.navLive else binding.navHome)
+            return
+        }
+
+        // 6. Ya no queda hacia dónde volver: se pregunta antes de cerrar.
+        confirmarSalida()
+    }
+
+    /**
+     * @return true si había un nivel de Radios que deshacer.
+     *
+     * Las dos filas se recorren en el orden inverso al que se abren: primero se
+     * vuelve a la emisora inicial de la carpeta, y recién después a la carpeta
+     * inicial. Una carpeta de una sola fuente (Tomorrowland) no tiene primer
+     * paso, y se salta sola porque su fuente ya es la primera.
+     */
+    private fun retrocederEnRadio(): Boolean {
+        val carpeta = currentRadioFolder ?: return false
+        val fuenteInicial = carpeta.sources.firstOrNull()
+
+        if (fuenteInicial != null && currentRadioSource?.id != fuenteInicial.id) {
+            loadRadio(fuenteInicial)
+            enfocarSiTV(binding.radioSubContainer.getChildAt(0))
+            return true
+        }
+
+        val carpetaInicial = RadioCatalog.defaultFolder
+        if (carpeta.id != carpetaInicial.id) {
+            openRadioFolder(carpetaInicial)
+            enfocarPrimerChip()
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Devuelve el foco a un sitio estable después de retroceder. No hace nada
+     * en modo móvil, donde el foco no se usa ni se ve.
+     *
+     * Sin esto el control remoto se queda mudo: el foco estaba en una tarjeta de
+     * la lista, la lista se vuelve a cargar, la vista enfocada desaparece y
+     * Android no tiene a quién pasarle el foco. La siguiente flecha que pulse el
+     * usuario se pierde eligiendo un destino, y parece que el mando dejó de
+     * responder justo después de volver atrás.
+     */
+    private fun enfocarSiTV(view: View?) {
+        if (!RemoteControl.isEnabled(this)) return
+        RemoteControl.focusWhenReady(view)
+    }
+
+    /** Atajo para el caso más repetido: la primera categoría de la fila de chips. */
+    private fun enfocarPrimerChip() = enfocarSiTV(binding.categoryContainer.getChildAt(0))
+
+    /**
+     * Diálogo de confirmación antes de cerrar.
+     *
+     * El foco arranca en **Cancelar** a propósito: quien llega hasta acá suele
+     * venir de pulsar Atrás varias veces seguidas, y una pulsación de más no
+     * debería cerrar la app. Salir cuesta un movimiento del mando; salir sin
+     * querer costaba volver a abrir todo.
+     *
+     * Se guarda la referencia para no apilar dos diálogos si el mando repite la
+     * pulsación (los remotos baratos rebotan bastante).
+     */
+    private fun confirmarSalida() {
+        if (exitDialog?.isShowing == true) return
+        exitDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.exit_title)
+            .setMessage(R.string.exit_message)
+            .setPositiveButton(R.string.exit_confirm) { _, _ -> finish() }
+            .setNegativeButton(R.string.exit_cancel, null)
+            .show()
+            .also { dialogo ->
+                enfocarSiTV(dialogo.getButton(AlertDialog.BUTTON_NEGATIVE))
+            }
+    }
+
     // ---------------- Ciclo de vida ----------------
 
     override fun onResume() {
         super.onResume()
+        // Al volver a primer plano puede haber pasado la noche entera con el
+        // aparato dormido, así que se recalcula el corte contra la fecha real.
+        // Si mientras tanto cambió el día lógico, esto lo detecta y refresca.
+        comprobarRefrescoDiario()
         if (::adapter.isInitialized) {
             applyHomeOrientation()
             binding.tvToolbarTitle.applyBrandGradient()
@@ -1407,6 +1646,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        // Un diálogo todavía en pantalla cuando se destruye la activity es una
+        // ventana filtrada (WindowLeaked en el log).
+        exitDialog?.dismiss()
+        exitDialog = null
+        // El temporizador del refresco diario tiene por delante hasta 24 horas
+        // de espera y captura la activity: sin quitarlo, la mantiene viva.
+        refrescoDiario.removeCallbacks(tareaRefrescoDiario)
         releasePreview()
         RadioCatalog.cancel()
         stopCarousel()
