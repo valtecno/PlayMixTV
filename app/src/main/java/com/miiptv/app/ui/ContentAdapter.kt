@@ -247,7 +247,11 @@ class ContentAdapter(
      * qué stream_id la pidió y se descarta la respuesta si ya no coincide.
      */
     private fun bindEpgNow(tvEpgNow: android.widget.TextView, item: ContentItem) {
-        if (!epgEnabled || item.type != ContentType.LIVE) {
+        // item.streamUrl != null identifica una radio: comparte ContentType.LIVE
+        // con los canales, pero su id es un hash propio (ver RadioCatalog), no
+        // el stream_id de Xtream que espera get_short_epg. Esto no pasaba antes
+        // porque Canales/PPV nunca mezclan radios; Favoritos sí puede.
+        if (!epgEnabled || item.type != ContentType.LIVE || item.streamUrl != null) {
             tvEpgNow.visibility = View.GONE
             return
         }

@@ -228,9 +228,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun selectSection(newSection: Section) {
         section = newSection
-        // El EPG (ahora + próximo) solo corre en Canales y PPV; en el resto
-        // de secciones el adapter ni siquiera lo pide.
-        adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV
+        // El EPG (ahora + próximo) corre en Canales, PPV y Favoritos; en el
+        // resto de secciones el adapter ni siquiera lo pide. Dentro de
+        // Favoritos, bindEpgNow() igual lo filtra por ContentType.LIVE, así
+        // que una película o serie favorita nunca dispara la consulta.
+        adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV || newSection == Section.FAVORITES
         highlightNav()
         binding.tvEmpty.visibility = View.GONE
         binding.tvSectionTitle.visibility = View.GONE
