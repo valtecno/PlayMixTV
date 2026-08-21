@@ -2,7 +2,9 @@ package com.miiptv.app.util
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.view.LayoutInflater
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import com.miiptv.app.R
 
@@ -61,7 +63,7 @@ object UpdateDialog {
             String.format(" (%.1f MB)", release.sizeBytes / 1024.0 / 1024.0)
         } else ""
 
-        val mensaje = buildString {
+        val versionInfo = buildString {
             append(activity.getString(R.string.update_available_msg, release.version))
             append(peso)
             if (release.notes.isNotBlank()) {
@@ -70,9 +72,17 @@ object UpdateDialog {
             }
         }
 
+        // El aviso genérico ("Versión X") lo reemplaza Vanessa, la modelo/
+        // influencer virtual de PlayMix: primero dice su nombre y después el
+        // mensaje de marca, acompañado del ícono de actualización. La versión
+        // y las notas de la publicación se conservan debajo, en texto discreto.
+        val vista = LayoutInflater.from(activity)
+            .inflate(R.layout.dialog_update_available, null, false)
+        vista.findViewById<TextView>(R.id.tvVersionInfo).text = versionInfo
+
         AlertDialog.Builder(activity)
             .setTitle(R.string.update_available_title)
-            .setMessage(mensaje)
+            .setView(vista)
             .setPositiveButton(R.string.update_download) { _, _ -> descargar(activity, release) }
             .setNegativeButton(R.string.update_later) { _, _ ->
                 Updater.skip(activity, release.version)

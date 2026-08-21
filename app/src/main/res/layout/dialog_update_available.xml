@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Vanessa, la modelo/influencer virtual de PlayMix -->
+        <ImageView
+            android:id="@+id/imgVanessa"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="center_horizontal"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/update_vanessa_name"
+            android:src="@drawable/img_vanessa_update" />
+
+        <!-- Nombre, en el color de marca -->
+        <TextView
+            android:id="@+id/tvVanessaName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="4dp"
+            android:text="@string/update_vanessa_name"
+            android:textColor="@color/brand_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- Tarjeta "vidrio" con el ícono de actualización y el mensaje -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="4dp"
+            android:background="@drawable/bg_glass_card"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="14dp">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginEnd="12dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_refresh" />
+
+            <TextView
+                android:id="@+id/tvVanessaMsg"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/update_vanessa_msg"
+                android:textColor="@color/text_light"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <!-- Versión, tamaño y notas de la publicación (info dinámica) -->
+        <TextView
+            android:id="@+id/tvVersionInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginBottom="18dp"
+            android:textColor="@color/text_muted"
+            android:textSize="13sp"
+            tools:text="Versión 2.4.0 (18.3 MB)" />
+    </LinearLayout>
+</ScrollView>
