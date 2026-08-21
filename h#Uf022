@@ -1,0 +1,28 @@
+[35mREADME.md[m[36m:[m[32m591[m[36m:[mprimera apertura del día. La lógica vive en `util/[1;31mDailyRefresh[m.kt`.
+[35mREADME.md[m[36m:[m[32m648[m[36m:[m`[1;31mDailyRefresh[mTest` cubre lo que no se puede probar a mano sin quedarse
+[35mREADME.md[m[36m:[m[32m674[m[36m:[m| `[1;31mDailyRefresh[mTest` | El corte diario de las 3 AM de Chile. Lo que no se puede probar a mano sin quedarse despierto: que medianoche no cambie el día lógico, los cruces de mes/año/bisiesto, que la zona del aparato sea indiferente, y un barrido hora a hora de un año entero (con los dos cambios de horario) comprobando que no se repita ni se saltee ningún día. |
+[35mapp/src/main/java/com/miiptv/app/ui/MainActivity.kt[m[36m:[m[32m654[m[36m:[m        val tocaRefrescoDelDia = [1;31mDailyRefresh[m.toca(this)
+[35mapp/src/main/java/com/miiptv/app/ui/MainActivity.kt[m[36m:[m[32m655[m[36m:[m        if (tocaRefrescoDelDia) [1;31mDailyRefresh[m.marcarHecho(this)
+[35mapp/src/main/java/com/miiptv/app/ui/MainActivity.kt[m[36m:[m[32m830[m[36m:[m     * [[1;31mDailyRefresh[m]:
+[35mapp/src/main/java/com/miiptv/app/ui/MainActivity.kt[m[36m:[m[32m850[m[36m:[m            [1;31mDailyRefresh[m.msHastaProximoCorte() + 5_000L
+[35mapp/src/main/java/com/miiptv/app/ui/MainActivity.kt[m[36m:[m[32m859[m[36m:[m        if (listo && [1;31mDailyRefresh[m.toca(this)) {
+[35mapp/src/main/java/com/miiptv/app/ui/MainActivity.kt[m[36m:[m[32m860[m[36m:[m            [1;31mDailyRefresh[m.marcarHecho(this)
+[35mapp/src/main/java/com/miiptv/app/util/DailyRefresh.kt[m[36m:[m[32m60[m[36m:[mobject [1;31mDailyRefresh[m {
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m17[m[36m:[mclass [1;31mDailyRefresh[mTest {
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m33[m[36m:[m        assertEquals(20260817, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 18, 2, 59)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m38[m[36m:[m        assertEquals(20260818, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 18, 3, 0)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m45[m[36m:[m        val antesDeMedianoche = [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 17, 23, 0))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m46[m[36m:[m        val despuesDeMedianoche = [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 18, 0, 30))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m52[m[36m:[m        val alCorte = [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 18, 3, 0))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m53[m[36m:[m        assertEquals(alCorte, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 18, 12, 0)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m54[m[36m:[m        assertEquals(alCorte, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 18, 23, 59)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m55[m[36m:[m        assertEquals(alCorte, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 19, 2, 59)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m57[m[36m:[m        assertNotEquals(alCorte, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 8, 19, 3, 0)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m64[m[36m:[m        assertEquals(20260831, [1;31mDailyRefresh[m.diaLogico(enChile(2026, 9, 1, 1, 0)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m69[m[36m:[m        assertEquals(20261231, [1;31mDailyRefresh[m.diaLogico(enChile(2027, 1, 1, 2, 0)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m74[m[36m:[m        assertEquals(20280229, [1;31mDailyRefresh[m.diaLogico(enChile(2028, 3, 1, 1, 0)))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m90[m[36m:[m                    [1;31mDailyRefresh[m.diaLogico(instante)
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m103[m[36m:[m        val falta = [1;31mDailyRefresh[m.msHastaProximoCorte(enChile(2026, 8, 18, 2, 0))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m110[m[36m:[m        val falta = [1;31mDailyRefresh[m.msHastaProximoCorte(enChile(2026, 8, 18, 4, 0))
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m127[m[36m:[m            val falta = [1;31mDailyRefresh[m.msHastaProximoCorte(t)
+[35mapp/src/test/java/com/miiptv/app/util/DailyRefreshTest.kt[m[36m:[m[32m142[m[36m:[m            val dia = [1;31mDailyRefresh[m.diaLogico(t)

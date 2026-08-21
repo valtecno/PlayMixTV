@@ -171,6 +171,27 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Sincroniza el círculo de carga con el estado real del reproductor.
+     *
+     * Se usa al retomar una reproducción que ya estaba en curso (ver los dos
+     * lugares donde se llama). En ese camino nunca se pasa por [startPlayback],
+     * así que el listener que apaga el `progressBar` tampoco se agregaba: el
+     * círculo, visible por defecto en el layout, quedaba pegado en pantalla
+     * para siempre aunque la radio ya estuviera sonando, porque ningún cambio
+     * de estado iba a volver a dispararse para ocultarlo.
+     */
+    private fun syncBufferingIndicator(p: Player?) {
+        binding.progressBar.visibility =
+            if (p?.playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+        p?.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                binding.progressBar.visibility =
+                    if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+            }
+        })
+    }
+
     private var locked = false
     private val ui = Handler(Looper.getMainLooper())
     private var countdown = 0
@@ -260,6 +281,7 @@ class PlayerActivity : AppCompatActivity() {
             PlaybackService.stop(this)
             player = PlaybackHolder.player
             binding.playerView.player = player
+            syncBufferingIndicator(player)
             if (isRadio) {
                 player?.addListener(radioUiListener)
                 updateRadioPlaybackState(player?.isPlaying == true)
@@ -298,6 +320,7 @@ class PlayerActivity : AppCompatActivity() {
                 PlaybackService.stop(this)
                 player = vivo
                 binding.playerView.player = vivo
+                syncBufferingIndicator(vivo)
                 if (isRadio) {
                     vivo.addListener(radioUiListener)
                     updateRadioPlaybackState(vivo.isPlaying)

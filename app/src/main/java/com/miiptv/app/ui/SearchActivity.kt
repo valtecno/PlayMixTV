@@ -195,12 +195,35 @@ class SearchActivity : AppCompatActivity() {
 
             ui.post {
                 if (isFinishing || isDestroyed) return@post
+                // Con el remoto, antes de repintar hay que anotar en qué fila
+                // estaba el foco: submitList() vuelve a crear las vistas y esa
+                // fila deja de existir. Sin esto, cada refiltrado (al tipear o
+                // cuando el catálogo sigue cargando en segundo plano) le hacía
+                // perder el foco a Android y el mando parecía muerto.
+                val remoto = RemoteControl.isEnabled(this@SearchActivity)
+                val posicionEnfocada = if (remoto) {
+                    binding.recyclerResults.focusedChild
+                        ?.let { binding.recyclerResults.getChildAdapterPosition(it) }
+                        ?.takeIf { it != androidx.recyclerview.widget.RecyclerView.NO_POSITION }
+                } else null
+
                 adapter.submitList(results)
-                binding.recyclerResults.scrollToPosition(0)
+                if (posicionEnfocada == null) binding.recyclerResults.scrollToPosition(0)
                 updateStatus(results.size, query)
                 binding.recentSection.visibility =
                     if (query.length < 2 && RecentSearches.getAll(this@SearchActivity).isNotEmpty())
                         View.VISIBLE else View.GONE
+
+                if (remoto && results.isNotEmpty()) {
+                    // Se repone el foco en la misma fila de antes si todavía
+                    // existe (la lista pudo achicarse), o si no en la primera.
+                    val destino = posicionEnfocada?.coerceIn(0, results.size - 1) ?: 0
+                    binding.recyclerResults.post {
+                        binding.recyclerResults.layoutManager
+                            ?.findViewByPosition(destino)
+                            ?.requestFocus()
+                    }
+                }
             }
         }
     }
