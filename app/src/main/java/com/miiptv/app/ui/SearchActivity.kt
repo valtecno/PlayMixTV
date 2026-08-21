@@ -98,6 +98,11 @@ class SearchActivity : AppCompatActivity() {
         Catalog.ensureLoaded(this, onUpdate = catalogListener)
         renderRecentSearches()
         updateStatus(0)
+
+        // En TV el buscador no sirve de nada si el control remoto llega
+        // parado en otro lado (un chip, la tecla atrás): hay que escribir, así
+        // que el cursor arranca directo en la caja de texto.
+        if (RemoteControl.isEnabled(this)) RemoteControl.focusWhenReady(binding.etQuery)
     }
 
     // ---------------- Filtros por tipo ----------------

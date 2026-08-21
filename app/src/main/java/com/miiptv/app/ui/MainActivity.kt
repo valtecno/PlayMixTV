@@ -302,7 +302,16 @@ class MainActivity : AppCompatActivity() {
             else -> 1
         }
         adapter.posterMode = columns > 1
-        binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
+        // Antes acá se creaba un GridLayoutManager nuevo sin importar si las
+        // columnas habían cambiado, y esto se llama también desde onResume.
+        // Un LayoutManager nuevo no sabe en qué posición estaba el anterior,
+        // así que cada vez que se volvía de la ficha de una película la grilla
+        // arrancaba de nuevo desde arriba, y con el control remoto se perdía
+        // la tarjeta donde uno había quedado navegando.
+        val actual = binding.recyclerChannels.layoutManager as? GridLayoutManager
+        if (actual == null || actual.spanCount != columns) {
+            binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
+        }
     }
 
     /**

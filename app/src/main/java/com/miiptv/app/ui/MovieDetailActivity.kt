@@ -11,6 +11,7 @@ import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.History
+import com.miiptv.app.util.RemoteControl
 import com.squareup.picasso.Picasso
 import retrofit2.Call
 import retrofit2.Callback
@@ -65,6 +66,15 @@ class MovieDetailActivity : AppCompatActivity() {
             refreshFavoriteLabel()
         }
         refreshFavoriteLabel()
+
+        // Sin esto, "Reproducir" y "Favorito" nunca mostraban con qué el
+        // control remoto estaba parado: al llegar acá el foco caía en algún
+        // lado sin resaltarse (el degradado de btnPlay es un color fijo, no
+        // trae estado enfocado), así que la selección visual desaparecía
+        // justo antes de decidir si dar play.
+        val remoto = RemoteControl.isEnabled(this)
+        RemoteControl.applyFocusToTree(binding.root, remoto)
+        if (remoto) RemoteControl.focusWhenReady(binding.btnPlay)
 
         loadInfo(id)
     }
