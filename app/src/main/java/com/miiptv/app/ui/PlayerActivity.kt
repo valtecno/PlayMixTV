@@ -52,6 +52,7 @@ import com.miiptv.app.util.PlayerFactory
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.PlaybackHolder
 import com.miiptv.app.util.PlayerPrefs
+import com.miiptv.app.util.WeatherService
 import com.miiptv.app.service.PlaybackService
 import com.squareup.picasso.Picasso
 import android.Manifest
