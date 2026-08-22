@@ -973,6 +973,18 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnRadioFavorite.visibility =
             if (favoriteItem == null) View.GONE else View.VISIBLE
         binding.btnRadioFavorite.setOnClickListener { toggleFavorite() }
+
+        // Temperatura local del usuario, debajo del reloj. Puede tardar un
+        // segundo (ubicación por IP + clima), así que arranca oculta y solo
+        // se muestra si efectivamente se pudo resolver.
+        binding.tvRadioTemp.visibility = View.GONE
+        WeatherService.fetch(this) { temp ->
+            if (isFinishing || isDestroyed) return@fetch
+            if (temp != null) {
+                binding.tvRadioTemp.text = getString(R.string.radio_temp, temp)
+                binding.tvRadioTemp.visibility = View.VISIBLE
+            }
+        }
         // Deja el botón con el estado correcto de entrada (guardada o no)
         refreshFavoriteIcon()
 
