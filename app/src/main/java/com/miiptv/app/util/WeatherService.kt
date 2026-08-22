@@ -3,6 +3,7 @@ package com.miiptv.app.util
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import okhttp3.Request
 import org.json.JSONObject
 import kotlin.math.roundToInt
@@ -11,12 +12,22 @@ import kotlin.math.roundToInt
  * Temperatura local del usuario, para la pantalla ampliada de radios.
  *
  * El aparato es una tele/caja sin GPS y sin permiso de ubicación pedido, así
- * que en vez de LocationManager se ubica por IP (ipwho.is, gratis y sin
- * clave) y con esas coordenadas se consulta el clima actual en Open-Meteo
- * (también gratis y sin clave). Se guarda en caché un rato para no golpear
- * ambos servicios cada vez que se abre una radio.
+ * que en vez de LocationManager se ubica por IP y con esas coordenadas se
+ * consulta el clima actual en Open-Meteo (gratis y sin clave).
+ *
+ * La primera versión usaba un solo servicio de ubicación por IP (ipwho.is) y
+ * fallaba en silencio si no respondía -- que es justo lo que pasó: el reloj
+ * se veía pero la temperatura nunca aparecía, sin ningún aviso de qué había
+ * fallado. Muchos aparatos de IPTV navegan detrás de un DNS con bloqueo de
+ * rastreadores (AdGuard, NextDNS, Pi-hole en el router) que corta justamente
+ * este tipo de dominios de geolocalización, aunque el resto de internet
+ * funcione normal. Por eso ahora se prueban varios proveedores en cadena -- si
+ * el DNS bloquea uno, probablemente no bloquee todos -- y cada intento queda
+ * en Logcat (tag WeatherService) para poder ver ahí cuál responde y cuál no.
  */
 object WeatherService {
+
+    private const val TAG = "WeatherService"
 
     private const val PREFS = "miiptv_weather"
     private const val KEY_TEMP = "temp_c"
@@ -31,9 +42,9 @@ object WeatherService {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     /**
-     * Devuelve la temperatura en grados Celsius, redondeada, o null si no se
-     * pudo resolver (sin datos, servicio caído, etc). [onResult] siempre se
-     * llama en el hilo principal.
+     * Devuelve la temperatura en grados Celsius, redondeada, o null si ningún
+     * proveedor respondió (revisar Logcat, tag "WeatherService", para ver por
+     * qué). [onResult] siempre se llama en el hilo principal.
      */
     fun fetch(context: Context, onResult: (Int?) -> Unit) {
         val ctx = context.applicationContext
@@ -57,36 +68,84 @@ object WeatherService {
     }
 
     private fun resolver(): Int? {
-        val (lat, lon) = ubicarPorIp() ?: return null
-        return climaActual(lat, lon)
-    }
-
-    private fun ubicarPorIp(): Pair<Double, Double>? = try {
-        val peticion = Request.Builder().url("https://ipwho.is/").build()
-        Session.httpClient.newCall(peticion).execute().use { r ->
-            if (!r.isSuccessful) return null
-            val json = JSONObject(r.body?.string().orEmpty())
-            if (!json.optBoolean("success", true)) return null
-            val lat = json.optDouble("latitude", Double.NaN)
-            val lon = json.optDouble("longitude", Double.NaN)
-            if (lat.isNaN() || lon.isNaN()) null else lat to lon
+        val ubicacion = ubicarPorIp()
+        if (ubicacion == null) {
+            Log.w(TAG, "Ningún proveedor de ubicación por IP respondió; no se muestra temperatura")
+            return null
         }
-    } catch (e: Exception) {
-        null
+        val (lat, lon) = ubicacion
+        val temp = climaActual(lat, lon)
+        if (temp == null) Log.w(TAG, "Open-Meteo no devolvió temperatura para ($lat, $lon)")
+        return temp
     }
 
-    private fun climaActual(lat: Double, lon: Double): Int? = try {
-        val url = "https://api.open-meteo.com/v1/forecast" +
-            "?latitude=$lat&longitude=$lon&current_weather=true"
+    /** Prueba cada proveedor en orden y se queda con el primero que responda. */
+    private fun ubicarPorIp(): Pair<Double, Double>? {
+        val proveedores = listOf(
+            ::ubicarConIpwhoIs,
+            ::ubicarConIpApiCom,
+            ::ubicarConIpapiCo
+        )
+        for (proveedor in proveedores) {
+            val resultado = proveedor()
+            if (resultado != null) return resultado
+        }
+        return null
+    }
+
+    private fun pedir(url: String): JSONObject? = try {
         val peticion = Request.Builder().url(url).build()
         Session.httpClient.newCall(peticion).execute().use { r ->
-            if (!r.isSuccessful) return null
-            val json = JSONObject(r.body?.string().orEmpty())
-            val actual = json.optJSONObject("current_weather") ?: return null
-            if (!actual.has("temperature")) return null
-            actual.getDouble("temperature").roundToInt()
+            if (!r.isSuccessful) {
+                Log.w(TAG, "$url respondió HTTP ${r.code}")
+                return null
+            }
+            JSONObject(r.body?.string().orEmpty())
         }
     } catch (e: Exception) {
+        Log.w(TAG, "$url falló: ${e.javaClass.simpleName} ${e.message}")
         null
+    }
+
+    private fun coords(lat: Double, lon: Double): Pair<Double, Double>? =
+        if (lat.isNaN() || lon.isNaN()) null else lat to lon
+
+    private fun ubicarConIpwhoIs(): Pair<Double, Double>? {
+        val json = pedir("https://ipwho.is/") ?: return null
+        if (!json.optBoolean("success", true)) return null
+        return coords(
+            json.optDouble("latitude", Double.NaN),
+            json.optDouble("longitude", Double.NaN)
+        )
+    }
+
+    private fun ubicarConIpApiCom(): Pair<Double, Double>? {
+        // Sin HTTPS en el plan gratis, pero la app ya permite tráfico en claro
+        // (usesCleartextTraffic) y este dominio no suele estar en las listas
+        // de bloqueo de rastreadores por ser tan usado para geolocalizar IPs.
+        val json = pedir("http://ip-api.com/json/") ?: return null
+        if (json.optString("status") != "success") return null
+        return coords(
+            json.optDouble("lat", Double.NaN),
+            json.optDouble("lon", Double.NaN)
+        )
+    }
+
+    private fun ubicarConIpapiCo(): Pair<Double, Double>? {
+        val json = pedir("https://ipapi.co/json/") ?: return null
+        if (json.has("error")) return null
+        return coords(
+            json.optDouble("latitude", Double.NaN),
+            json.optDouble("longitude", Double.NaN)
+        )
+    }
+
+    private fun climaActual(lat: Double, lon: Double): Int? {
+        val url = "https://api.open-meteo.com/v1/forecast" +
+            "?latitude=$lat&longitude=$lon&current_weather=true"
+        val json = pedir(url) ?: return null
+        val actual = json.optJSONObject("current_weather") ?: return null
+        if (!actual.has("temperature")) return null
+        return actual.getDouble("temperature").roundToInt()
     }
 }
