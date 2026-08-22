@@ -277,8 +277,8 @@
     <string name="update_not_configured">No hay repositorio configurado para actualizaciones</string>
     <string name="update_available_title">Actualización disponible</string>
     <string name="update_available_msg">Versión %1$s</string>
-    <string name="update_vanessa_name">Vanessa</string>
-    <string name="update_vanessa_msg">Hay una nueva actualización disponible, en PlayMix cada día trabajamos duro para darte lo mejor!</string>
+    <string name="update_vanessa_name">Hola, Soy Vanessa la asistente de PlayMix.</string>
+    <string name="update_vanessa_msg">En PlayMix TV seguimos trabajando para mejorar cada día!</string>
     <string name="radio_temp">%1$d°C</string>
     <string name="update_download">Descargar</string>
     <string name="update_later">Ahora no</string>

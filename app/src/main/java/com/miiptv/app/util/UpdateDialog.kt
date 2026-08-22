@@ -4,7 +4,6 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.view.LayoutInflater
 import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
 import com.miiptv.app.R
 
@@ -59,26 +58,11 @@ object UpdateDialog {
         Toast.makeText(activity, res, Toast.LENGTH_SHORT).show()
 
     private fun ofrecer(activity: Activity, release: Updater.Release) {
-        val peso = if (release.sizeBytes > 0) {
-            String.format(" (%.1f MB)", release.sizeBytes / 1024.0 / 1024.0)
-        } else ""
-
-        val versionInfo = buildString {
-            append(activity.getString(R.string.update_available_msg, release.version))
-            append(peso)
-            if (release.notes.isNotBlank()) {
-                append("\n\n")
-                append(release.notes.take(400))
-            }
-        }
-
-        // El aviso genérico ("Versión X") lo reemplaza Vanessa, la modelo/
-        // influencer virtual de PlayMix: primero dice su nombre y después el
-        // mensaje de marca, acompañado del ícono de actualización. La versión
-        // y las notas de la publicación se conservan debajo, en texto discreto.
+        // Vanessa se presenta y da el mensaje de marca; ya no se muestra debajo
+        // la versión ni el changelog (referencias a GitHub/repo), que era
+        // información técnica sin sentido para quien usa la app.
         val vista = LayoutInflater.from(activity)
             .inflate(R.layout.dialog_update_available, null, false)
-        vista.findViewById<TextView>(R.id.tvVersionInfo).text = versionInfo
 
         AlertDialog.Builder(activity)
             .setTitle(R.string.update_available_title)

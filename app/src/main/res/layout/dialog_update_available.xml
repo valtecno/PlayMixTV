@@ -41,7 +41,7 @@
             android:layout_marginStart="20dp"
             android:layout_marginTop="14dp"
             android:layout_marginEnd="20dp"
-            android:layout_marginBottom="4dp"
+            android:layout_marginBottom="18dp"
             android:background="@drawable/bg_glass_card"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -63,18 +63,5 @@
                 android:textColor="@color/text_light"
                 android:textSize="15sp" />
         </LinearLayout>
-
-        <!-- Versión, tamaño y notas de la publicación (info dinámica) -->
-        <TextView
-            android:id="@+id/tvVersionInfo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="18dp"
-            android:textColor="@color/text_muted"
-            android:textSize="13sp"
-            tools:text="Versión 2.4.0 (18.3 MB)" />
     </LinearLayout>
 </ScrollView>
