@@ -316,13 +316,12 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Panel de previsualización: foto grande + botón "Ampliar" al lado de la
-     * lista, en vez de abrir el reproductor de una. Corre en Canales, PPV y
-     * Favoritos — en Favoritos, solo para los favoritos que son canales de TV
-     * (ver [esCanalTv]); un favorito de radio, película o serie sigue abriendo
-     * directo, como siempre.
+     * lista, en vez de abrir el reproductor de una. Corre solo en Canales y
+     * PPV; en Favoritos no se muestra (ningún favorito, ni siquiera los que
+     * son canales de TV, abre con previsualización — todos abren directo).
      */
     private fun showPreviewFor(s: Section): Boolean =
-        s == Section.LIVE || s == Section.PPV || s == Section.FAVORITES
+        s == Section.LIVE || s == Section.PPV
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
