@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import kotlin.math.roundToInt
@@ -37,6 +38,9 @@ object WeatherService {
     private const val CACHE_MS = 20 * 60 * 1000L
 
     private val ui = Handler(Looper.getMainLooper())
+
+    /** Cliente HTTP propio de este servicio, solo para las consultas de ubicación/clima. */
+    private val httpClient by lazy { OkHttpClient() }
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -95,7 +99,7 @@ object WeatherService {
 
     private fun pedir(url: String): JSONObject? = try {
         val peticion = Request.Builder().url(url).build()
-        Session.httpClient.newCall(peticion).execute().use { r ->
+        httpClient.newCall(peticion).execute().use { r ->
             if (!r.isSuccessful) {
                 Log.w(TAG, "$url respondió HTTP ${r.code}")
                 return null
