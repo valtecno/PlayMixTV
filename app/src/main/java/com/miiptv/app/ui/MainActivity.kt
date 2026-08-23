@@ -1,6 +1,8 @@
 package com.miiptv.app.ui
 
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
 import com.miiptv.app.util.DailyRefresh
 import android.os.Bundle
@@ -189,6 +191,27 @@ class MainActivity : AppCompatActivity() {
         binding.navFavorites.setOnClickListener { selectSection(Section.FAVORITES) }
 
         binding.navKids.setOnClickListener { toggleKidsMode() }
+        binding.navExclusive.setOnClickListener { openExclusiveApp() }
+    }
+
+    /**
+     * Botón "Exclusivo": abre la app de YT instalada aparte, apuntando directo
+     * a su actividad de entrada (com.rgvip.code.SplashLoginActivity, la que
+     * trae el login del panel). Se usa un intent EXPLÍCITO (paquete+actividad)
+     * en vez de getLaunchIntentForPackage, porque esa app ya no tiene ícono de
+     * lanzador (se le quitaron las categorías LAUNCHER/LEANBACK_LAUNCHER a
+     * propósito): solo se puede abrir desde acá.
+     */
+    private fun openExclusiveApp() {
+        val intent = Intent().apply {
+            component = ComponentName(EXCLUSIVE_APP_PACKAGE, EXCLUSIVE_APP_ENTRY_ACTIVITY)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.exclusive_not_installed, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun highlightNav() {
@@ -888,6 +911,7 @@ class MainActivity : AppCompatActivity() {
         binding.navPpv.visibility = visibility
         binding.navRadio.visibility = visibility
         binding.navFavorites.visibility = visibility
+        binding.navExclusive.visibility = visibility
         invalidateOptionsMenu()
         if (::adapter.isInitialized) highlightNav()
     }
@@ -1751,5 +1775,12 @@ class MainActivity : AppCompatActivity() {
 
         /** Canales a cada lado del elegido que viajan al reproductor para zapear. */
         const val ZAP_WINDOW = 200
+
+        /**
+         * App exclusiva (YT) que se abre desde el botón del menú. Sin ícono de
+         * lanzador propio: solo se llega a ella por acá, con intent explícito.
+         */
+        const val EXCLUSIVE_APP_PACKAGE = "io.gh.reisxd.tizentube.cobalt"
+        const val EXCLUSIVE_APP_ENTRY_ACTIVITY = "com.rgvip.code.SplashLoginActivity"
     }
 }
