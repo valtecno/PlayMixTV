@@ -193,12 +193,9 @@ class MainActivity : AppCompatActivity() {
         binding.navKids.setOnClickListener { toggleKidsMode() }
 
         binding.btnYoutube.setOnClickListener { abrirYoutube() }
-        // Sin esto el botón no muestra ningún cambio al recibir el foco con
-        // el control remoto: se ve exactamente igual enfocado que sin
-        // enfocar, y con el remoto no hay forma de saber que está ahí parado.
-        RemoteControl.applyIconFocus(
-            binding.btnYoutube, RemoteControl.isEnabled(this), circular = false, cornerRadiusDp = 12f
-        )
+        // Ya no hace falta resaltado de foco a mano: ahora es un botón de
+        // texto con el mismo estilo NavItem que el resto del menú (antes
+        // era un ícono suelto con fondo propio, que sí lo necesitaba).
     }
 
     /**

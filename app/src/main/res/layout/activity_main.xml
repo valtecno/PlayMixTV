@@ -106,6 +106,14 @@
                 <TextView android:id="@+id/navKids" style="@style/NavItem"
                     android:text="@string/nav_kids" android:drawableStart="@drawable/ic_kids" />
 
+                <!-- Acceso directo a YouTube: mismo estilo que el resto del menú
+                     (NavItem), pegado a Niños. Antes era un ícono suelto y fijo
+                     a la derecha; ahora vive dentro del scroll, junto a los
+                     demás botones, con su propio texto. Abre la app de YouTube
+                     del sistema o, si no está instalada, la Play Store. -->
+                <TextView android:id="@+id/btnYoutube" style="@style/NavItem"
+                    android:text="@string/nav_youtube_exit" android:drawableStart="@drawable/ic_youtube" />
+
             </LinearLayout>
         </HorizontalScrollView>
 
@@ -119,23 +127,6 @@
             android:src="@drawable/ic_chevron_right"
             android:contentDescription="@null"
             android:alpha="0.6" />
-
-        <!-- Acceso directo a YouTube: fijo al final de la derecha, fuera del
-             scroll horizontal, para que siempre esté visible sin importar
-             cuánto se desplace el menú de secciones. Abre la app de YouTube
-             del sistema o, si no está instalada, la Play Store. -->
-        <ImageView
-            android:id="@+id/btnYoutube"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
-            android:layout_marginEnd="10dp"
-            android:padding="2dp"
-            android:background="@drawable/bg_nav_inactive"
-            android:src="@drawable/ic_youtube"
-            android:scaleType="fitCenter"
-            android:focusable="true"
-            android:clickable="true"
-            android:contentDescription="@string/nav_youtube" />
 
     </LinearLayout>
 
