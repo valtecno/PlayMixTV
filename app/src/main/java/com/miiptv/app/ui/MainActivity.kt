@@ -1,7 +1,9 @@
 package com.miiptv.app.ui
 
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
 import android.os.Bundle
 import android.os.Handler
@@ -189,6 +191,35 @@ class MainActivity : AppCompatActivity() {
         binding.navFavorites.setOnClickListener { selectSection(Section.FAVORITES) }
 
         binding.navKids.setOnClickListener { toggleKidsMode() }
+
+        binding.btnYoutube.setOnClickListener { abrirYoutube() }
+    }
+
+    /**
+     * Abre la app oficial de YouTube instalada en el dispositivo. Si no está
+     * instalada, envía a la Play Store (a la ficha de YouTube) para que el
+     * usuario pueda descargarla; si tampoco hay Play Store disponible, cae al
+     * navegador como último recurso.
+     */
+    private fun abrirYoutube() {
+        val paqueteYoutube = getString(R.string.youtube_package)
+        val intentApp = packageManager.getLaunchIntentForPackage(paqueteYoutube)
+        if (intentApp != null) {
+            startActivity(intentApp)
+            return
+        }
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paqueteYoutube"))
+            )
+        } catch (e: ActivityNotFoundException) {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=$paqueteYoutube")
+                )
+            )
+        }
     }
 
     private fun highlightNav() {

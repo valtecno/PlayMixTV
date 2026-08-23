@@ -65,6 +65,8 @@
     <string name="nav_ppv">PPV</string>
     <string name="nav_radio">Radios</string>
     <string name="nav_kids">Niños</string>
+    <string name="nav_youtube">YouTube</string>
+    <string name="youtube_package">com.google.android.youtube</string>
     <string name="nav_kids_exit">Salir</string>
     <string name="kids_mode_on">Perfil de niños activado: por protección a menores, solo se muestra contenido apto para hasta 10 años</string>
     <string name="kids_mode_off">Saliste del perfil de niños</string>
