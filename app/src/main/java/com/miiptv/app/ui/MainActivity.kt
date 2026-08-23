@@ -1,7 +1,9 @@
 package com.miiptv.app.ui
 
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
 import android.os.Bundle
 import android.os.Handler
@@ -189,6 +191,79 @@ class MainActivity : AppCompatActivity() {
         binding.navFavorites.setOnClickListener { selectSection(Section.FAVORITES) }
 
         binding.navKids.setOnClickListener { toggleKidsMode() }
+
+        binding.btnYoutube.setOnClickListener { abrirYoutube() }
+        // Sin esto el botón no muestra ningún cambio al recibir el foco con
+        // el control remoto: se ve exactamente igual enfocado que sin
+        // enfocar, y con el remoto no hay forma de saber que está ahí parado.
+        RemoteControl.applyIconFocus(
+            binding.btnYoutube, RemoteControl.isEnabled(this), circular = false, cornerRadiusDp = 12f
+        )
+    }
+
+    /**
+     * Abre la app de YouTube instalada en el dispositivo.
+     *
+     * El error de "no compatible con tu dispositivo" salía porque solo se
+     * probaba el paquete de YouTube para celular (com.google.android.youtube).
+     * En un televisor/deco lo normal es que venga instalada la versión para
+     * Android TV, que es OTRO paquete (com.google.android.youtube.tv); al no
+     * encontrarla, el código anterior mandaba directo a la Play Store a la
+     * ficha del paquete de celular, y la Play Store del televisor la marca
+     * como no compatible con el aparato.
+     *
+     * Ahora se prueban ambos paquetes conocidos, priorizando el que
+     * corresponde según el modo (TV o móvil) que ya está eligiendo el resto
+     * de la app; si ninguno de los dos está instalado, se intenta abrir con
+     * el esquema propio de YouTube (lo entienden otras variantes de
+     * fabricante que no usen ninguno de esos dos paquetes); y solo si nada de
+     * eso funciona, se manda a la Play Store a la ficha correcta para el
+     * tipo de aparato.
+     */
+    private fun abrirYoutube() {
+        val paqueteMovil = getString(R.string.youtube_package)
+        val paqueteTv = getString(R.string.youtube_package_tv)
+        val ordenPaquetes = if (DeviceMode.isTv(this)) {
+            listOf(paqueteTv, paqueteMovil)
+        } else {
+            listOf(paqueteMovil, paqueteTv)
+        }
+
+        for (paquete in ordenPaquetes) {
+            val intentApp = packageManager.getLaunchIntentForPackage(paquete)
+            if (intentApp != null) {
+                startActivity(intentApp)
+                return
+            }
+        }
+
+        // Ninguno de los dos paquetes conocidos está instalado: se prueba el
+        // esquema "vnd.youtube", que solo lo maneja una app de YouTube (a
+        // diferencia de un link https://youtube.com, que abriría el
+        // navegador en vez de la app).
+        val intentEsquema = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube://"))
+        if (intentEsquema.resolveActivity(packageManager) != null) {
+            startActivity(intentEsquema)
+            return
+        }
+
+        abrirEnPlayStore(ordenPaquetes.first())
+    }
+
+    /** Manda a la ficha de la Play Store del paquete indicado; si no hay Play Store, cae al navegador. */
+    private fun abrirEnPlayStore(paquete: String) {
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paquete"))
+            )
+        } catch (e: ActivityNotFoundException) {
+            startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=$paquete")
+                )
+            )
+        }
     }
 
     private fun highlightNav() {
@@ -787,7 +862,67 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.action_parental)?.isVisible = sueltos
         menu.findItem(R.id.action_multi)?.isVisible = sueltos
         menu.findItem(R.id.action_account)?.isVisible = sueltos
+
+        fijarBajadaDelToolbar()
+        ocultarBotonFantasma()
         return super.onPrepareOptionsMenu(menu)
+    }
+
+    /**
+     * Ancla explícitamente hacia dónde baja el foco desde cada ícono del
+     * toolbar (candado, multipantalla, cuenta, etc.) cuando se navega con
+     * control remoto.
+     *
+     * Sin esto, Android busca el foco más cercano en línea recta sin
+     * importarle las filas del diseño: el botón de YouTube quedó justo
+     * debajo de estos íconos, así que bajar desde cualquiera de ellos caía
+     * ahí en vez de entrar al menú de secciones (Inicio, Canales...).
+     */
+    private fun fijarBajadaDelToolbar() {
+        binding.toolbar.post {
+            val destino = if (kidsMode) R.id.navLive else R.id.navHome
+            listOf(
+                R.id.action_refresh, R.id.action_search, R.id.action_parental,
+                R.id.action_multi, R.id.action_account, R.id.action_quick
+            ).forEach { id ->
+                binding.toolbar.findViewById<View>(id)?.nextFocusDownId = destino
+            }
+        }
+    }
+
+    /**
+     * Elimina cualquier botón "de más" que Android agregue por su cuenta
+     * dentro del grupo de íconos del toolbar y que no corresponda a ninguno
+     * de los 6 ítems declarados en menu_main.xml.
+     *
+     * En este proyecto, con varios ítems forzados a "always" en TV, Android
+     * a veces igual arma su propio botón de desbordamiento (el de los tres
+     * puntos) para el sobrante — pero como nuestro tema no le define un
+     * ícono propio, ese botón queda en blanco: un rectángulo blanco liso sin
+     * ningún dibujo adentro, pegado al final de la fila. En vez de intentar
+     * adivinar el estilo exacto para que dibuje los tres puntos, se oculta
+     * directamente: cualquier hijo del ActionMenuView (el contenedor real de
+     * los íconos) que no tenga uno de nuestros IDs declarados no debería
+     * estar ahí, así que se apaga.
+     */
+    private fun ocultarBotonFantasma() {
+        val idsConocidos = setOf(
+            R.id.action_refresh, R.id.action_search, R.id.action_parental,
+            R.id.action_multi, R.id.action_account, R.id.action_quick
+        )
+        binding.toolbar.post {
+            for (i in 0 until binding.toolbar.childCount) {
+                val hijo = binding.toolbar.getChildAt(i)
+                if (hijo is ViewGroup && hijo !is LinearLayout) {
+                    for (j in 0 until hijo.childCount) {
+                        val boton = hijo.getChildAt(j)
+                        if (boton.id !in idsConocidos) {
+                            boton.visibility = View.GONE
+                        }
+                    }
+                }
+            }
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
