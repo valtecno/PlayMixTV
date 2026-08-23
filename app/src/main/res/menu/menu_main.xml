@@ -57,7 +57,7 @@
 
     <!--
         Acceso a YouTube: solo existe acá, colgado del menú de PlayMix. No es un
-        acceso propio de la app -- abre la app oficial de YouTube si está
+        acceso propio de la app — abre la app oficial de YouTube si está
         instalada, o lleva a instalarla si no. Va al final para quedar como el
         icono más a la derecha, después del resto.
     -->
