@@ -106,9 +106,6 @@
                 <TextView android:id="@+id/navKids" style="@style/NavItem"
                     android:text="@string/nav_kids" android:drawableStart="@drawable/ic_kids" />
 
-                <TextView android:id="@+id/navExclusive" style="@style/NavItem"
-                    android:text="@string/nav_exclusive" android:drawableStart="@drawable/ic_exclusive" />
-
             </LinearLayout>
         </HorizontalScrollView>
 

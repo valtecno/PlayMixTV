@@ -2,8 +2,8 @@ package com.miiptv.app.ui
 
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
 import android.os.Bundle
 import android.os.Handler
@@ -191,27 +191,6 @@ class MainActivity : AppCompatActivity() {
         binding.navFavorites.setOnClickListener { selectSection(Section.FAVORITES) }
 
         binding.navKids.setOnClickListener { toggleKidsMode() }
-        binding.navExclusive.setOnClickListener { openExclusiveApp() }
-    }
-
-    /**
-     * Botón "Exclusivo": abre la app de YT instalada aparte, apuntando directo
-     * a su actividad de entrada (com.rgvip.code.SplashLoginActivity, la que
-     * trae el login del panel). Se usa un intent EXPLÍCITO (paquete+actividad)
-     * en vez de getLaunchIntentForPackage, porque esa app ya no tiene ícono de
-     * lanzador (se le quitaron las categorías LAUNCHER/LEANBACK_LAUNCHER a
-     * propósito): solo se puede abrir desde acá.
-     */
-    private fun openExclusiveApp() {
-        val intent = Intent().apply {
-            component = ComponentName(EXCLUSIVE_APP_PACKAGE, EXCLUSIVE_APP_ENTRY_ACTIVITY)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        }
-        try {
-            startActivity(intent)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.exclusive_not_installed, Toast.LENGTH_LONG).show()
-        }
     }
 
     private fun highlightNav() {
@@ -810,6 +789,7 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.action_parental)?.isVisible = sueltos
         menu.findItem(R.id.action_multi)?.isVisible = sueltos
         menu.findItem(R.id.action_account)?.isVisible = sueltos
+        menu.findItem(R.id.action_youtube)?.isVisible = !kidsMode
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -821,8 +801,31 @@ class MainActivity : AppCompatActivity() {
             R.id.action_multi -> startActivity(Intent(this, MultiScreenActivity::class.java))
             R.id.action_account -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_quick -> showQuickMenu()
+            R.id.action_youtube -> openYouTube()
         }
         return true
+    }
+
+    /**
+     * Abre la app oficial de YouTube. Este botón es el único acceso: no hay
+     * icono propio ni entrada en el lanzador, solo cuelga de acá adentro del
+     * menú de PlayMix.
+     *
+     * Si YouTube está instalada, se abre directo. Si no, se manda a la Play
+     * Store a instalarla (o al navegador si la Play Store tampoco está).
+     */
+    private fun openYouTube() {
+        val paquete = "com.google.android.youtube"
+        val intentApp = packageManager.getLaunchIntentForPackage(paquete)
+        if (intentApp != null) {
+            startActivity(intentApp)
+            return
+        }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paquete")))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$paquete")))
+        }
     }
 
     /**
@@ -911,7 +914,6 @@ class MainActivity : AppCompatActivity() {
         binding.navPpv.visibility = visibility
         binding.navRadio.visibility = visibility
         binding.navFavorites.visibility = visibility
-        binding.navExclusive.visibility = visibility
         invalidateOptionsMenu()
         if (::adapter.isInitialized) highlightNav()
     }
@@ -1775,12 +1777,5 @@ class MainActivity : AppCompatActivity() {
 
         /** Canales a cada lado del elegido que viajan al reproductor para zapear. */
         const val ZAP_WINDOW = 200
-
-        /**
-         * App exclusiva (YT) que se abre desde el botón del menú. Sin ícono de
-         * lanzador propio: solo se llega a ella por acá, con intent explícito.
-         */
-        const val EXCLUSIVE_APP_PACKAGE = "io.gh.reisxd.tizentube.cobalt"
-        const val EXCLUSIVE_APP_ENTRY_ACTIVITY = "com.rgvip.code.SplashLoginActivity"
     }
 }
