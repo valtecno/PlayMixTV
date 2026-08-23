@@ -88,6 +88,15 @@ class MainActivity : AppCompatActivity() {
     private var previewItem: ContentItem? = null
 
     /**
+     * Id del canal que estaba enfocado en la lista justo antes de abrir la
+     * pantalla completa (modo TV). Sin esto, al volver del reproductor
+     * Android no sabía a qué vista devolverle el foco -- la fila seguía ahí,
+     * pero ninguna se veía marcada y la primera flecha del control remoto se
+     * perdía "recuperando" el foco en vez de moverse.
+     */
+    private var idAlAbrirPantallaCompleta: Int? = null
+
+    /**
      * Reproductor de la previsualización. Vive con la pantalla (onStart/onStop)
      * y NUNCA suena a la vez que el reproductor a pantalla completa: al abrir
      * PlayerActivity esta activity pasa a onStop y acá se libera. Importa
@@ -277,6 +286,12 @@ class MainActivity : AppCompatActivity() {
             val active = sec != null && sec == section
             paintNavItem(view, active)
         }
+        // No representa ninguna Section (no hay "estar parado en YouTube"),
+        // así que siempre va en nivel inactivo -- pero por acá es donde cada
+        // botón del menú gana el anillo de foco del control remoto (ver
+        // Appearance.applyLevel). Sin esta línea se queda con el fondo
+        // transparente de siempre y no muestra nada al enfocarlo.
+        paintNavItem(binding.btnYoutube, active = false)
         // El de Niños no representa una Section: se resalta según kidsMode y cambia
         // de texto/ícono para indicar que, tocándolo de nuevo, se pide el PIN de salida.
         binding.navKids.text = getString(if (kidsMode) R.string.nav_kids_exit else R.string.nav_kids)
@@ -388,12 +403,17 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Panel de previsualización: foto grande + botón "Ampliar" al lado de la
-     * lista, en vez de abrir el reproductor de una. Corre solo en Canales y
-     * PPV; en Favoritos no se muestra (ningún favorito, ni siquiera los que
-     * son canales de TV, abre con previsualización — todos abren directo).
+     * lista, en vez de abrir el reproductor de una.
+     *
+     * Corre en Canales y PPV siempre. En Favoritos corre SOLO cuando el
+     * filtro activo es "Canales" (favFilter == LIVE y no radio): en
+     * Todos/Radios/Películas/Series, aunque haya algún canal mezclado en la
+     * lista (pestaña "Todos"), se abre directo como antes. Es una decisión
+     * de la pestaña, no del tipo de cada fila.
      */
     private fun showPreviewFor(s: Section): Boolean =
-        s == Section.LIVE || s == Section.PPV
+        s == Section.LIVE || s == Section.PPV ||
+            (s == Section.FAVORITES && favFilter == ContentType.LIVE && !favIsRadio)
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
@@ -1520,8 +1540,10 @@ class MainActivity : AppCompatActivity() {
         adapter.submitList(favs)
         binding.tvEmpty.setText(R.string.empty_favorites)
         binding.tvEmpty.visibility = if (favs.isEmpty()) View.VISIBLE else View.GONE
-        // Igual que en Canales/PPV, pero acá solo se previsualizan los favoritos
-        // que son canales de TV; uno de radio/película/serie no arranca nada.
+        // El panel de previsualización depende del filtro (ver showPreviewFor),
+        // así que hay que recalcularlo acá: cambiar de pestaña dentro de
+        // Favoritos no pasa por selectSection, que es donde se hace siempre.
+        updatePreviewVisibility(Section.FAVORITES)
         refreshPreviewCard(favs)
     }
 
@@ -1551,7 +1573,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         when (item.type) {
-            ContentType.LIVE -> startActivity(liveIntent(item))
+            ContentType.LIVE -> {
+                // Se guarda acá y no en liveIntent(): liveIntent también se usa
+                // para armar el intent sin necesariamente estar por navegar
+                // (no es el caso hoy, pero evita un acoplamiento innecesario).
+                idAlAbrirPantallaCompleta = item.id
+                startActivity(liveIntent(item))
+            }
             ContentType.MOVIE -> {
                 if (Appearance.getMovieClick(this) == Appearance.CLICK_DETAILS) {
                     startActivity(
@@ -1864,7 +1892,32 @@ class MainActivity : AppCompatActivity() {
                 applyPreviewLayout(conPreview = true)
                 previewItem?.let { showPreview(it) }
             }
+            restaurarFocoTrasReproductor()
             if (section == Section.HOME) showHome()   // re-dibuja con la paleta vigente
+        }
+    }
+
+    /**
+     * Devuelve el foco visual a la fila del canal que estaba elegido antes de
+     * abrir la pantalla completa (ver [idAlAbrirPantallaCompleta]).
+     *
+     * Se busca por posición en la lista actual del adapter en vez de guardar
+     * la View directamente porque, si la sección se refrescó mientras tanto
+     * (Favoritos, Historial), la fila vieja ya no existe: hay una nueva
+     * instancia en la misma posición y hay que enfocar ESA.
+     */
+    private fun restaurarFocoTrasReproductor() {
+        val id = idAlAbrirPantallaCompleta ?: return
+        idAlAbrirPantallaCompleta = null
+        if (!RemoteControl.isEnabled(this)) return
+        val posicion = adapter.currentItems.indexOfFirst { it.id == id }
+        if (posicion < 0) return
+        // La vista puede no estar creada todavía (recién vuelve de fondo, el
+        // RecyclerView no terminó su primer layout): se reintenta en el
+        // siguiente frame, como ya hace enfocarSiTV con focusWhenReady.
+        binding.recyclerChannels.post {
+            val vista = binding.recyclerChannels.layoutManager?.findViewByPosition(posicion)
+            enfocarSiTV(vista ?: binding.recyclerChannels)
         }
     }
 
