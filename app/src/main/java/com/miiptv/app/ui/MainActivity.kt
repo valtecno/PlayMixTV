@@ -862,6 +862,7 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.action_parental)?.isVisible = sueltos
         menu.findItem(R.id.action_multi)?.isVisible = sueltos
         menu.findItem(R.id.action_account)?.isVisible = sueltos
+        menu.findItem(R.id.action_youtube)?.isVisible = !kidsMode
 
         fijarBajadaDelToolbar()
         return super.onPrepareOptionsMenu(menu)
@@ -897,8 +898,31 @@ class MainActivity : AppCompatActivity() {
             R.id.action_multi -> startActivity(Intent(this, MultiScreenActivity::class.java))
             R.id.action_account -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_quick -> showQuickMenu()
+            R.id.action_youtube -> openYouTube()
         }
         return true
+    }
+
+    /**
+     * Abre la app oficial de YouTube. Este botón es el único acceso: no hay
+     * icono propio ni entrada en el lanzador, solo cuelga de acá adentro del
+     * menú de PlayMix.
+     *
+     * Si YouTube está instalada, se abre directo. Si no, se manda a la Play
+     * Store a instalarla (o al navegador si la Play Store tampoco está).
+     */
+    private fun openYouTube() {
+        val paquete = "com.google.android.youtube"
+        val intentApp = packageManager.getLaunchIntentForPackage(paquete)
+        if (intentApp != null) {
+            startActivity(intentApp)
+            return
+        }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paquete")))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$paquete")))
+        }
     }
 
     /**
