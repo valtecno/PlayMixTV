@@ -16,26 +16,38 @@
         app:iconTint="@color/text_light"
         app:showAsAction="always" />
 
+    <!--
+        Candado, multipantalla y cuenta: en TV se muestran sueltos (los decide
+        onPrepareOptionsMenu con "sueltos"), y van en "always" a propósito.
+
+        Con "ifRoom" quedaban a merced de cuánto ancho le calculara Android al
+        Toolbar en cada aparato: en algunos decos con poco espacio, "cuenta"
+        no entraba y Android la mandaba sola al desbordamiento (los tres
+        puntos), dejando un ícono de más ahí sin que hiciera falta. Con
+        "always" los tres se dibujan siempre en la barra, igual que ya hace el
+        engranaje de abajo en móvil, y no queda ningún ítem "de sobra" que
+        obligue a que aparezcan los tres puntos.
+    -->
     <item
         android:id="@+id/action_parental"
         android:title="@string/action_parental"
         android:icon="@android:drawable/ic_lock_lock"
         app:iconTint="@color/text_light"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_multi"
         android:title="@string/nav_multi"
         android:icon="@drawable/ic_multiscreen"
         app:iconTint="@color/text_light"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/action_account"
         android:title="@string/action_account"
         android:icon="@drawable/ic_account"
         app:iconTint="@color/text_light"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
 
     <!--
         Engranaje: SOLO se muestra en modo móvil (lo decide onPrepareOptionsMenu).
