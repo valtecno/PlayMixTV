@@ -56,7 +56,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:banner="@drawable/banner"
         android:theme="@style/Theme.MiIPTV"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <!--
+            usesCleartextTraffic sigue acá para Android 7 y anteriores (API
+            21-23), que no leen networkSecurityConfig. De API 24 en
+            adelante manda el archivo, que es más fino: deja HTTP para los
+            paneles del usuario pero lo prohíbe en los dominios fijos de la
+            app (ver network_security_config.xml).
+        -->
 
         <activity
             android:name=".ui.SplashActivity"

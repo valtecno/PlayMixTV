@@ -9,7 +9,8 @@
                          la nube (cable o wifi durante la configuración).
 
     En los dos se excluye miiptv_prefs por el mismo motivo que en
-    backup_rules.xml: ahí está la contraseña del panel en texto plano.
+    backup_rules.xml: ahí está la contraseña del panel (cifrada, pero sin
+    necesidad de que salga del aparato).
 
     device-transfer podría discutirse — no sale a internet, va de un aparato del
     usuario a otro. Se excluye igual porque la ganancia es escribir la

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Política de red.
+
+    base-config permite tráfico sin cifrar (HTTP) porque los paneles Xtream
+    Codes de los usuarios son un servidor que ELLOS eligen -- muchísimos
+    paneles IPTV reales solo tienen HTTP, sin certificado. Prohibirlo acá
+    rompería el login y la reproducción para la mayoría de la gente. Es la
+    razón de ser de android:usesCleartextTraffic en el Manifest.
+
+    domain-config, en cambio, exige HTTPS para los dominios que la app
+    misma controla y que jamás deberían viajar en claro: nuestra propia API
+    de actualizaciones y los servicios de clima/ubicación. Ninguno de ellos
+    necesita HTTP para funcionar, así que acá no hay excusa para permitirlo.
+-->
+<network-security-config>
+
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- Buscador de actualizaciones (Updater.kt) -->
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
+
+        <!-- Ubicación por IP y clima (WeatherService.kt) -->
+        <domain includeSubdomains="true">ipwho.is</domain>
+        <domain includeSubdomains="true">ipapi.co</domain>
+        <domain includeSubdomains="true">geojs.io</domain>
+        <domain includeSubdomains="true">open-meteo.com</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="true" />
+
+</network-security-config>

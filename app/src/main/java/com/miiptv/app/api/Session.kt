@@ -1,6 +1,7 @@
 package com.miiptv.app.api
 
 import android.content.Context
+import com.miiptv.app.util.CryptoUtil
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -13,6 +14,7 @@ import java.util.concurrent.TimeUnit
  */
 object Session {
     private const val PREFS = "miiptv_prefs"
+    private const val KEY_PASSWORD_ENC = "password_enc"
 
     /**
      * Agente que la app declara ante los servidores, tanto en la API como al
@@ -116,11 +118,21 @@ object Session {
 
     fun save(context: Context, server: String, username: String, password: String) {
         val clean = normalize(server)
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        val limpia = password.trim()
+        // La contraseña se guarda cifrada con la clave del Android Keystore
+        // (ver CryptoUtil). Si el aparato no lo soporta (API 21-22), se
+        // guarda tal cual bajo la misma clave de antes para no romper el
+        // login ahí -- KEY_PASSWORD_ENC queda vacía en ese caso.
+        val cifrada = CryptoUtil.encrypt(limpia)
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("server", clean)
             .putString("username", username.trim())
-            .putString("password", password.trim())
-            .apply()
+        if (cifrada != null) {
+            prefs.putString(KEY_PASSWORD_ENC, cifrada).remove("password")
+        } else {
+            prefs.putString("password", limpia).remove(KEY_PASSWORD_ENC)
+        }
+        prefs.apply()
         // El Retrofit guardado apunta al servidor anterior: hay que rehacerlo o
         // la app seguiría pidiéndole el catálogo al panel que acabamos de dejar.
         invalidateApi()
@@ -135,8 +147,17 @@ object Session {
     fun username(context: Context): String =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("username", "") ?: ""
 
-    fun password(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("password", "") ?: ""
+    fun password(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        prefs.getString(KEY_PASSWORD_ENC, null)?.let { cifrada ->
+            CryptoUtil.decrypt(cifrada)?.let { return it }
+        }
+        // Sesión de una versión anterior a este cambio (o aparato sin
+        // Keystore compatible): todavía en texto plano bajo la clave vieja.
+        // Se lee igual para no cerrarle la sesión a nadie de golpe; en el
+        // próximo login o Session.save() ya queda cifrada.
+        return prefs.getString("password", "") ?: ""
+    }
 
     fun isLoggedIn(context: Context): Boolean =
         server(context).isNotBlank() && username(context).isNotBlank()

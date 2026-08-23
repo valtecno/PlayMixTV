@@ -84,7 +84,7 @@ object WeatherService {
     private fun ubicarPorIp(): Pair<Double, Double>? {
         val proveedores = listOf(
             ::ubicarConIpwhoIs,
-            ::ubicarConIpApiCom,
+            ::ubicarConGeoJs,
             ::ubicarConIpapiCo
         )
         for (proveedor in proveedores) {
@@ -120,15 +120,14 @@ object WeatherService {
         )
     }
 
-    private fun ubicarConIpApiCom(): Pair<Double, Double>? {
-        // Sin HTTPS en el plan gratis, pero la app ya permite tráfico en claro
-        // (usesCleartextTraffic) y este dominio no suele estar en las listas
-        // de bloqueo de rastreadores por ser tan usado para geolocalizar IPs.
-        val json = pedir("http://ip-api.com/json/") ?: return null
-        if (json.optString("status") != "success") return null
+    private fun ubicarConGeoJs(): Pair<Double, Double>? {
+        // Reemplaza al proveedor anterior (ip-api.com), que solo daba HTTP
+        // en el plan gratis. GeoJS es HTTPS y gratis sin clave, así que ya
+        // no hace falta la excepción de tráfico en claro para este proveedor.
+        val json = pedir("https://get.geojs.io/v1/ip/geo.json") ?: return null
         return coords(
-            json.optDouble("lat", Double.NaN),
-            json.optDouble("lon", Double.NaN)
+            json.optString("latitude").toDoubleOrNull() ?: Double.NaN,
+            json.optString("longitude").toDoubleOrNull() ?: Double.NaN
         )
     }
 
