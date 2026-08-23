@@ -3,7 +3,7 @@
     Política de red.
 
     base-config permite tráfico sin cifrar (HTTP) porque los paneles Xtream
-    Codes de los usuarios son un servidor que ELLOS eligen -- muchísimos
+    Codes de los usuarios son un servidor que ELLOS eligen; muchísimos
     paneles IPTV reales solo tienen HTTP, sin certificado. Prohibirlo acá
     rompería el login y la reproducción para la mayoría de la gente. Es la
     razón de ser de android:usesCleartextTraffic en el Manifest.

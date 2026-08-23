@@ -6,7 +6,7 @@
 
     Session guarda servidor, usuario y CONTRASEÑA del panel dentro de
     miiptv_prefs (la contraseña va cifrada con una clave del Android
-    Keystore, ver CryptoUtil.kt -- pero esa clave nunca sale del aparato, así
+    Keystore, ver CryptoUtil.kt; esa clave nunca sale del aparato, así
     que un archivo restaurado en otro equipo no se puede descifrar igual).
     Con la copia de seguridad automática activada y sin reglas, Android sube
     ese archivo tal cual a la cuenta de Google Drive del usuario. Excluirlo
