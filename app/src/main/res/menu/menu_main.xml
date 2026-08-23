@@ -55,4 +55,17 @@
         app:iconTint="@color/text_light"
         app:showAsAction="always" />
 
+    <!--
+        Acceso a YouTube: solo existe acá, colgado del menú de PlayMix. No es un
+        acceso propio de la app — abre la app oficial de YouTube si está
+        instalada, o lleva a instalarla si no. Va al final para quedar como el
+        icono más a la derecha, después del resto.
+    -->
+    <item
+        android:id="@+id/action_youtube"
+        android:title="@string/action_youtube"
+        android:icon="@drawable/ic_youtube"
+        app:iconTint="@color/text_light"
+        app:showAsAction="always" />
+
 </menu>
