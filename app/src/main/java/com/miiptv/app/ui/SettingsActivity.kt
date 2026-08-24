@@ -118,6 +118,29 @@ class SettingsActivity : AppCompatActivity() {
         refreshLabels()
     }
 
+    /** Vista que tenía el foco justo antes de salir a otra pantalla (Cuentas → Agregar, etc.). */
+    private var focoAntesDeSalir: View? = null
+
+    override fun onPause() {
+        super.onPause()
+        focoAntesDeSalir = currentFocus
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Al volver de "Agregar cuenta" (el diálogo de Cuentas ya se había
+        // cerrado antes de salir, así que no hay a dónde volver dentro de
+        // él) esta pantalla se quedaba sin nada visualmente seleccionado:
+        // igual síntoma que en la pantalla principal al volver de un canal
+        // en pantalla completa. Se le devuelve el foco a la fila donde
+        // estaba parado el control remoto.
+        val vista = focoAntesDeSalir
+        focoAntesDeSalir = null
+        if (RemoteControl.isEnabled(this) && currentFocus == null && vista?.isAttachedToWindow == true) {
+            RemoteControl.focusWhenReady(vista)
+        }
+    }
+
     private fun refreshLabels() {
         binding.tvDeviceMode.text = DeviceMode.label(this, DeviceMode.get(this))
 

@@ -47,7 +47,11 @@ class LoginActivity : AppCompatActivity() {
         val preselect = intent.getStringExtra(EXTRA_SERVER_URL)
         selectServer(preselect?.let { Servers.byUrl(it) } ?: Servers.default)
 
-        binding.etUsername.setText(Session.username(this))
+        // Sin preselección: al "Agregar otra cuenta" desde Ajustes esto
+        // precargaba el usuario de la cuenta YA activa en los campos, como si
+        // se estuviera editando esa misma cuenta en vez de cargar una nueva.
+        // Los campos arrancan vacíos siempre; la única precarga real es la
+        // del servidor (selectServer, arriba), que si tiene sentido reusar.
 
         binding.btnLogin.background = Appearance.withFocusState(
             this, Appearance.gradient(this, 12f), 12f
@@ -56,6 +60,20 @@ class LoginActivity : AppCompatActivity() {
 
         // Con remoto, empezar con el foco puesto en el sistema preseleccionado
         if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Si esta pantalla ya estaba creada y se vuelve a ella (se abrió
+        // encima algún diálogo del sistema, o el diálogo de "Cuentas" se
+        // cerró justo al mismo tiempo que arrancaba esta Activity), el chip
+        // del servidor se quedaba sin ningún indicador visual de selección:
+        // el foco del control remoto no caía en ningún lado. onCreate solo
+        // corre una vez, así que esta pantalla necesita su propio resguardo
+        // al volver a primer plano.
+        if (RemoteControl.isEnabled(this) && currentFocus == null) {
             RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
         }
     }
