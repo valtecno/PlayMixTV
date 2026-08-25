@@ -36,6 +36,7 @@ import com.miiptv.app.util.KidsFilter
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PlayerFactory
+import com.miiptv.app.util.RemoteControl
 import com.squareup.picasso.Picasso
 import retrofit2.Call
 import retrofit2.Callback
@@ -138,16 +139,35 @@ class MultiScreenActivity : AppCompatActivity() {
         binding.btnHome.setOnClickListener { goHome() }
         binding.btnReloadAll.setOnClickListener { reloadAll() }
         binding.btnSource.setOnClickListener { cycleFormat() }
+        // btnSource: fondo fijo (bg_chip_outline) sin estado de foco.
+        // btnReloadAll: el ripple nativo de Android, casi imperceptible sobre
+        // el tema oscuro y encima inconsistente con el resto de la app.
+        binding.btnSource.background = Appearance.withFocusState(this, binding.btnSource.background, 20f)
+        RemoteControl.applyIconFocus(binding.btnReloadAll, RemoteControl.isEnabled(this), circular = true)
         updateSourceLabel()
 
+        val focusViews = listOf(binding.focus0, binding.focus1, binding.focus2, binding.focus3)
         for (i in 0 until SLOTS) {
             slotViews[i].setOnClickListener { setActiveSlot(i) }
             slotViews[i].setOnLongClickListener { showChannelPicker(i); true }
             labelViews[i].setText(R.string.multiscreen_slot_empty)
+            // Los 4 recuadros son el contenido principal de la pantalla y no
+            // tenían NINGÚN indicador de foco: el PlayerView tapa cualquier
+            // background que se le ponga al FrameLayout, así que el marco va
+            // en esta vista superpuesta (ver bg_slot_focus.xml). Es un marco
+            // aparte del de "audio activo" (borderViews): son cosas
+            // independientes, se puede estar navegando sobre un recuadro que
+            // no es el que está sonando.
+            slotViews[i].setOnFocusChangeListener { _, tieneFoco ->
+                focusViews[i].visibility = if (tieneFoco) View.VISIBLE else View.GONE
+            }
         }
 
         setActiveSlot(activeSlot)
         loadCategories()
+
+        // Sin esto la pantalla abría sin nada marcado con el control remoto.
+        if (RemoteControl.isEnabled(this)) RemoteControl.focusWhenReady(slotViews[activeSlot])
     }
 
     /**
@@ -443,12 +463,19 @@ class MultiScreenActivity : AppCompatActivity() {
         })
         vista.btnPickerClear.setOnClickListener { vista.etPickerSearch.setText("") }
         vista.btnPickerClose.setOnClickListener { dialog.dismiss() }
+        // btnPickerClear: ripple nativo, inconsistente con el resto de la app.
+        // btnPickerClose: fondo fijo (bg_glass_card) sin estado de foco.
+        val remoto = RemoteControl.isEnabled(this)
+        RemoteControl.applyIconFocus(vista.btnPickerClear, remoto, circular = true)
+        vista.btnPickerClose.background = Appearance.withFocusState(this, vista.btnPickerClose.background, 12f)
 
         renderPickerCategories(vista) { render(vista.etPickerSearch.text?.toString().orEmpty()) }
         render("")
 
         dialog.setOnDismissListener { if (picker === dialog) picker = null }
         dialog.show()
+        // El buscador es lo primero que hace falta usar acá.
+        if (remoto) RemoteControl.focusWhenReady(vista.etPickerSearch)
     }
 
     /** Chips de categoría dentro del selector: cambian la lista sin bajar todo. */
@@ -514,6 +541,9 @@ class MultiScreenActivity : AppCompatActivity() {
                 Picasso.get().load(item.icon).into(holder.v.ivLogo)
             }
             holder.v.root.setOnClickListener { onPick(item) }
+            // Mismo fondo fijo (bg_glass_card) que ya se corrigió en las
+            // filas de episodios de series: acá era el mismo problema.
+            RemoteControl.applyItemFocus(holder.v.root, RemoteControl.isEnabled(holder.v.root.context))
         }
     }
 }

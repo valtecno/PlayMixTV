@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Marco del recuadro donde está parado el foco del control remoto.
+
+    Es distinto de bg_slot_active (el que marca cuál tiene el audio activo):
+    son dos cosas independientes; se puede estar navegando con el mando
+    sobre un recuadro que no es el que suena. Más fino y en blanco para no
+    confundirse con el marco de audio (grueso, color de marca).
+
+    Igual que bg_slot_active, va en una vista superpuesta y no en el
+    background del FrameLayout, porque el PlayerView lo taparía.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="2dp" android:color="#E0FFFFFF" />
+</shape>

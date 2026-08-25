@@ -122,6 +122,14 @@
                 android:background="@drawable/bg_slot_active"
                 android:visibility="gone" />
 
+            <!-- Marco de foco del control remoto: independiente del de audio (arriba). -->
+            <View
+                android:id="@+id/focus0"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_focus"
+                android:visibility="gone" />
+
             <!-- Número de recuadro, siempre visible -->
             <TextView
                 android:id="@+id/number0"
@@ -191,6 +199,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_slot_active"
+                android:visibility="gone" />
+
+            <!-- Marco de foco del control remoto: independiente del de audio (arriba). -->
+            <View
+                android:id="@+id/focus1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_focus"
                 android:visibility="gone" />
 
             <!-- Número de recuadro, siempre visible -->
@@ -272,6 +288,14 @@
                 android:background="@drawable/bg_slot_active"
                 android:visibility="gone" />
 
+            <!-- Marco de foco del control remoto: independiente del de audio (arriba). -->
+            <View
+                android:id="@+id/focus2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_focus"
+                android:visibility="gone" />
+
             <!-- Número de recuadro, siempre visible -->
             <TextView
                 android:id="@+id/number2"
@@ -341,6 +365,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="@drawable/bg_slot_active"
+                android:visibility="gone" />
+
+            <!-- Marco de foco del control remoto: independiente del de audio (arriba). -->
+            <View
+                android:id="@+id/focus3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_slot_focus"
                 android:visibility="gone" />
 
             <!-- Número de recuadro, siempre visible -->

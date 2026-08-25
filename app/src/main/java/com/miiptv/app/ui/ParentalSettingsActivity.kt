@@ -12,9 +12,11 @@ import com.miiptv.app.R
 import com.miiptv.app.api.Category
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityParentalSettingsBinding
+import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PinDialog
+import com.miiptv.app.util.RemoteControl
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -34,6 +36,11 @@ class ParentalSettingsActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
 
         updatePinButton()
+        // Sin esto btnPin y btnRemovePin (fondo fijo, puesto por XML) no
+        // mostraban nada al recibir el foco del control remoto -- exactamente
+        // la misma falla que ya se corrigió en otras pantallas.
+        binding.btnPin.background = Appearance.withFocusState(this, binding.btnPin.background, 10f)
+        binding.btnRemovePin.background = Appearance.withFocusState(this, binding.btnRemovePin.background, 10f)
         binding.btnPin.setOnClickListener {
             if (Parental.hasPin(this)) {
                 PinDialog.create(this) { updatePinButton() } // cambiar PIN
@@ -55,6 +62,10 @@ class ParentalSettingsActivity : AppCompatActivity() {
         binding.recyclerCategories.layoutManager = LinearLayoutManager(this)
         binding.recyclerCategories.adapter = adapter
         loadAllCategories()
+
+        // Sin esto la pantalla abría sin nada marcado con el control remoto:
+        // recién se veía algo seleccionado después de mover el mando una vez.
+        if (RemoteControl.isEnabled(this)) RemoteControl.focusWhenReady(binding.btnPin)
     }
 
     private fun updatePinButton() {
@@ -107,6 +118,12 @@ class CategoryLockAdapter(private val context: android.content.Context) : Recycl
         holder.switch.setOnCheckedChangeListener { _, checked ->
             Parental.setCategoryLocked(context, cat.categoryId, checked)
         }
+        // Antes solo el Switch (chiquito) respondía al clic, y ni la fila ni
+        // el switch mostraban nada al recibir el foco del control remoto: no
+        // había forma de saber sobre qué categoría se estaba parado. Ahora la
+        // fila entera es el blanco -- togglea el switch al presionar OK.
+        holder.root.setOnClickListener { holder.switch.toggle() }
+        RemoteControl.applyItemFocus(holder.root, RemoteControl.isEnabled(context))
     }
 
     override fun getItemCount() = items.size

@@ -156,6 +156,13 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
+        // Sin esto era el único botón de toda la pantalla de Canales que no
+        // mostraba nada al recibir el foco del control remoto: fondo fijo
+        // (bg_glass_card, puesto en el XML), sin ningún estado de foco. Con
+        // lo importante que es -- es el botón para pasar a pantalla completa.
+        binding.previewPlayRow.background = Appearance.withFocusState(
+            this, binding.previewPlayRow.background, 12f
+        )
         binding.previewThumbFrame.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.btnPreviewMute.setOnClickListener { togglePreviewMute() }
 

@@ -1,6 +1,8 @@
 package com.miiptv.app.ui
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -93,6 +95,8 @@ class SearchActivity : AppCompatActivity() {
             RecentSearches.clear(this)
             renderRecentSearches()
         }
+        // Texto suelto sin fondo: no mostraba nada al recibir el foco.
+        binding.tvClearRecent.background = Appearance.withFocusState(this, ColorDrawable(Color.TRANSPARENT), 8f)
 
         binding.progressBar.visibility = View.VISIBLE
         Catalog.ensureLoaded(this, onUpdate = catalogListener)
@@ -149,6 +153,9 @@ class SearchActivity : AppCompatActivity() {
                 renderRecentSearches()
                 true
             }
+            // Mismo fondo fijo (bg_chip_outline) que las emisoras recientes
+            // de radio y las búsquedas guardadas: sin estado de foco.
+            chip.background = Appearance.withFocusState(this, chip.background, 20f)
             binding.recentContainer.addView(chip)
         }
     }
@@ -309,6 +316,13 @@ class SearchActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (binding.etQuery.text.isNullOrBlank()) renderRecentSearches()
+        // Al volver de haber abierto un resultado (canal, película, serie),
+        // sin esto no quedaba nada marcado con el control remoto: ni la fila
+        // que se había tocado, ni ningún otro lado.
+        if (RemoteControl.isEnabled(this) && currentFocus == null) {
+            val primeraFila = binding.recyclerResults.layoutManager?.findViewByPosition(0)
+            RemoteControl.focusWhenReady(primeraFila ?: binding.etQuery)
+        }
     }
 
     override fun onDestroy() {

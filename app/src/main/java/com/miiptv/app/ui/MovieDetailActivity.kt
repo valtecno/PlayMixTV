@@ -79,6 +79,15 @@ class MovieDetailActivity : AppCompatActivity() {
         loadInfo(id)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Al volver de reproducir, sin esto no quedaba nada marcado con el
+        // control remoto -- mismo resguardo que ya tienen otras pantallas.
+        if (RemoteControl.isEnabled(this) && currentFocus == null) {
+            RemoteControl.focusWhenReady(binding.btnPlay)
+        }
+    }
+
     private fun refreshFavoriteLabel() {
         val fav = Favorites.isFavorite(this, item)
         binding.btnFavorite.text = if (fav) "★  ${getString(R.string.tab_favorites)}" else "☆  ${getString(R.string.tab_favorites)}"
