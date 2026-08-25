@@ -37,11 +37,12 @@ import retrofit2.converter.gson.GsonConverterFactory
  * doce países, mezclando marcas con lugares en la misma línea. Ahora hay dos
  * niveles: [folders] arriba y las fuentes de la carpeta abierta abajo.
  *
- *      🌎 Países  ·  🎪 Tomorrowland  ·  🎛️ Electrónica
- *      └─ 🇪🇸 España · 🇺🇸 EE.UU. · 🇲🇽 México · ...
+ *      🌎 Países  ·  🎛️ Electrónica
+ *      └─ 🎧 Loca FM · 🎪 Tomorrowland · 🎵 Q-dance · 🏠 House · ...
  *
- * Una carpeta con una sola fuente (Tomorrowland) no muestra la segunda fila:
- * no hay nada que elegir, se carga directo.
+ * Tomorrowland y Q-dance son marcas de festival, así que van adentro de
+ * Electrónica junto con Loca FM y no como carpetas propias: cada una por su
+ * cuenta era una carpeta con una sola fuente, sin nada que elegir dentro.
  * ---------------------------------------------------------------------------
  */
 object RadioCatalog {
@@ -117,21 +118,9 @@ object RadioCatalog {
         Source("\uD83C\uDDF5\uD83C\uDDF7", "Puerto Rico", "radio_PR", "Reguetón, trap latino, salsa, pop", "PR")
     )
 
-    private val tomorrowland = Source(
-        flag = "\uD83C\uDFAA", name = "Tomorrowland", id = "radio_tomorrowland",
-        genres = "One World Radio: el sonido del festival, 24/7 y siempre mezclado",
-        queries = listOf("tomorrowland", "one world radio"),
-        fallback = listOf(
-            Fixed(
-                "Tomorrowland One World Radio",
-                "https://playerservices.streamtheworld.com/api/livestream-redirect/ONE_WORLD_RADIO.mp3"
-            )
-        )
-    )
-
     /**
-     * Electrónica: una marca (Loca FM, que ya estaba suelta en la fila vieja) y
-     * el resto por etiqueta de género.
+     * Electrónica: las marcas de festival (Loca FM, Tomorrowland, Q-dance) y el
+     * resto por etiqueta de género.
      *
      * Van por etiqueta y no por nombre porque una emisora de techno casi nunca
      * se llama "techno": la etiqueta la carga la comunidad del directorio y
@@ -142,6 +131,25 @@ object RadioCatalog {
             flag = "\uD83C\uDFA7", name = "Loca FM", id = "radio_locafm",
             genres = "Dance, techno, house, trance, hard, remember y 80s — todos sus estilos",
             queries = listOf("loca fm", "locafm", "loca 80")
+        ),
+        Source(
+            flag = "\uD83C\uDFAA", name = "Tomorrowland", id = "radio_tomorrowland",
+            genres = "One World Radio: el sonido del festival, 24/7 y siempre mezclado",
+            queries = listOf("tomorrowland", "one world radio"),
+            fallback = listOf(
+                Fixed(
+                    "Tomorrowland One World Radio",
+                    "https://playerservices.streamtheworld.com/api/livestream-redirect/ONE_WORLD_RADIO.mp3"
+                )
+            )
+        ),
+        Source(
+            flag = "\uD83C\uDFB5", name = "Q-dance", id = "radio_qdance",
+            genres = "Hardstyle y hard dance: el sonido de Defqon.1, Qlimax y compañía",
+            // Sin fallback fijo: a diferencia de Tomorrowland, no tengo una URL de
+            // stream de Q-dance confirmada a mano, y prefiero dejar que el
+            // directorio la resuelva antes que meter una que capaz ni funciona.
+            queries = listOf("q-dance", "qdance", "q dance")
         ),
         Source("\uD83C\uDFE0", "House", "radio_tag_house", "House, deep house y todas sus ramas", tag = "house"),
         Source("\u26A1", "Techno", "radio_tag_techno", "Techno de club, minimal y hard", tag = "techno"),
@@ -158,7 +166,6 @@ object RadioCatalog {
      */
     val folders = listOf(
         Folder("\uD83C\uDF0E", "Países", "radio_folder_paises", paises),
-        Folder("\uD83C\uDFAA", "Tomorrowland", "radio_folder_tomorrowland", listOf(tomorrowland)),
         Folder("\uD83C\uDF9B\uFE0F", "Electrónica", "radio_folder_electronica", electronica)
     )
 

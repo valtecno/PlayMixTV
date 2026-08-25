@@ -37,8 +37,20 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginEnd="10dp"
             android:orientation="vertical">
-            <TextView style="@style/SettingsLabel" android:text="@string/audio_language_label" />
+            <!-- Sin SettingsLabel acá: ese estilo fija layout_width="0dp" con
+                 weight="1", pensado para una fila horizontal (label + valor
+                 repartiéndose el ancho). Adentro de esta columna VERTICAL
+                 ese ancho 0dp queda literal; el texto no tiene dónde
+                 envolver y termina una letra por línea, disparando la
+                 altura de toda la fila (la caja gigante y vacía del bug). -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/audio_language_label"
+                android:textColor="@color/text_light"
+                android:textSize="15sp" />
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -55,8 +67,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginEnd="10dp"
             android:orientation="vertical">
-            <TextView style="@style/SettingsLabel" android:text="@string/subtitle_label" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/subtitle_label"
+                android:textColor="@color/text_light"
+                android:textSize="15sp" />
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
