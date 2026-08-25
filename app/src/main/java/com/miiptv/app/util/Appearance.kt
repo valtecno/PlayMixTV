@@ -84,7 +84,8 @@ object Appearance {
     fun applyLevel(
         view: android.widget.TextView,
         level: Level,
-        cornerRadiusDp: Float = 20f
+        cornerRadiusDp: Float = 20f,
+        tintIcon: Boolean = true
     ) {
         val c = view.context
         val p = palette(c)
@@ -192,10 +193,19 @@ object Appearance {
          * su sitio, el padre lo recortaba (clipChildren viene en true) y el
          * texto quedaba interpolado, o sea borroso. El color ya dice dónde está
          * el foco; el tamaño no hacía falta.
+         *
+         * tintIcon = false (YouTube): este listener es justamente lo que
+         * rompía el logo. El teñido inicial de paintNavItem() se podía saltar,
+         * pero acá se retiñe de nuevo cada vez que el foco entra O sale --
+         * entonces con el ícono ya rojo+blanco de fábrica, apenas el control
+         * remoto lo tocaba una vez quedaba pintado de un solo color para
+         * siempre, sin importar lo que hiciera paintNavItem() antes.
          */
-        view.setOnFocusChangeListener { v, _ ->
-            val tv = v as android.widget.TextView
-            tv.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(tv.currentTextColor) }
+        if (tintIcon) {
+            view.setOnFocusChangeListener { v, _ ->
+                val tv = v as android.widget.TextView
+                tv.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(tv.currentTextColor) }
+            }
         }
     }
 

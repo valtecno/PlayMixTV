@@ -313,7 +313,8 @@ class MainActivity : AppCompatActivity() {
         Appearance.applyLevel(
             view,
             if (active) Appearance.Level.PRIMARY else Appearance.Level.INACTIVE,
-            22f
+            22f,
+            tintIcon = tintIcon
         )
         if (!tintIcon) return
         val color = view.currentTextColor

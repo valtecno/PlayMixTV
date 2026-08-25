@@ -298,7 +298,19 @@ class SettingsActivity : AppCompatActivity() {
         vista.rowSubtitles.setOnClickListener { pickSubtitles { refrescarValores() } }
         vista.btnCloseAudio.setOnClickListener { dialog.dismiss() }
 
+        // Este diálogo se infla recién acá, así que el recorrido de
+        // onCreate (ver applyFocusToTree más abajo) nunca lo vio: por eso el
+        // botón de normalizar y las dos filas se quedaban sin ningún anillo
+        // de foco, sea cual sea la posición del control remoto. Tiene que ir
+        // DESPUÉS de los setOnClickListener de arriba: applyFocusToTree
+        // decide si una fila es "de verdad" clickeable mirando si ya tiene
+        // algo enganchado, y si la llamada va antes no encuentra nada.
+        RemoteControl.applyFocusToTree(vista.root, RemoteControl.isEnabled(this))
+
         dialog.show()
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(vista.btnNormalizeVolume)
+        }
     }
 
     /**
