@@ -37,7 +37,7 @@ class SeriesDetailActivity : AppCompatActivity() {
     private lateinit var adapter: EpisodeAdapter
 
     /** Id del episodio elegido justo antes de abrir el reproductor (ver onResume). */
-    private var idAlAbrirReproductor: Int? = null
+    private var idAlAbrirReproductor: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
