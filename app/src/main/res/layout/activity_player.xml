@@ -294,10 +294,10 @@
             android:contentDescription="@string/player_subtitles" />
 
         <ImageView
-            android:id="@+id/btnQuality"
+            android:id="@+id/btnVolume"
             style="@style/PlayerIcon"
-            android:src="@drawable/ic_quality"
-            android:contentDescription="@string/player_quality" />
+            android:src="@drawable/ic_volume_up"
+            android:contentDescription="@string/player_volume" />
 
         <ImageView
             android:id="@+id/btnAspect"
@@ -319,45 +319,51 @@
 
     </LinearLayout>
 
-    <!-- ===== Zapping: canal anterior / siguiente =====
-         A los costados y no en la barra superior, que ya está llena. Aparecen y
-         desaparecen junto con el resto de los controles, y solo cuando el canal
-         llegó con una lista de la que moverse. -->
+    <!-- ===== Barra de volumen: canales y PPV (incluye Favoritos y Niños,
+         que abren estas mismas pantallas) =====
+         Oculta hasta tocar btnVolume. El SeekBar mueve Player.volume (el del
+         reproductor, no el del sistema): no toca los botones físicos del
+         control ni el volumen de otras apps, y arranca cada canal con el
+         nivel que se dejó la vez anterior (PlayerPrefs). -->
     <LinearLayout
-        android:id="@+id/channelNav"
-        android:layout_width="match_parent"
+        android:id="@+id/volumeBar"
+        android:layout_width="280dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="72dp"
+        android:layout_marginEnd="14dp"
         android:orientation="horizontal"
-        android:paddingHorizontal="14dp"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_glass_card"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="4dp"
         android:visibility="gone">
 
         <ImageView
-            android:id="@+id/btnChannelPrev"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:padding="14dp"
-            android:background="@drawable/bg_play_circle"
-            android:src="@drawable/ic_channel_up"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="@string/player_channel_prev" />
+            android:id="@+id/ivVolumeIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:src="@drawable/ic_volume_up"
+            android:contentDescription="@null" />
 
-        <View
+        <SeekBar
+            android:id="@+id/sbVolume"
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginHorizontal="12dp"
+            android:max="100"
+            android:progress="100"
+            android:focusable="true" />
 
-        <ImageView
-            android:id="@+id/btnChannelNext"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:padding="14dp"
-            android:background="@drawable/bg_play_circle"
-            android:src="@drawable/ic_channel_down"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="@string/player_channel_next" />
+        <TextView
+            android:id="@+id/tvVolumePercent"
+            android:layout_width="36dp"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:textColor="@color/text_light"
+            android:textSize="12sp"
+            tools:text="100%" />
 
     </LinearLayout>
 

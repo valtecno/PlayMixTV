@@ -41,6 +41,12 @@ object PlayerPrefs {
     fun getKeepScreenOn(c: Context) = prefs(c).getBoolean("keep_screen_on", true)
     fun setKeepScreenOn(c: Context, v: Boolean) = prefs(c).edit().putBoolean("keep_screen_on", v).apply()
 
+    // ---- Volumen del reproductor (0-100), independiente del volumen del
+    // sistema. Se guarda para que el próximo canal arranque con el mismo
+    // nivel en vez de siempre al 100%. ----
+    fun getVolume(c: Context) = prefs(c).getInt("player_volume", 100).coerceIn(0, 100)
+    fun setVolume(c: Context, v: Int) = prefs(c).edit().putInt("player_volume", v.coerceIn(0, 100)).apply()
+
     /** Milisegundos de buffer (mínimo, máximo) según el nivel elegido. */
     fun bufferMillis(level: Int): Pair<Int, Int> = when (level) {
         BUFFER_LOW -> 5_000 to 20_000

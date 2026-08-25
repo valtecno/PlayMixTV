@@ -25,6 +25,7 @@ import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -118,7 +119,7 @@ class PlayerActivity : AppCompatActivity() {
      * Un canal en vivo solo prueba la señal alternativa (.ts <-> .m3u8) una
      * vez en busca de más idiomas de audio: si tampoco trae nada nuevo, no
      * tiene sentido seguir alternando en cada tap. Se resetea al cambiar de
-     * canal (changeChannel), porque cada señal es independiente.
+     * canal en vivo, porque cada señal es independiente.
      */
     private var usingAltAudioSource = false
     /** Tras recargar por más idiomas, reabre el diálogo de audio solo. */
@@ -142,15 +143,6 @@ class PlayerActivity : AppCompatActivity() {
     private val eqAnimators = mutableListOf<ObjectAnimator>()
 
     private var playlistIndex = 0
-
-    /**
-     * Zapping de canales en vivo. Reutiliza la misma lista que las emisoras de
-     * radio, pero solo con id y nombre: la URL de un canal es determinista
-     * (Session.liveStreamUrl), así que mandarla por el intent sería repetir
-     * datos y acercarse al límite de tamaño de una transacción Binder.
-     */
-    private val hasChannelList: Boolean
-        get() = !isRadio && itemType == ContentType.LIVE && playlistIds.size > 1
 
     /** Mantiene el ecualizador y el botón de la barra al día con el audio. */
     private val radioUiListener = object : Player.Listener {
@@ -282,6 +274,7 @@ class PlayerActivity : AppCompatActivity() {
             PlaybackService.stop(this)
             player = PlaybackHolder.player
             binding.playerView.player = player
+            player?.volume = volumenReproductor()
             syncBufferingIndicator(player)
             if (isRadio) {
                 player?.addListener(radioUiListener)
@@ -321,6 +314,7 @@ class PlayerActivity : AppCompatActivity() {
                 PlaybackService.stop(this)
                 player = vivo
                 binding.playerView.player = vivo
+                vivo.volume = volumenReproductor()
                 syncBufferingIndicator(vivo)
                 if (isRadio) {
                     vivo.addListener(radioUiListener)
@@ -551,7 +545,6 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener { finish() }
         binding.btnAudio.setOnClickListener { showTrackDialog(C.TRACK_TYPE_AUDIO) }
         binding.btnSubtitles.setOnClickListener { showTrackDialog(C.TRACK_TYPE_TEXT) }
-        binding.btnQuality.setOnClickListener { showTrackDialog(C.TRACK_TYPE_VIDEO) }
         binding.btnAspect.setOnClickListener { showAspectDialog() }
         binding.btnBuffer.setOnClickListener { showBufferDialog() }
         binding.btnLock.setOnClickListener { setLocked(true) }
@@ -572,17 +565,14 @@ class PlayerActivity : AppCompatActivity() {
         }
         binding.btnCancelNext.setOnClickListener { hideNextBar() }
 
-        binding.btnChannelPrev.setOnClickListener { changeChannel(-1) }
-        binding.btnChannelNext.setOnClickListener { changeChannel(+1) }
-        updateChannelNav()
+        setupVolumeControl()
 
         // La barra propia aparece y desaparece junto con los controles nativos
         binding.playerView.setControllerVisibilityListener(
             PlayerView.ControllerVisibilityListener { visibility ->
                 if (!locked) {
                     binding.topBar.visibility = visibility
-                    binding.channelNav.visibility =
-                        if (hasChannelList) visibility else View.GONE
+                    if (visibility != View.VISIBLE) binding.volumeBar.visibility = View.GONE
                 }
             }
         )
@@ -599,6 +589,64 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    // ---------------- Volumen (canales y PPV) ----------------
+
+    /**
+     * Solo tiene sentido en canales y PPV -- ambos llegan acá como
+     * ContentType.LIVE sin ser radio (la radio ya trae su propia barra con
+     * anterior/pausa/siguiente, y películas/series no lo pidieron). Como
+     * Favoritos y Niños abren estos mismos canales con esta misma pantalla,
+     * quedan cubiertos sin ningún cambio aparte.
+     *
+     * Mueve Player.volume (0f-1f), el volumen PROPIO del reproductor, no el
+     * del sistema: así no interfiere con los botones físicos del control ni
+     * con el volumen de otras apps, y cada canal arranca con el nivel que
+     * se dejó la vez anterior (PlayerPrefs).
+     */
+    private fun setupVolumeControl() {
+        val aplica = !isRadio && itemType == ContentType.LIVE
+        binding.btnVolume.visibility = if (aplica) View.VISIBLE else View.GONE
+        if (!aplica) return
+
+        val inicial = PlayerPrefs.getVolume(this)
+        binding.sbVolume.progress = inicial
+        pintarIconoVolumen(inicial)
+
+        binding.btnVolume.setOnClickListener {
+            binding.volumeBar.visibility =
+                if (binding.volumeBar.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
+
+        binding.sbVolume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                player?.volume = progress / 100f
+                pintarIconoVolumen(progress)
+                PlayerPrefs.setVolume(this@PlayerActivity, progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar) {}
+        })
+    }
+
+    private fun pintarIconoVolumen(nivel: Int) {
+        val icono = if (nivel <= 0) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+        binding.btnVolume.setImageResource(icono)
+        binding.ivVolumeIcon.setImageResource(icono)
+        binding.tvVolumePercent.text = getString(R.string.player_volume_percent, nivel)
+    }
+
+    /**
+     * El volumen guardado se aplica cada vez que arranca o se retoma un
+     * reproductor -- pero solo en canales/PPV, que son los únicos con la
+     * barra para tocarlo. Si se aplicara también en radio o en películas/series,
+     * bajar el volumen en un canal dejaría lo próximo que se abra sonando
+     * bajito sin ninguna forma de subirlo desde adentro (ahí no hay
+     * botón de volumen que lo arregle).
+     */
+    private fun volumenReproductor(): Float =
+        if (!isRadio && itemType == ContentType.LIVE) PlayerPrefs.getVolume(this) / 100f else 1f
+
     // ---------------- Bloqueo de pantalla ----------------
 
     private fun setLocked(value: Boolean) {
@@ -607,7 +655,7 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(false)
             binding.playerView.hideController()
             binding.topBar.visibility = View.GONE
-            binding.channelNav.visibility = View.GONE
+            binding.volumeBar.visibility = View.GONE
             binding.radioBar.visibility = View.GONE
             // Con la pantalla bloqueada queda 100% limpia: ni el candado se ve.
             // Solo aparece un momento al tocar la pantalla (ver dispatchTouchEvent).
@@ -619,7 +667,6 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.setUseController(true)
             binding.btnUnlock.visibility = View.GONE
             binding.topBar.visibility = View.VISIBLE
-            if (hasChannelList) binding.channelNav.visibility = View.VISIBLE
             if (isRadio) binding.radioBar.visibility = View.VISIBLE
             binding.playerView.showController()
             Toast.makeText(this, R.string.player_unlocked, Toast.LENGTH_SHORT).show()
@@ -860,9 +907,12 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun titleFor(trackType: Int) = when (trackType) {
-        C.TRACK_TYPE_AUDIO -> R.string.player_audio
         C.TRACK_TYPE_TEXT -> R.string.player_subtitles
-        else -> R.string.player_quality
+        // El único otro llamador es audio (ver showTrackDialog): con la
+        // calidad de imagen afuera, ya no queda un tercer tipo de pista que
+        // pasar acá. Sigue siendo un "when" sobre Int y no un enum, así que
+        // Kotlin exige este else igual aunque nunca se use.
+        else -> R.string.player_audio
     }
 
     /** Etiqueta legible de una pista: idioma, resolución, códec o canales. */
@@ -911,8 +961,7 @@ class PlayerActivity : AppCompatActivity() {
         // Redondos: los iconos de la barra superior, el zapping y la radio
         listOf(
             binding.btnFavorite, binding.btnAudio, binding.btnSubtitles,
-            binding.btnQuality, binding.btnAspect, binding.btnBuffer, binding.btnLock,
-            binding.btnChannelPrev, binding.btnChannelNext,
+            binding.btnVolume, binding.btnAspect, binding.btnBuffer, binding.btnLock,
             binding.btnPrevStation, binding.btnRadioPlayPause, binding.btnNextStation
         ).forEach { RemoteControl.applyIconFocus(it, true) }
 
@@ -937,8 +986,9 @@ class PlayerActivity : AppCompatActivity() {
         binding.radioBackdrop.visibility = View.VISIBLE
         binding.radioBar.visibility = View.VISIBLE
 
-        // Sin video no hay calidad, subtítulos ni relación de aspecto que elegir
-        binding.btnQuality.visibility = View.GONE
+        // Sin video no hay subtítulos ni relación de aspecto que elegir
+        // (btnVolume no hace falta tocarlo: setupVolumeControl() ya lo oculta
+        // en radio por su cuenta, usando el mismo chequeo de isRadio).
         binding.btnSubtitles.visibility = View.GONE
         binding.btnAspect.visibility = View.GONE
 
@@ -1053,56 +1103,6 @@ class PlayerActivity : AppCompatActivity() {
                 .error(R.drawable.ic_radio)
                 .into(vista)
         }
-    }
-
-    /** Salta a la emisora anterior (-1) o la siguiente (+1) de la misma lista. */
-    /**
-     * Salta al canal anterior o siguiente de la categoría desde la que se entró.
-     *
-     * La URL no viaja en el intent: se arma acá con el id, igual que al abrir el
-     * canal desde la lista. Así la lista puede ser larga sin acercarse al límite
-     * de tamaño de una transacción Binder.
-     */
-    private fun changeChannel(delta: Int) {
-        if (!hasChannelList) return
-        val destino = playlistIndex + delta
-        if (destino !in playlistIds.indices) {
-            Toast.makeText(this, R.string.player_no_more_channels, Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        playlistIndex = destino
-        val id = playlistIds[destino]
-        streamUrl = Session.liveStreamUrl(this, id)
-        contentTitle = playlistTitles.getOrElse(destino) { contentTitle }
-        retries = 0
-        audioAvisado = false
-        // Cada canal es una señal distinta: si en el anterior probamos la vía
-        // alternativa, eso no dice nada de este.
-        usingAltAudioSource = false
-        reopenAudioDialogOnTracks = false
-
-        binding.tvNowPlaying.text = contentTitle
-        if (epgAllowed) refreshEpgNow(id)
-        // La estrella tiene que marcar el canal que se ve ahora, no el anterior
-        favoriteItem = favoriteItem?.copy(id = id, name = contentTitle, streamUrl = null)
-        refreshFavoriteIcon()
-        favoriteItem?.let { History.add(this, it) }
-        updateChannelNav()
-
-        PlaybackHolder.release()
-        startPlayback(streamUrl, resumeAtMs = 0L)
-    }
-
-    /** Muestra los botones solo si hay lista, y apaga el que no lleva a ningún lado. */
-    private fun updateChannelNav() {
-        if (!hasChannelList) {
-            binding.channelNav.visibility = View.GONE
-            return
-        }
-        binding.channelNav.visibility = if (locked) View.GONE else View.VISIBLE
-        setStationButton(binding.btnChannelPrev, playlistIndex > 0)
-        setStationButton(binding.btnChannelNext, playlistIndex + 1 < playlistIds.size)
     }
 
     private fun changeStation(delta: Int) {
@@ -1289,6 +1289,7 @@ class PlayerActivity : AppCompatActivity() {
 
         player = PlayerFactory.build(this, loadControl).also { exo ->
             binding.playerView.player = exo
+            exo.volume = volumenReproductor()
             PlaybackHolder.attach(exo, url, contentTitle)
             exo.setMediaItem(MediaItem.fromUri(url))
             exo.prepare()

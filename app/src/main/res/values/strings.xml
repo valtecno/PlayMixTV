@@ -199,7 +199,8 @@
     <string name="pin_saved">PIN guardado</string>
     <string name="player_audio">Pista de audio</string>
     <string name="player_subtitles">Subtítulos</string>
-    <string name="player_quality">Calidad de imagen</string>
+    <string name="player_volume">Volumen</string>
+    <string name="player_volume_percent">%d%%</string>
     <string name="player_lock">Bloquear pantalla</string>
     <string name="player_unlock">Toca dos veces para desbloquear</string>
     <string name="player_locked">Pantalla bloqueada</string>
@@ -273,9 +274,6 @@
     <string name="preview_error">No se pudo previsualizar este canal</string>
     <string name="preview_mute">Silenciar previsualización</string>
     <string name="setting_refresh_action">Actualizar</string>
-    <string name="player_channel_prev">Canal anterior</string>
-    <string name="player_channel_next">Canal siguiente</string>
-    <string name="player_no_more_channels">No hay más canales en esta categoría</string>
     <string name="setting_update">Buscar actualizaciones</string>
     <string name="update_checking">Buscando actualizaciones…</string>
     <string name="update_up_to_date">Ya tienes la última versión</string>
