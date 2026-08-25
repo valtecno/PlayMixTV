@@ -142,7 +142,7 @@ class MultiScreenActivity : AppCompatActivity() {
         // btnSource: fondo fijo (bg_chip_outline) sin estado de foco.
         // btnReloadAll: el ripple nativo de Android, casi imperceptible sobre
         // el tema oscuro y encima inconsistente con el resto de la app.
-        binding.btnSource.background = Appearance.withFocusState(this, binding.btnSource.background, 20f)
+        binding.btnSource.background = Appearance.withFocusState(this, binding.btnSource.background!!, 20f)
         RemoteControl.applyIconFocus(binding.btnReloadAll, RemoteControl.isEnabled(this), circular = true)
         updateSourceLabel()
 
@@ -467,7 +467,7 @@ class MultiScreenActivity : AppCompatActivity() {
         // btnPickerClose: fondo fijo (bg_glass_card) sin estado de foco.
         val remoto = RemoteControl.isEnabled(this)
         RemoteControl.applyIconFocus(vista.btnPickerClear, remoto, circular = true)
-        vista.btnPickerClose.background = Appearance.withFocusState(this, vista.btnPickerClose.background, 12f)
+        vista.btnPickerClose.background = Appearance.withFocusState(this, vista.btnPickerClose.background!!, 12f)
 
         renderPickerCategories(vista) { render(vista.etPickerSearch.text?.toString().orEmpty()) }
         render("")

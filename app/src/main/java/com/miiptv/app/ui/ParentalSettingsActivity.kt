@@ -39,8 +39,8 @@ class ParentalSettingsActivity : AppCompatActivity() {
         // Sin esto btnPin y btnRemovePin (fondo fijo, puesto por XML) no
         // mostraban nada al recibir el foco del control remoto -- exactamente
         // la misma falla que ya se corrigió en otras pantallas.
-        binding.btnPin.background = Appearance.withFocusState(this, binding.btnPin.background, 10f)
-        binding.btnRemovePin.background = Appearance.withFocusState(this, binding.btnRemovePin.background, 10f)
+        binding.btnPin.background = Appearance.withFocusState(this, binding.btnPin.background!!, 10f)
+        binding.btnRemovePin.background = Appearance.withFocusState(this, binding.btnRemovePin.background!!, 10f)
         binding.btnPin.setOnClickListener {
             if (Parental.hasPin(this)) {
                 PinDialog.create(this) { updatePinButton() } // cambiar PIN

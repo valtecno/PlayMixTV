@@ -155,7 +155,7 @@ class SearchActivity : AppCompatActivity() {
             }
             // Mismo fondo fijo (bg_chip_outline) que las emisoras recientes
             // de radio y las búsquedas guardadas: sin estado de foco.
-            chip.background = Appearance.withFocusState(this, chip.background, 20f)
+            chip.background = Appearance.withFocusState(this, chip.background!!, 20f)
             binding.recentContainer.addView(chip)
         }
     }
