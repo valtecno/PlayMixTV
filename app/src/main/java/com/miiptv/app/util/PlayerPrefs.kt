@@ -41,6 +41,37 @@ object PlayerPrefs {
     fun getKeepScreenOn(c: Context) = prefs(c).getBoolean("keep_screen_on", true)
     fun setKeepScreenOn(c: Context, v: Boolean) = prefs(c).edit().putBoolean("keep_screen_on", v).apply()
 
+    // ---- Idioma de audio preferido para Películas/Series (código ISO-639: "spa","eng").
+    // null = sin preferencia, se deja la pista que traiga el stream por defecto. ----
+    fun getAudioLanguage(c: Context): String? = prefs(c).getString("audio_language", null)
+    fun setAudioLanguage(c: Context, v: String?) = prefs(c).edit().putString("audio_language", v).apply()
+
+    fun audioLanguageLabel(c: Context, lang: String?): String = c.getString(
+        when (lang) {
+            "spa" -> R.string.audio_lang_spanish
+            "eng" -> R.string.audio_lang_english
+            else -> R.string.audio_lang_none
+        }
+    )
+
+    // ---- Subtítulos para Películas/Series ----
+    const val SUB_OFF = 0       // apagados de entrada
+    const val SUB_SPANISH = 1
+    const val SUB_ENGLISH = 2
+    const val SUB_AUTO = 3      // no fuerza idioma: deja el que traiga el stream por defecto
+
+    fun getSubtitleMode(c: Context) = prefs(c).getInt("subtitle_mode", SUB_OFF)
+    fun setSubtitleMode(c: Context, v: Int) = prefs(c).edit().putInt("subtitle_mode", v).apply()
+
+    fun subtitleModeLabel(c: Context, mode: Int): String = c.getString(
+        when (mode) {
+            SUB_SPANISH -> R.string.subtitle_spanish
+            SUB_ENGLISH -> R.string.subtitle_english
+            SUB_AUTO -> R.string.subtitle_auto
+            else -> R.string.subtitle_off
+        }
+    )
+
     // ---- Volumen del reproductor (0-100), independiente del volumen del
     // sistema. Se guarda para que el próximo canal arranque con el mismo
     // nivel en vez de siempre al 100%. ----

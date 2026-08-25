@@ -2,14 +2,17 @@ package com.miiptv.app.ui
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.miiptv.app.R
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivitySettingsBinding
 import com.miiptv.app.databinding.DialogAccountsBinding
+import com.miiptv.app.databinding.DialogAudioBinding
 import com.miiptv.app.databinding.ItemAccountBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.RemoteControl
@@ -95,6 +98,7 @@ class SettingsActivity : AppCompatActivity() {
             ?.let { Servers.labelFor(it) } ?: "—"
         binding.tvUser.text = Session.username(this).ifBlank { "—" }
         binding.rowSwitchAccount.setOnClickListener { switchAccount() }
+        binding.rowAudio.setOnClickListener { showAudioDialog() }
         binding.btnLogout.setOnClickListener { confirmLogout() }
 
         /*
@@ -189,6 +193,13 @@ class SettingsActivity : AppCompatActivity() {
             fila.tvAccountAvatar.text = cuenta.username.take(1).uppercase()
 
             val esActiva = cuenta == activa
+            // Sin esto la fila se ve exactamente igual con foco que sin foco:
+            // con el control remoto no hay manera de saber dónde está parado,
+            // ni siquiera en la cuenta activa (que también es alcanzable,
+            // aunque tocarla no haga nada).
+            fila.root.background = Appearance.withFocusState(
+                this, ContextCompat.getDrawable(this, R.drawable.bg_option)!!, 12f
+            )
             if (esActiva) {
                 fila.tvAccountBadge.visibility = View.VISIBLE
                 fila.tvAccountBadge.text = getString(R.string.account_active)
@@ -205,14 +216,22 @@ class SettingsActivity : AppCompatActivity() {
             vista.accountsContainer.addView(fila.root)
         }
 
-        vista.btnAddAccount.background = Appearance.gradient(this, 12f)
+        vista.btnAddAccount.background = Appearance.withFocusState(this, Appearance.gradient(this, 12f), 12f)
         vista.btnAddAccount.setOnClickListener {
             dialog.dismiss()
             startActivity(Intent(this, LoginActivity::class.java))
         }
+        vista.btnCloseAccounts.background = Appearance.withFocusState(
+            this, ContextCompat.getDrawable(this, R.drawable.bg_option)!!, 12f
+        )
         vista.btnCloseAccounts.setOnClickListener { dialog.dismiss() }
 
         dialog.show()
+        // Sin esto el diálogo abre sin nada enfocado: recién se ve algo
+        // seleccionado después de mover el control remoto por primera vez.
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(vista.accountsContainer.getChildAt(0) ?: vista.btnAddAccount)
+        }
     }
 
     private fun useAccount(cuenta: Accounts.Account) {
@@ -256,6 +275,73 @@ class SettingsActivity : AppCompatActivity() {
             .setSingleChoiceItems(options, PlayerPrefs.getAspect(this)) { dialog, which ->
                 PlayerPrefs.setAspect(this, which)
                 refreshLabels()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showAudioDialog() {
+        val vista = DialogAudioBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this).setView(vista.root).create()
+
+        fun refrescarValores() {
+            vista.tvAudioLanguage.text = PlayerPrefs.audioLanguageLabel(this, PlayerPrefs.getAudioLanguage(this))
+            vista.tvSubtitles.text = PlayerPrefs.subtitleModeLabel(this, PlayerPrefs.getSubtitleMode(this))
+        }
+        refrescarValores()
+
+        vista.btnNormalizeVolume.background = Appearance.gradient(this, 12f)
+        vista.btnNormalizeVolume.setOnClickListener { normalizeSystemVolume() }
+
+        vista.rowAudioLanguage.setOnClickListener { pickAudioLanguage { refrescarValores() } }
+        vista.rowSubtitles.setOnClickListener { pickSubtitles { refrescarValores() } }
+        vista.btnCloseAudio.setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
+    }
+
+    /**
+     * Sube (o baja) el volumen del STREAM_MUSIC de Android a un nivel parejo.
+     * Es el volumen del sistema, no el del reproductor -- ese ya tiene su
+     * propia barra dentro de Canales/PPV (ver PlayerActivity.setupVolumeControl).
+     * Sirve para cuando algún canal dejó el volumen del aparato en un
+     * extremo raro y hay que arrancar de nuevo con algo razonable.
+     */
+    private fun normalizeSystemVolume() {
+        val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+        val maximo = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val objetivo = (maximo * 0.7f).toInt().coerceIn(1, maximo)
+        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, objetivo, AudioManager.FLAG_SHOW_UI)
+        Toast.makeText(this, R.string.audio_volume_normalized, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun pickAudioLanguage(onChanged: () -> Unit) {
+        val codigos = arrayOf<String?>(null, "spa", "eng")
+        val labels = codigos.map { PlayerPrefs.audioLanguageLabel(this, it) }.toTypedArray()
+        val actual = codigos.indexOf(PlayerPrefs.getAudioLanguage(this)).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.audio_language_label)
+            .setSingleChoiceItems(labels, actual) { dialog, which ->
+                PlayerPrefs.setAudioLanguage(this, codigos[which])
+                onChanged()
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun pickSubtitles(onChanged: () -> Unit) {
+        val modos = intArrayOf(
+            PlayerPrefs.SUB_OFF, PlayerPrefs.SUB_SPANISH, PlayerPrefs.SUB_ENGLISH, PlayerPrefs.SUB_AUTO
+        )
+        val labels = modos.map { PlayerPrefs.subtitleModeLabel(this, it) }.toTypedArray()
+        val actual = modos.indexOf(PlayerPrefs.getSubtitleMode(this)).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.subtitle_label)
+            .setSingleChoiceItems(labels, actual) { dialog, which ->
+                PlayerPrefs.setSubtitleMode(this, modos[which])
+                onChanged()
                 dialog.dismiss()
             }
             .setNegativeButton(android.R.string.cancel, null)

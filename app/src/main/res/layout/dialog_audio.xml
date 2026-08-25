@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/setting_audio"
+        android:textColor="@color/text_light"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <!-- Volumen del sistema, no el del reproductor (ese ya tiene su propia
+         barra dentro de Canales/PPV): esto sube o baja el nivel del stream
+         de audio de Android de una, para cuando un canal quedó a un volumen
+         raro y hay que empezar de nuevo con algo razonable. -->
+    <Button
+        android:id="@+id/btnNormalizeVolume"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_button_gradient"
+        android:textColor="@color/text_light"
+        android:text="@string/audio_normalize_button" />
+
+    <!-- Idioma de audio y subtítulos: solo Películas/Series (ver
+         PlayerFactory.build). Canales/PPV ya tienen su propia detección
+         automática de audio en vivo, independiente de esto. -->
+    <LinearLayout
+        android:id="@+id/rowAudioLanguage"
+        style="@style/SettingsRow"
+        android:layout_marginTop="18dp">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView style="@style/SettingsLabel" android:text="@string/audio_language_label" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/audio_language_hint"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/tvAudioLanguage" style="@style/SettingsValue" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/rowSubtitles" style="@style/SettingsRow">
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+            <TextView style="@style/SettingsLabel" android:text="@string/subtitle_label" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/subtitle_hint"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <TextView android:id="@+id/tvSubtitles" style="@style/SettingsValue" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/btnCloseAudio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/bg_option"
+        android:gravity="center"
+        android:paddingVertical="13dp"
+        android:text="@string/cancel"
+        android:textColor="@color/text_muted"
+        android:textSize="14sp"
+        android:focusable="true"
+        android:clickable="true" />
+
+</LinearLayout>

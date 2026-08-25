@@ -36,11 +36,16 @@ object PlayerFactory {
     /**
      * @param handleAudioFocus dejar en false cuando hay varios reproductores a la vez
      *        (multi-pantalla), porque si todos piden el foco se pausan entre ellos.
+     * @param applyLanguagePrefs aplica el idioma de audio y subtítulos elegidos en
+     *        Ajustes → Cuenta → Audio. Se deja en false para Canales/PPV (donde ya
+     *        existe su propia detección de audio en vivo, ver offerAlternateAudioSource
+     *        en PlayerActivity) y en true solo para Películas/Series.
      */
     fun build(
         context: Context,
         loadControl: LoadControl? = null,
-        handleAudioFocus: Boolean = true
+        handleAudioFocus: Boolean = true,
+        applyLanguagePrefs: Boolean = false
     ): ExoPlayer {
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(Session.USER_AGENT)
@@ -60,13 +65,27 @@ object PlayerFactory {
             .setEnableDecoderFallback(true)
 
         val trackSelector = DefaultTrackSelector(context).apply {
-            setParameters(
-                buildUponParameters()
-                    // No descartar pistas por falta de soporte declarado: intentar igual
-                    .setExceedVideoConstraintsIfNecessary(true)
-                    .setExceedAudioConstraintsIfNecessary(true)
-                    .setExceedRendererCapabilitiesIfNecessary(true)
-            )
+            val parametros = buildUponParameters()
+                // No descartar pistas por falta de soporte declarado: intentar igual
+                .setExceedVideoConstraintsIfNecessary(true)
+                .setExceedAudioConstraintsIfNecessary(true)
+                .setExceedRendererCapabilitiesIfNecessary(true)
+
+            if (applyLanguagePrefs) {
+                PlayerPrefs.getAudioLanguage(context)?.let { parametros.setPreferredAudioLanguage(it) }
+                when (PlayerPrefs.getSubtitleMode(context)) {
+                    PlayerPrefs.SUB_SPANISH ->
+                        parametros.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).setPreferredTextLanguage("spa")
+                    PlayerPrefs.SUB_ENGLISH ->
+                        parametros.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).setPreferredTextLanguage("eng")
+                    PlayerPrefs.SUB_AUTO ->
+                        parametros.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                    else -> // SUB_OFF, y cualquier valor viejo/inesperado guardado
+                        parametros.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                }
+            }
+
+            setParameters(parametros)
         }
 
         val builder = ExoPlayer.Builder(context, renderers)

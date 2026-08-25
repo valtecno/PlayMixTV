@@ -1287,7 +1287,10 @@ class PlayerActivity : AppCompatActivity() {
             )
             .build()
 
-        player = PlayerFactory.build(this, loadControl).also { exo ->
+        player = PlayerFactory.build(
+            this, loadControl,
+            applyLanguagePrefs = itemType == ContentType.MOVIE || itemType == ContentType.SERIES
+        ).also { exo ->
             binding.playerView.player = exo
             exo.volume = volumenReproductor()
             PlaybackHolder.attach(exo, url, contentTitle)

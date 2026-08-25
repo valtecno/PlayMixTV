@@ -291,7 +291,10 @@ class MainActivity : AppCompatActivity() {
         // botón del menú gana el anillo de foco del control remoto (ver
         // Appearance.applyLevel). Sin esta línea se queda con el fondo
         // transparente de siempre y no muestra nada al enfocarlo.
-        paintNavItem(binding.btnYoutube, active = false)
+        // tintIcon = false: el logo de YouTube tiene sus propios colores
+        // (rojo + blanco) y no se tiñe de un solo color como el resto de
+        // los íconos del menú -- si no, se pierde el rojo y queda todo blanco.
+        paintNavItem(binding.btnYoutube, active = false, tintIcon = false)
         // El de Niños no representa una Section: se resalta según kidsMode y cambia
         // de texto/ícono para indicar que, tocándolo de nuevo, se pide el PIN de salida.
         binding.navKids.text = getString(if (kidsMode) R.string.nav_kids_exit else R.string.nav_kids)
@@ -305,13 +308,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Pinta un ítem de la barra: degradado de marca si está activo, fondo oscuro si no. */
-    private fun paintNavItem(view: TextView, active: Boolean) {
+    private fun paintNavItem(view: TextView, active: Boolean, tintIcon: Boolean = true) {
         // Nivel 1: la sección abierta del menú principal, con degradado pleno
         Appearance.applyLevel(
             view,
             if (active) Appearance.Level.PRIMARY else Appearance.Level.INACTIVE,
             22f
         )
+        if (!tintIcon) return
         val color = view.currentTextColor
         // mutate() evita teñir la copia compartida del drawable en otras vistas
         view.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(color) }

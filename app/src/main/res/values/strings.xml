@@ -168,6 +168,22 @@
     <string name="setting_logout">Cerrar sesión</string>
     <string name="settings_version">Versión %1$s</string>
 
+    <!-- ===== Ajustes → Cuenta → Audio ===== -->
+    <string name="setting_audio">Audio</string>
+    <string name="audio_normalize_button">Normalizar volumen del sistema</string>
+    <string name="audio_volume_normalized">Volumen del sistema normalizado</string>
+    <string name="audio_language_label">Idioma de audio preferido</string>
+    <string name="audio_language_hint">Se usa al abrir una película o serie si el stream trae esa pista; si no, se deja la que venga por defecto.</string>
+    <string name="subtitle_label">Subtítulos</string>
+    <string name="subtitle_hint">Aplica a películas y series. Si el idioma elegido no está disponible en el stream, se dejan apagados.</string>
+    <string name="audio_lang_none">Sin preferencia</string>
+    <string name="audio_lang_spanish">Español</string>
+    <string name="audio_lang_english">Inglés</string>
+    <string name="subtitle_off">Desactivados</string>
+    <string name="subtitle_spanish">Español</string>
+    <string name="subtitle_english">Inglés</string>
+    <string name="subtitle_auto">Automático (no forzar idioma)</string>
+
     <string name="buffer_low">Bajo (arranca rápido)</string>
     <string name="buffer_normal">Normal</string>
     <string name="buffer_high">Alto (conexión inestable)</string>

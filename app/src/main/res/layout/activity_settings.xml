@@ -149,6 +149,16 @@
                 <TextView android:id="@+id/tvUser" style="@style/SettingsValue" />
             </LinearLayout>
 
+            <LinearLayout android:id="@+id/rowAudio" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_audio" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/text_muted"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
             <!-- Actualización de la app (distinta de "Actualizar catálogo", que
                  refresca el contenido del servidor) -->
             <LinearLayout android:id="@+id/rowUpdate" style="@style/SettingsRow">
