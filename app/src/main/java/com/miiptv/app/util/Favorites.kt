@@ -33,9 +33,34 @@ import com.miiptv.app.api.ContentType
  * ya está escrito en los dispositivos de los usuarios; cambiarlo les borraría
  * los favoritos al actualizar.
  * ---------------------------------------------------------------------------
+ * POR QUÉ AHORA HAY UN ARCHIVO POR CUENTA
+ *
+ * Antes todo vivía en un único archivo ("miiptv_favorites"), sin importar con
+ * qué cuenta se había marcado cada ítem. Con Sistema L y Sistema XL usando la
+ * misma app (ver Accounts.kt), eso mezclaba los favoritos de los dos: la
+ * pantalla de Favoritos mostraba contenido que en ese sistema ni siquiera
+ * existe.
+ *
+ * Ahora cada cuenta (servidor + usuario) tiene su propio archivo, elegido en
+ * [prefs] según la sesión activa en ese momento. La caché en memoria guarda
+ * además de qué cuenta es (`cachedAccountKey`): si cambia la cuenta activa
+ * (Cambiar de cuenta, o cerrar sesión y entrar con otra), la próxima lectura
+ * detecta el cambio y descarta la caché vieja sola -- no hace falta invalidar
+ * a mano desde ningún otro lado de la app.
+ *
+ * MIGRACIÓN: los favoritos que ya estaban guardados en el archivo viejo no
+ * traen ninguna marca de a qué cuenta pertenecían -- esa relación nunca se
+ * guardó. Como mejor esfuerzo, se migran UNA sola vez a la cuenta que esté
+ * activa la primera vez que se abre la app actualizada (ver
+ * `migrateLegacyIfNeeded`), y el archivo viejo queda marcado como consumido
+ * para no repetirlos en otra cuenta después. Quien tenga favoritos mezclados
+ * de ambos sistemas va a tener que volver a marcar en el otro los que falten.
+ * ---------------------------------------------------------------------------
  */
 object Favorites {
-    private const val PREFS = "miiptv_favorites"
+    /** Archivo de antes de separar por cuenta. Solo se lee una vez, para migrar. */
+    private const val LEGACY_PREFS = "miiptv_favorites"
+    private const val LEGACY_MIGRATED_KEY = "legacy_migrated"
     private const val KEY = "items"
     private val gson = Gson()
 
@@ -48,6 +73,9 @@ object Favorites {
 
     /** Índice de claves de [cachedItems]. Se rehace junto con ella, nunca aparte. */
     @Volatile private var cachedKeys: Set<String> = emptySet()
+
+    /** De qué cuenta es [cachedItems]. Si no coincide con la activa, hay que releer. */
+    @Volatile private var cachedAccountKey: String? = null
 
     // ---------------- Lógica pura (testeable sin Context) ----------------
 
@@ -69,12 +97,15 @@ object Favorites {
     }
 
     private fun load(context: Context): List<ContentItem> {
-        cachedItems?.let { return it }
+        val cuenta = accountKey(context)
+        cachedItems?.let { if (cachedAccountKey == cuenta) return it }
         synchronized(this) {
-            cachedItems?.let { return it }
+            cachedItems?.let { if (cachedAccountKey == cuenta) return it }
+            migrateLegacyIfNeeded(context, cuenta)
             val items = readFromDisk(context)
             cachedItems = items
             cachedKeys = keysOf(items)
+            cachedAccountKey = cuenta
             return items
         }
     }
@@ -120,6 +151,7 @@ object Favorites {
         synchronized(this) {
             cachedItems = items
             cachedKeys = keysOf(items)
+            cachedAccountKey = accountKey(context)
         }
         prefs(context).edit().putString(KEY, gson.toJson(items)).apply()
     }
@@ -129,14 +161,41 @@ object Favorites {
      *
      * Hace falta si algo cambia las preferencias por fuera de esta clase (por
      * ejemplo una restauración de copia de seguridad o un borrado de datos).
+     * Cambiar de cuenta NO necesita esto: [load] ya lo detecta solo.
      */
     fun invalidate() {
         synchronized(this) {
             cachedItems = null
             cachedKeys = emptySet()
+            cachedAccountKey = null
         }
     }
 
+    /**
+     * Identifica la cuenta activa (servidor + usuario). No es información
+     * sensible ni se muestra en ningún lado -- es solo la clave que separa un
+     * archivo de preferencias del otro.
+     */
+    private fun accountKey(context: Context): String {
+        val server = com.miiptv.app.api.Session.server(context)
+        val user = com.miiptv.app.api.Session.username(context)
+        return "$server|$user"
+            .replace(Regex("[^A-Za-z0-9]"), "_")
+            .take(80)
+    }
+
     private fun prefs(context: Context) =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        context.getSharedPreferences("miiptv_favorites_${accountKey(context)}", Context.MODE_PRIVATE)
+
+    /** Ver la nota "POR QUÉ AHORA HAY UN ARCHIVO POR CUENTA" más arriba. */
+    private fun migrateLegacyIfNeeded(context: Context, cuenta: String) {
+        val legacy = context.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
+        if (legacy.getBoolean(LEGACY_MIGRATED_KEY, false)) return
+        legacy.edit().putBoolean(LEGACY_MIGRATED_KEY, true).apply()  // una sola vez, pase lo que pase
+
+        val json = legacy.getString(KEY, null) ?: return
+        val destino = prefs(context)
+        if (destino.contains(KEY)) return   // no pisar favoritos que ya se hayan guardado ahí
+        destino.edit().putString(KEY, json).apply()
+    }
 }
