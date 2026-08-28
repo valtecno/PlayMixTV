@@ -217,6 +217,9 @@
     <string name="player_subtitles">Subtítulos</string>
     <string name="player_volume">Volumen</string>
     <string name="player_volume_percent">%d%%</string>
+    <string name="player_cast">Enviar a un Chromecast</string>
+    <string name="player_casting_to">Reproduciendo en %1$s</string>
+    <string name="player_cast_hint">Se controla desde la app de Google Home o la notificación</string>
     <string name="player_lock">Bloquear pantalla</string>
     <string name="player_unlock">Toca dos veces para desbloquear</string>
     <string name="player_locked">Pantalla bloqueada</string>

@@ -174,6 +174,21 @@ dependencies {
     // Carga de imágenes (logos de canales)
     implementation("com.squareup.picasso:picasso:2.71828")
 
+    /*
+     * Chromecast (botón de cast + envío del stream a un receptor).
+     *
+     * Se usa el receptor "por defecto" de Google (CastMediaControlIntent.
+     * DEFAULT_MEDIA_RECEIVER_APPLICATION_ID, ver CastOptionsProvider.kt), no
+     * uno propio: registrar un receptor a medida requiere el Google Cast SDK
+     * Developer Console con una cuenta de Google y una tarifa de una sola vez,
+     * algo que no se puede hacer desde acá. El receptor por defecto reproduce
+     * bien HLS (.m3u8) y MP4 sin nada más que configurar; TS crudo depende del
+     * aparato receptor y no siempre funciona (ver el comentario en CastHelper).
+     */
+    implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+    // MediaRouteButton (el ícono de cast de la barra) vive acá, no en el SDK de Cast.
+    implementation("androidx.mediarouter:mediarouter:1.7.0")
+
     // ---- Tests de JVM (./gradlew test) ----
     testImplementation("junit:junit:4.13.2")
 }

@@ -224,6 +224,50 @@
         </LinearLayout>
     </FrameLayout>
 
+    <!-- ===== Overlay "Reproduciendo en <dispositivo>" =====
+         Tapa el video (o el fondo de radio) mientras el contenido se está
+         mandando a un Chromecast; el audio/video real ya no sale por acá,
+         sale por el receptor, así que mostrar el PlayerView tal cual
+         quedaría negro o congelado en el último cuadro. Va DESPUÉS de
+         playerView/radioBackdrop (los tapa) pero ANTES de topBar (que se ve
+         encima, para poder volver o cortar el cast desde ahí). -->
+    <LinearLayout
+        android:id="@+id/castOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:src="@drawable/ic_cast_connected"
+            app:tint="@color/brand_accent"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/tvCastingTo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:textColor="@color/text_light"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            tools:text="Reproduciendo en Living" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/player_cast_hint"
+            android:textColor="@color/text_muted"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
     <!-- ===== Barra superior propia: título, favorito, opciones ===== -->
     <LinearLayout
         android:id="@+id/topBar"
@@ -298,6 +342,27 @@
             style="@style/PlayerIcon"
             android:src="@drawable/ic_volume_up"
             android:contentDescription="@string/player_volume" />
+
+        <!--
+            Botón de Cast estándar de Google. No es un ImageView como el
+            resto de los íconos de esta barra: es un widget propio del SDK
+            (androidx.mediarouter) que se pinta y se actualiza solo; Google
+            decide su apariencia (el ícono "cast" de siempre, tachado cuando
+            está conectado) y no conviene tocarlo desde acá. El tamaño se
+            ajusta para que quede a la par del resto (ver PlayerIcon).
+
+            A propósito NO se le fuerza color por XML (existió un intento con
+            un atributo "mediaRouteButtonTint" que en realidad no es un
+            atributo real de este widget): mejor dejarlo con su apariencia
+            de fábrica, que ya se ve bien sobre este fondo oscuro, que
+            arriesgar un atributo inventado y romper la compilación.
+        -->
+        <androidx.mediarouter.app.MediaRouteButton
+            android:id="@+id/btnCast"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:layout_marginHorizontal="4dp"
+            android:contentDescription="@string/player_cast" />
 
         <ImageView
             android:id="@+id/btnAspect"

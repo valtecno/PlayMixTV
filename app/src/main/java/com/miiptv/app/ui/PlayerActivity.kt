@@ -39,12 +39,16 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.google.android.gms.cast.framework.CastButtonFactory
+import com.google.android.gms.cast.framework.CastSession
+import com.google.android.gms.cast.framework.SessionManagerListener
 import com.miiptv.app.R
 import com.miiptv.app.api.ContentItem
 import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.CastHelper
 import com.miiptv.app.util.Epg
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.History
@@ -108,6 +112,27 @@ class PlayerActivity : AppCompatActivity() {
      */
     private var btnNextEpisode: ImageButton? = null
     private var player: ExoPlayer? = null
+
+    /** true mientras el video se está mandando a un Chromecast (ver CastHelper). */
+    private var pausadoPorCasting = false
+
+    /**
+     * Escucha cuándo se conecta o se corta la sesión de Cast. Está en un campo
+     * (y no como objeto anónimo suelto en onStart) porque hace falta la MISMA
+     * instancia para poder sacarla en onStop -- SessionManager.
+     * removeSessionManagerListener() compara por referencia.
+     */
+    private val castSessionListener = object : SessionManagerListener<CastSession> {
+        override fun onSessionStarted(session: CastSession, sessionId: String) = onCastConnected(session)
+        override fun onSessionResumed(session: CastSession, wasSuspended: Boolean) = onCastConnected(session)
+        override fun onSessionEnded(session: CastSession, error: Int) = onCastDisconnected()
+        override fun onSessionSuspended(session: CastSession, reason: Int) {}
+        override fun onSessionStarting(session: CastSession) {}
+        override fun onSessionStartFailed(session: CastSession, error: Int) {}
+        override fun onSessionEnding(session: CastSession) {}
+        override fun onSessionResuming(session: CastSession, sessionId: String) {}
+        override fun onSessionResumeFailed(session: CastSession, error: Int) {}
+    }
 
     private var streamUrl: String = ""
     private var contentTitle: String = ""
@@ -291,6 +316,7 @@ class PlayerActivity : AppCompatActivity() {
         ui.removeCallbacks(countdownTick)
         // Sin pantalla visible las animaciones solo gastan batería
         stopEqualizer()
+        CastHelper.sessionManager(this)?.removeSessionManagerListener(castSessionListener, CastSession::class.java)
 
         val seguirSonando = PlayerPrefs.getBackground(this) && !isFinishing && player?.playWhenReady == true
         if (seguirSonando) {
@@ -307,6 +333,18 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
+
+        // Google recomienda enganchar el listener acá y sacarlo en onStop. Va
+        // ANTES que la lógica del reproductor local: si ya hay una sesión de
+        // Cast activa (se volvió de background mientras se casteaba), no hay
+        // que arrancar ni retomar NADA local -- sonaría pisado con lo que ya
+        // está sonando en el Chromecast. Por eso el "return" de abajo.
+        CastHelper.sessionManager(this)?.addSessionManagerListener(castSessionListener, CastSession::class.java)
+        CastHelper.currentSession(this)?.let {
+            onCastConnected(it)
+            return
+        }
+
         val vivo = PlaybackHolder.player
         when {
             // Seguía sonando en segundo plano: se retoma sin reiniciar el stream
@@ -566,6 +604,7 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnCancelNext.setOnClickListener { hideNextBar() }
 
         setupVolumeControl()
+        setupCast()
 
         // La barra propia aparece y desaparece junto con los controles nativos
         binding.playerView.setControllerVisibilityListener(
@@ -646,6 +685,59 @@ class PlayerActivity : AppCompatActivity() {
      */
     private fun volumenReproductor(): Float =
         if (!isRadio && itemType == ContentType.LIVE) PlayerPrefs.getVolume(this) / 100f else 1f
+
+    // ---------------- Chromecast ----------------
+
+    /**
+     * Conecta el botón de la barra con el selector de dispositivos de Google.
+     * Si el aparato no tiene Play Services (frecuente en decos IPTV chinos sin
+     * GMS), el botón directamente no se muestra: no hay nada que casteable ahí.
+     */
+    private fun setupCast() {
+        if (!CastHelper.isAvailable(this)) {
+            binding.btnCast.visibility = View.GONE
+            return
+        }
+        runCatching { CastButtonFactory.setUpMediaRouteButton(applicationContext, binding.btnCast) }
+        // La sesión ya conectada (si hay una) se detecta en onStart, que
+        // Android llama siempre justo después de onCreate -- hacerlo acá
+        // TAMBIÉN mandaría el mismo video al receptor dos veces seguidas.
+    }
+
+    /**
+     * Manda el stream al receptor y pausa el reproductor local: si los dos
+     * reprodujeran a la vez sonarían pisándose, uno por los parlantes del
+     * aparato y otro por el Chromecast.
+     */
+    private fun onCastConnected(session: CastSession) {
+        player?.let {
+            if (it.playWhenReady) pausadoPorCasting = true
+            it.playWhenReady = false
+        }
+        binding.castOverlay.visibility = View.VISIBLE
+        binding.tvCastingTo.text = getString(
+            R.string.player_casting_to, session.castDevice?.friendlyName ?: getString(R.string.player_cast)
+        )
+        val mime = CastHelper.mimeTypeFor(streamUrl, favoriteItem?.containerExtension)
+        CastHelper.load(
+            session = session,
+            url = streamUrl,
+            title = contentTitle,
+            posterUrl = favoriteItem?.icon,
+            mimeType = mime,
+            live = !isRadio && itemType == ContentType.LIVE,
+            startPositionMs = player?.currentPosition ?: 0L
+        )
+    }
+
+    /** Al cortar el cast (desde acá o desde el otro aparato), retoma donde había quedado local. */
+    private fun onCastDisconnected() {
+        binding.castOverlay.visibility = View.GONE
+        if (pausadoPorCasting) {
+            pausadoPorCasting = false
+            player?.playWhenReady = true
+        }
+    }
 
     // ---------------- Bloqueo de pantalla ----------------
 
