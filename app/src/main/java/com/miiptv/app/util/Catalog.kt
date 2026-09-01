@@ -29,9 +29,16 @@ import retrofit2.Response
  *  - Cualquier fallo se tragaba en silencio (`onFailure { blockDone() }`), así
  *    que la pantalla quedaba vacía sin ningún mensaje que explicara por qué.
  *
- * Ahora se descarga de a un bloque por vez, con reintento, con la memoria
- * liberándose entre bloque y bloque, y guardando el motivo del último fallo
- * para poder mostrarlo.
+ * Ahora cada bloque se descarga con su propio reintento y sin lista
+ * intermedia (ver XtreamStream), así que ya no hace falta serializarlos del
+ * todo para cuidar la memoria: el pico real está dentro de cada bloque, no
+ * entre bloques. Por eso los tres van EN PARALELO, con una salvedad: en el
+ * Sistema XL, canales (LIVE) es el bloque más grande y antes iba último en
+ * la fila, así que la pantalla de inicio (que solo necesita películas y
+ * series para el carrusel de novedades) terminaba esperándolo igual por el
+ * orden. Ahora arranca junto con los demás desde el primer instante, y el
+ * Inicio se pinta en cuanto llegan películas + series sin importar cuánto
+ * tarde el bloque de canales.
  * ---------------------------------------------------------------------------
  */
 object Catalog {
@@ -51,7 +58,12 @@ object Catalog {
 
     private var loadedAt = 0L
     private var loading = false
-    private var current: Call<*>? = null
+
+    /** Cuántos bloques quedan por resolver (LIVE + MOVIES + SERIES). 0 = terminó todo. */
+    private var pending = 0
+
+    /** Llamadas en curso, para poder cancelarlas todas si hace falta (hardReset / logout). */
+    private val current = mutableListOf<Call<*>>()
 
     /**
      * Servidor y usuario con los que se llenó esta caché. Sin esto, al saltar de
@@ -120,13 +132,17 @@ object Catalog {
         // sin borrar la caché de disco (borrarla es E/S y bloquearía la pantalla).
         noCache = if (force) "no-cache" else null
 
-        // Orden pensado para que el Inicio se vea cuanto antes: el carrusel de
-        // novedades se arma con películas y series, así que esos dos bloques van
-        // primero y los canales (el bloque más grande del Sistema XL) al final.
-        fetch(ctx, Block.MOVIES, attempt = 0)
+        // Los tres bloques salen a la vez. El panel Xtream sí limita conexiones
+        // simultáneas por cuenta, pero el límite típico (varias a la vez) alcanza
+        // de sobra para tres pedidos; lo que había que evitar era tener varias
+        // listas completas duplicadas en memoria al mismo tiempo, y eso ya no
+        // ocurre porque XtreamStream construye el ContentItem final sin lista
+        // intermedia. Así, canales (el bloque grande en XL) no espera a nadie.
+        pending = Block.entries.size
+        Block.entries.forEach { fetch(ctx, it, attempt = 0) }
     }
 
-    // ---------------- Descarga secuencial ----------------
+    // ---------------- Descarga en paralelo, con reintento por bloque ----------------
 
     private fun fetch(context: Context, block: Block, attempt: Int) {
         val user = Session.username(context)
@@ -154,7 +170,7 @@ object Catalog {
         call: Call<R>,
         extract: (R?) -> List<ContentItem>
     ) {
-        current = call
+        current.add(call)
         call.enqueue(object : Callback<R> {
             override fun onResponse(c: Call<R>, r: Response<R>) {
                 if (!r.isSuccessful) {
@@ -211,18 +227,14 @@ object Catalog {
         return "$nombre: $motivo"
     }
 
+    /** Se llama cuando un bloque terminó (con datos o con error definitivo). */
     private fun advance(context: Context, done: Block) {
-        val next = when (done) {
-            Block.MOVIES -> Block.SERIES
-            Block.SERIES -> Block.LIVE
-            Block.LIVE -> null
-        }
-        if (next != null) {
+        pending -= 1
+        if (pending > 0) {
             broadcast(true)
-            fetch(context, next, attempt = 0)
         } else {
             loading = false
-            current = null
+            current.clear()
             noCache = null
             loadedAt = System.currentTimeMillis()
             broadcast(false)
@@ -266,8 +278,9 @@ object Catalog {
     }
 
     private fun hardReset() {
-        runCatching { current?.cancel() }
-        current = null
+        current.forEach { runCatching { it.cancel() } }
+        current.clear()
+        pending = 0
         live.clear(); movies.clear(); series.clear()
         loadedAt = 0L
         loading = false

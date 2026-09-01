@@ -74,6 +74,16 @@ jobs:
             app/build/outputs/apk/release/app-release.apk \
             "release/PlayMixTV-$VERSION.apk"
 
+          # SHA-256 del APK, publicado junto a él. Sin esto, el instalador
+          # (Updater.kt) no tiene forma de comprobar que lo que descargó es
+          # exactamente lo que este workflow compiló: una descarga corrupta,
+          # un asset reemplazado en el repositorio, o un ataque en algún punto
+          # de la cadena entre GitHub y el aparato del usuario, se instalaría
+          # igual porque Android solo valida la FIRMA (que sigue siendo la
+          # misma clave), no el contenido exacto del archivo.
+          sha256sum "release/PlayMixTV-$VERSION.apk" \
+            | awk '{print $1}' > "release/PlayMixTV-$VERSION.apk.sha256"
+
           ls -lh release
 
       - name: Crear GitHub Release
@@ -84,5 +94,6 @@ jobs:
           generate_release_notes: true
           files: |
             release/PlayMixTV-${{ env.VERSION }}.apk
+            release/PlayMixTV-${{ env.VERSION }}.apk.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

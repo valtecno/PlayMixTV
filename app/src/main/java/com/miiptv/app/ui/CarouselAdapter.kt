@@ -68,8 +68,12 @@ class CarouselAdapter(
             if (item.type == ContentType.SERIES) R.string.tab_series else R.string.tab_movies
         )
 
+        Picasso.get().cancelRequest(holder.binding.ivPoster)
         if (!item.icon.isNullOrBlank()) {
-            Picasso.get().load(item.icon).into(holder.binding.ivPoster)
+            // fit(): decodifica al tamaño real de la tarjeta del carrusel en
+            // vez de la resolución original de la carátula (ver mismo cambio
+            // en ContentAdapter.loadImage).
+            Picasso.get().load(item.icon).fit().centerCrop().into(holder.binding.ivPoster)
         } else {
             holder.binding.ivPoster.setImageDrawable(null)
         }

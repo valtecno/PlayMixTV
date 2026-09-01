@@ -307,6 +307,7 @@
     <string name="update_downloading">Descargando actualización…</string>
     <string name="update_failed">No se pudo actualizar (%1$s)</string>
     <string name="update_need_permission">Permite instalar aplicaciones de esta app y vuelve a intentarlo</string>
+    <string name="update_verification_failed">El archivo descargado no coincide con el publicado. Vuelve a intentarlo más tarde</string>
     <string name="home_loading">Cargando el contenido, espere un momento</string>
     <string name="catalog_daily_refresh">Actualizando el catálogo del día…</string>
 

@@ -267,14 +267,24 @@ class ContentAdapter(
     }
 
     private fun loadImage(url: String?, target: android.widget.ImageView) {
+        // Cancelar siempre primero: la vista viene reciclada y puede tener una
+        // descarga a medio camino de OTRO ítem. Sin esto, esa descarga anterior
+        // podía terminar después y pintar la imagen equivocada sobre esta fila.
+        Picasso.get().cancelRequest(target)
         if (!url.isNullOrBlank()) {
-            Picasso.get().load(url).into(target)
+            // fit() + centerInside/centerCrop: Picasso recién sabe el tamaño real
+            // del ImageView cuando este ya está en el layout, y decodifica el
+            // bitmap directo a ese tamaño en vez de a la resolución original de
+            // la imagen. En un catálogo XL (miles de logos/carátulas en la
+            // sesión) esto es la diferencia entre decodificar, por ejemplo,
+            // 1080x1920 y decodificar 96x96: baja mucho el pico de memoria y
+            // la presión de GC que antes hacía más lento el scroll.
+            Picasso.get()
+                .load(url)
+                .fit()
+                .centerInside()
+                .into(target)
         } else {
-            // Cancelar la petición anterior antes de vaciar: la vista viene
-            // reciclada y podía tener una descarga a medio camino de OTRO ítem.
-            // Sin esto, al terminar esa descarga la imagen aparecía sobre la
-            // fila equivocada.
-            Picasso.get().cancelRequest(target)
             target.setImageDrawable(null)
         }
     }

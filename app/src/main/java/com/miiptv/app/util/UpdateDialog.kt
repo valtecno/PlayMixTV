@@ -104,10 +104,10 @@ object UpdateDialog {
             onError = { motivo ->
                 if (activity.isFinishing) return@download
                 dialogo.dismiss()
-                val texto = if (motivo == "permiso_instalacion") {
-                    activity.getString(R.string.update_need_permission)
-                } else {
-                    activity.getString(R.string.update_failed, motivo)
+                val texto = when (motivo) {
+                    "permiso_instalacion" -> activity.getString(R.string.update_need_permission)
+                    "verificación_fallida" -> activity.getString(R.string.update_verification_failed)
+                    else -> activity.getString(R.string.update_failed, motivo)
                 }
                 Toast.makeText(activity, texto, Toast.LENGTH_LONG).show()
             }

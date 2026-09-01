@@ -47,9 +47,22 @@ class SearchActivity : AppCompatActivity() {
             stillLoading = loading
             binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
             updateCatalogSummary()
-            // Clave: re-filtrar a medida que llegan los datos. Antes, si escribías
-            // antes de que terminara la carga, el resultado quedaba vacío para siempre.
-            runFilter(immediate = true)
+            // Clave: re-filtrar a medida que llegan los datos, porque si
+            // escribías antes de que terminara la carga el resultado quedaba
+            // vacío para siempre. PERO esto no puede forzar el filtro ya
+            // mismo (immediate = true): cada bloque del catálogo que termina
+            // de bajar (canales, películas, series — ahora en paralelo, ver
+            // Catalog.kt) llamaba a runFilter(immediate = true), y eso
+            // cancelaba el debounce de 250ms que protege lo que el usuario
+            // está escribiendo en ese instante. El síntoma era justo este:
+            // al escribir mientras el catálogo XL seguía cargando, cualquier
+            // bloque que llegara a mitad de tecleo disparaba la búsqueda con
+            // el texto todavía incompleto, como si la app "se adelantara".
+            // Con el debounce normal (sin immediate) el re-filtrado sigue
+            // ocurriendo solo, pero respeta la misma espera que una tecla:
+            // si el usuario sigue escribiendo, cada letra reinicia el
+            // temporizador igual que antes y nunca se dispara a medio camino.
+            runFilter()
         }
     }
 

@@ -54,7 +54,9 @@ object Updater {
         val version: String,
         val apkUrl: String,
         val notes: String,
-        val sizeBytes: Long
+        val sizeBytes: Long,
+        /** SHA-256 del APK en hexadecimal, si el asset de la Release lo trae. */
+        val sha256: String? = null
     )
 
     sealed class Result {
@@ -115,13 +117,16 @@ object Updater {
 
                 var apk = ""
                 var tamano = 0L
+                var shaUrl = ""
                 if (assets != null) {
                     for (i in 0 until assets.length()) {
                         val a = assets.getJSONObject(i)
-                        if (a.optString("name").endsWith(".apk", ignoreCase = true)) {
+                        val nombre = a.optString("name")
+                        if (nombre.endsWith(".apk", ignoreCase = true)) {
                             apk = a.optString("browser_download_url")
                             tamano = a.optLong("size")
-                            break
+                        } else if (nombre.endsWith(".apk.sha256", ignoreCase = true)) {
+                            shaUrl = a.optString("browser_download_url")
                         }
                     }
                 }
@@ -129,12 +134,19 @@ object Updater {
                     return Result.Failed("la versión publicada no trae APK")
                 }
 
+                // El .sha256 es un archivo de texto de unos bytes: se puede pedir
+                // ya mismo sin afectar el tiempo de "buscar actualización". Si la
+                // Release es de una versión anterior a este cambio y no lo trae,
+                // sha256 queda null y download() instala sin verificar (mismo
+                // comportamiento que antes) — no rompe las Releases ya publicadas.
+                val sha256 = if (shaUrl.isNotBlank()) descargarSha(shaUrl) else null
+
                 val nueva = Version.normalize(etiqueta)
                 if (!Version.isNewer(nueva, BuildConfig.VERSION_NAME)) {
                     Result.UpToDate
                 } else {
                     Result.Available(
-                        Release(nueva, apk, json.optString("body").trim(), tamano)
+                        Release(nueva, apk, json.optString("body").trim(), tamano, sha256)
                     )
                 }
             }
@@ -145,6 +157,33 @@ object Updater {
 
     // normalizar() y compare() se mudaron a Version.kt: son lógica pura y ahí
     // se pueden probar con tests de JVM, sin arrastrar Context ni OkHttp.
+
+    /** Trae el contenido del .sha256 (un hash hex en una línea). null si falla. */
+    private fun descargarSha(url: String): String? = try {
+        Session.httpClient.newCall(Request.Builder().url(url).build()).execute().use { r ->
+            if (!r.isSuccessful) return null
+            // El archivo puede traer "hash  nombre.apk" (formato de sha256sum) o
+            // solo el hash: en los dos casos lo que importa son los primeros 64
+            // caracteres hexadecimales.
+            r.body?.string()?.trim()?.split(Regex("\\s+"))?.firstOrNull()?.lowercase()
+        }
+    } catch (t: Throwable) {
+        null
+    }
+
+    /** SHA-256 de un archivo en disco, en hexadecimal minúscula. */
+    private fun sha256File(file: File): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { entrada ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val n = entrada.read(buffer)
+                if (n <= 0) break
+                digest.update(buffer, 0, n)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
 
     // ---------------- Descarga e instalación ----------------
 
@@ -202,7 +241,25 @@ object Updater {
                         }
                     }
                 }
-                ui.post { install(ctx, destino, onError) }
+                ui.post {
+                    // Verificación de integridad: si la Release trae el .sha256
+                    // (ver descargarSha), el APK bajado tiene que coincidir con
+                    // exactitud. Si no coincide, NO se instala — se borra y se
+                    // avisa el motivo, en vez de dejar que el usuario instale un
+                    // archivo que no es exactamente el que este proyecto publicó
+                    // (descarga corrupta, asset alterado, interferencia en la
+                    // red). Sin este chequeo, la única defensa era la firma del
+                    // APK, que Android valida igual pero después de instalar.
+                    if (release.sha256 != null) {
+                        val real = runCatching { sha256File(destino) }.getOrNull()
+                        if (real == null || !real.equals(release.sha256, ignoreCase = true)) {
+                            destino.delete()
+                            onError("verificación_fallida")
+                            return@post
+                        }
+                    }
+                    install(ctx, destino, onError)
+                }
             } catch (t: Throwable) {
                 ui.post { onError(t::class.java.simpleName) }
             }
