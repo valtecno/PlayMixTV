@@ -58,6 +58,27 @@ class LoginActivity : AppCompatActivity() {
         )
         binding.btnLogin.setOnClickListener { attemptLogin() }
 
+        // Botón de ver/ocultar contraseña
+        var passwordVisible = false
+        binding.btnTogglePassword.setOnClickListener {
+            passwordVisible = !passwordVisible
+            val pos = binding.etPassword.selectionEnd
+            if (passwordVisible) {
+                binding.etPassword.inputType =
+                    android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                binding.btnTogglePassword.setImageResource(R.drawable.ic_eye_off)
+            } else {
+                binding.etPassword.inputType =
+                    android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                binding.btnTogglePassword.setImageResource(R.drawable.ic_eye_on)
+            }
+            // Mantener el cursor y la fuente coherente (ExoPlayer la resetea al cambiar inputType)
+            binding.etPassword.typeface = android.graphics.Typeface.DEFAULT
+            binding.etPassword.setSelection(pos.coerceAtMost(binding.etPassword.text?.length ?: 0))
+        }
+
         // Con remoto, empezar con el foco puesto en el sistema preseleccionado
         if (RemoteControl.isEnabled(this)) {
             RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
