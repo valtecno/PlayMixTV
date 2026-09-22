@@ -7,8 +7,7 @@
     android:padding="6dp"
     android:background="@drawable/bg_glass_card"
     android:focusable="true"
-    android:clickable="true"
-    android:foreground="?attr/selectableItemBackground">
+    android:clickable="true">
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -29,7 +28,7 @@
             android:layout_gravity="top|end"
             android:padding="5dp"
             android:src="@android:drawable/star_big_off"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+            android:background="@android:color/transparent" />
 
         <ImageView
             android:id="@+id/ivLock"

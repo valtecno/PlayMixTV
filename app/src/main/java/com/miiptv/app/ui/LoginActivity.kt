@@ -176,8 +176,9 @@ class LoginActivity : AppCompatActivity() {
 
                 val user = data.username!!
                 val pass = data.password!!
-                // Si el panel devuelve un servidor específico para este código,
-                // lo usamos; si no, usamos el que eligió el usuario en los chips.
+                // El panel ya devuelve el servidor correcto para este código
+                // (dns_servidor). No hace falta que el usuario elija Sistema L
+                // o XL — el panel lo asigna según el código.
                 val urlFinal = data.server?.takeIf { it.isNotBlank() } ?: servidor.url
 
                 // Paso 2: con las credenciales reales, conectar al panel Xtream.

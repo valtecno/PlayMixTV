@@ -18,8 +18,10 @@
     android:orientation="horizontal"
     android:gravity="center"
     android:background="@color/background_dark"
-    android:paddingHorizontal="40dp"
-    android:paddingVertical="20dp">
+    android:paddingStart="40dp"
+    android:paddingEnd="40dp"
+    android:paddingTop="20dp"
+    android:paddingBottom="20dp">
 
     <!-- ===== Izquierda: cabecera, puntos y botones ===== -->
     <LinearLayout
@@ -76,13 +78,13 @@
             android:layout_marginTop="18dp">
 
             <View android:id="@+id/pinDot0" android:layout_width="12dp" android:layout_height="12dp"
-                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+                android:layout_marginStart="6dp" android:layout_marginEnd="6dp" android:background="@drawable/bg_pin_dot_empty" />
             <View android:id="@+id/pinDot1" android:layout_width="12dp" android:layout_height="12dp"
-                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+                android:layout_marginStart="6dp" android:layout_marginEnd="6dp" android:background="@drawable/bg_pin_dot_empty" />
             <View android:id="@+id/pinDot2" android:layout_width="12dp" android:layout_height="12dp"
-                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+                android:layout_marginStart="6dp" android:layout_marginEnd="6dp" android:background="@drawable/bg_pin_dot_empty" />
             <View android:id="@+id/pinDot3" android:layout_width="12dp" android:layout_height="12dp"
-                android:layout_marginHorizontal="6dp" android:background="@drawable/bg_pin_dot_empty" />
+                android:layout_marginStart="6dp" android:layout_marginEnd="6dp" android:background="@drawable/bg_pin_dot_empty" />
 
         </LinearLayout>
 
@@ -105,7 +107,7 @@
             android:textSize="14sp"
             android:clickable="true"
             android:focusable="true"
-            android:background="?android:attr/selectableItemBackgroundBorderless" />
+            android:background="@android:color/transparent" />
 
     </LinearLayout>
 
@@ -163,7 +165,7 @@
                 android:src="@drawable/ic_backspace"
                 android:clickable="true"
                 android:focusable="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:background="@android:color/transparent"
                 android:contentDescription="@string/pin_backspace" />
 
         </LinearLayout>

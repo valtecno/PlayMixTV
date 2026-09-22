@@ -221,8 +221,12 @@ class ContentAdapter(
                     } else {
                         android.widget.ImageView.ScaleType.FIT_CENTER
                     }
-                // Recorta la imagen con las esquinas redondeadas del marco
-                ivCover.clipToOutline = true
+                // Recorta la imagen con las esquinas redondeadas del marco.
+                // clipToOutline requiere un outlineProvider explícito en API < 24.
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                    ivCover.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+                    ivCover.clipToOutline = true
+                }
                 loadImage(item.icon, ivCover)
 
                 ivLock.visibility = if (locked) View.VISIBLE else View.GONE

@@ -30,7 +30,8 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:background="@drawable/bg_glass_card"
-        android:paddingHorizontal="12dp">
+        android:paddingStart="12dp"
+            android:paddingEnd="12dp">
 
         <ImageView
             android:layout_width="20dp"
@@ -59,7 +60,7 @@
             android:layout_height="30dp"
             android:padding="6dp"
             android:src="@drawable/ic_backspace"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:background="@android:color/transparent"
             android:contentDescription="@string/multiscreen_search_clear"
             android:visibility="gone" />
 

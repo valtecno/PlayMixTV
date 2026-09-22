@@ -15,17 +15,18 @@ data class UserInfo(
 
 /**
  * Respuesta del panel privado de PlayMix al validar un código de acceso.
- * Ejemplo éxito: {"status":"ok","username":"u","password":"p","server":"http://..."}
- * Ejemplo error: {"status":"error","mensaje":"Código inválido"}
+ * Éxito:  {"status":"success","usuario_real":"u","password_real":"p","dns_servidor":"http://...","sistema":"Sistema L"}
+ * Error:  {"status":"error","mensaje":"Código inválido o ya utilizado"}
  */
 data class CodeValidationResponse(
-    @SerializedName("status")   val status: String?,
-    @SerializedName("username") val username: String?,
-    @SerializedName("password") val password: String?,
-    @SerializedName("server")   val server: String?,
-    @SerializedName("mensaje")  val mensaje: String?
+    @SerializedName("status")        val status: String?,
+    @SerializedName("usuario_real")  val username: String?,
+    @SerializedName("password_real") val password: String?,
+    @SerializedName("dns_servidor")  val server: String?,
+    @SerializedName("sistema")       val sistema: String?,
+    @SerializedName("mensaje")       val mensaje: String?
 ) {
-    val isOk: Boolean get() = status == "ok" && !username.isNullOrBlank() && !password.isNullOrBlank()
+    val isOk: Boolean get() = status == "success" && !username.isNullOrBlank() && !password.isNullOrBlank()
 }
 
 data class Category(

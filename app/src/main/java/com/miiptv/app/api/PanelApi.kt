@@ -21,7 +21,7 @@ interface PanelApi {
 
     @GET("api.php")
     fun validateCode(
-        @Query("code") code: String
+        @Query("codigo") code: String   // el parámetro se llama "codigo", no "code"
     ): Call<CodeValidationResponse>
 
     companion object {

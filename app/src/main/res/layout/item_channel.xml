@@ -7,9 +7,10 @@
     android:background="@drawable/bg_glass_card"
     android:focusable="true"
     android:clickable="true"
-    android:foreground="?attr/selectableItemBackground"
-    android:layout_marginHorizontal="4dp"
-    android:layout_marginVertical="5dp"
+    android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+    android:layout_marginTop="5dp"
+            android:layout_marginBottom="5dp"
     android:padding="12dp">
 
     <ImageView
@@ -67,8 +68,10 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="12dp"
         android:background="@drawable/bg_button_gradient"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="8dp"
+        android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+            android:paddingBottom="8dp"
         android:text="@string/radio_open"
         android:textColor="@color/text_light"
         android:textSize="13sp"
@@ -83,6 +86,6 @@
         android:layout_height="24dp"
         android:padding="2dp"
         android:src="@android:drawable/star_big_off"
-        android:background="?attr/selectableItemBackgroundBorderless" />
+        android:background="@android:color/transparent" />
 
 </LinearLayout>

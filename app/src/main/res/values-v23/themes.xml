@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- windowLightStatusBar solo existe desde API 23 -->
+    <style name="Theme.MiIPTV" parent="Theme.MiIPTV">
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
