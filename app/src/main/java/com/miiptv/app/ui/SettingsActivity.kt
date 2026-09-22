@@ -93,10 +93,10 @@ class SettingsActivity : AppCompatActivity() {
         binding.rowClearCache.setOnClickListener { clearImageCache() }
 
         // ---------- Cuenta ----------
-        binding.tvServer.text = Session.server(this)
+        val sistemaActual = Session.server(this)
             .takeIf { it.isNotBlank() }
             ?.let { Servers.labelFor(it) } ?: "—"
-        binding.tvUser.text = Session.username(this).ifBlank { "—" }
+        binding.tvServer.text = getString(R.string.settings_on_server, sistemaActual)
         binding.rowSwitchAccount.setOnClickListener { switchAccount() }
         binding.rowAudio.setOnClickListener { showAudioDialog() }
         binding.btnLogout.setOnClickListener { confirmLogout() }
@@ -154,11 +154,23 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.tvBuffer.text = PlayerPrefs.bufferLabel(this, PlayerPrefs.getBuffer(this))
         binding.tvAspect.text = PlayerPrefs.aspectLabel(this, PlayerPrefs.getAspect(this))
-        binding.tvCatalog.text = if (Catalog.isEmpty) {
-            getString(R.string.catalog_empty)
+
+        // Catálogo desglosado en los tres TextViews individuales
+        if (Catalog.isEmpty) {
+            binding.tvCatalogLive.text = "—"
+            binding.tvCatalogMovies.text = "—"
+            binding.tvCatalogSeries.text = "—"
         } else {
-            getString(R.string.catalog_count, Catalog.live.size, Catalog.movies.size, Catalog.series.size)
+            binding.tvCatalogLive.text = Catalog.live.size.toString()
+            binding.tvCatalogMovies.text = Catalog.movies.size.toString()
+            binding.tvCatalogSeries.text = Catalog.series.size.toString()
         }
+
+        // Actualizar también el mensaje del servidor por si cambió la cuenta
+        val sistemaActual = Session.server(this)
+            .takeIf { it.isNotBlank() }
+            ?.let { Servers.labelFor(it) } ?: "—"
+        binding.tvServer.text = getString(R.string.settings_on_server, sistemaActual)
     }
 
     /**
@@ -188,9 +200,10 @@ class SettingsActivity : AppCompatActivity() {
 
         todas.forEach { cuenta ->
             val fila = ItemAccountBinding.inflate(layoutInflater, vista.accountsContainer, false)
-            fila.tvAccountUser.text = cuenta.username
-            fila.tvAccountServer.text = cuenta.serverLabel
-            fila.tvAccountAvatar.text = cuenta.username.take(1).uppercase()
+            fila.tvAccountUser.text = cuenta.serverLabel   // solo el sistema, no el usuario
+            fila.tvAccountServer.text = cuenta.serverLabel  // redundante pero lo ocultamos abajo
+            fila.tvAccountAvatar.text = cuenta.serverLabel.filter { it.isLetter() }.take(2).uppercase()
+            fila.tvAccountServer.visibility = View.GONE     // solo una línea: el sistema
 
             val esActiva = cuenta == activa
             // Sin esto la fila se ve exactamente igual con foco que sin foco:

@@ -169,6 +169,7 @@
     <string name="setting_refresh">Actualizar catálogo</string>
     <string name="setting_clear_cache">Vaciar caché de imágenes</string>
     <string name="setting_server">Servidor</string>
+    <string name="settings_on_server">Actualmente en: %1$s</string>
     <string name="setting_logout">Cerrar sesión</string>
     <string name="settings_version">Versión %1$s</string>
 
