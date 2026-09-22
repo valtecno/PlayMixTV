@@ -251,7 +251,7 @@ class ContentAdapter(
         // mientras el control remoto navega la lista.
         // Películas, series y cualquier otro tipo: relleno difuminado (más
         // impacto visual, que encaja mejor con las tarjetas de póster).
-        if (item.type == ContentType.LIVE || item.type == ContentType.RADIO) {
+        if (item.type == ContentType.LIVE) {
             RemoteControl.applyItemFocusOutline(root, remoteMode)
         } else {
             RemoteControl.applyItemFocus(root, remoteMode)
