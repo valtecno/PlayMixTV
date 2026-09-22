@@ -8,7 +8,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.miiptv.app.R
+import com.miiptv.app.api.CodeValidationResponse
 import com.miiptv.app.api.LoginResponse
+import com.miiptv.app.api.PanelApi
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityLoginBinding
 import com.miiptv.app.databinding.ItemServerChipBinding
@@ -58,28 +60,9 @@ class LoginActivity : AppCompatActivity() {
         )
         binding.btnLogin.setOnClickListener { attemptLogin() }
 
-        // Botón de ver/ocultar contraseña
-        var passwordVisible = false
-        binding.btnTogglePassword.setOnClickListener {
-            passwordVisible = !passwordVisible
-            val pos = binding.etPassword.selectionEnd
-            if (passwordVisible) {
-                binding.etPassword.inputType =
-                    android.text.InputType.TYPE_CLASS_TEXT or
-                    android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
-                binding.btnTogglePassword.setImageResource(R.drawable.ic_eye_off)
-            } else {
-                binding.etPassword.inputType =
-                    android.text.InputType.TYPE_CLASS_TEXT or
-                    android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
-                binding.btnTogglePassword.setImageResource(R.drawable.ic_eye_on)
-            }
-            // Mantener el cursor y la fuente coherente (ExoPlayer la resetea al cambiar inputType)
-            binding.etPassword.typeface = android.graphics.Typeface.DEFAULT
-            binding.etPassword.setSelection(pos.coerceAtMost(binding.etPassword.text?.length ?: 0))
-        }
+        // El botón de ojo no se usa en modo código pero el binding lo necesita
+        // existir — está oculto en el XML.
 
-        // Con remoto, empezar con el foco puesto en el sistema preseleccionado
         if (RemoteControl.isEnabled(this)) {
             RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
         }
@@ -166,37 +149,80 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
-        val user = binding.etUsername.text.toString().trim()
-        val pass = binding.etPassword.text.toString().trim()
+        val codigo = binding.etPassword.text.toString().trim().uppercase()
 
-        if (user.isBlank() || pass.isBlank()) {
-            Toast.makeText(this, "Completa usuario y contraseña", Toast.LENGTH_SHORT).show()
+        if (codigo.isBlank()) {
+            Toast.makeText(this, "Ingresa tu código de acceso", Toast.LENGTH_SHORT).show()
             return
         }
 
         setLoading(true)
-        Session.save(this, servidor.url, user, pass)
 
-        Session.api(this).login(user, pass).enqueue(object : Callback<LoginResponse> {
-            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
-                setLoading(false)
-                val auth = response.body()?.userInfo?.auth
-                if (response.isSuccessful && auth == 1) {
-                    // Queda guardada para poder saltar entre Sistema L y XL sin re-escribirla
-                    Accounts.save(this@LoginActivity, servidor.url, user, pass)
-                    Catalog.clear()
-                    startActivity(Intent(this@LoginActivity, MainActivity::class.java))
-                    finish()
-                } else {
-                    Session.logout(this@LoginActivity)
-                    Toast.makeText(this@LoginActivity, getString(R.string.login_error), Toast.LENGTH_LONG).show()
+        // Paso 1: validar el código contra el panel privado de PlayMix.
+        // Si es válido, el panel devuelve el usuario y contraseña reales
+        // del panel Xtream de origen. La app nunca los muestra al usuario.
+        PanelApi.instance.validateCode(codigo).enqueue(object : retrofit2.Callback<CodeValidationResponse> {
+            override fun onResponse(
+                call: retrofit2.Call<CodeValidationResponse>,
+                response: retrofit2.Response<CodeValidationResponse>
+            ) {
+                val data = response.body()
+                if (!response.isSuccessful || data == null || !data.isOk) {
+                    setLoading(false)
+                    val msg = data?.mensaje ?: getString(R.string.login_error)
+                    Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
+                    return
                 }
+
+                val user = data.username!!
+                val pass = data.password!!
+                // Si el panel devuelve un servidor específico para este código,
+                // lo usamos; si no, usamos el que eligió el usuario en los chips.
+                val urlFinal = data.server?.takeIf { it.isNotBlank() } ?: servidor.url
+
+                // Paso 2: con las credenciales reales, conectar al panel Xtream.
+                Session.save(this@LoginActivity, urlFinal, user, pass)
+                Session.api(this@LoginActivity).login(user, pass)
+                    .enqueue(object : retrofit2.Callback<LoginResponse> {
+                        override fun onResponse(
+                            call: retrofit2.Call<LoginResponse>,
+                            response: retrofit2.Response<LoginResponse>
+                        ) {
+                            setLoading(false)
+                            if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
+                                Accounts.save(this@LoginActivity, urlFinal, user, pass)
+                                Catalog.clear()
+                                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                finish()
+                            } else {
+                                Session.logout(this@LoginActivity)
+                                Toast.makeText(
+                                    this@LoginActivity,
+                                    getString(R.string.login_error),
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+
+                        override fun onFailure(call: retrofit2.Call<LoginResponse>, t: Throwable) {
+                            setLoading(false)
+                            Session.logout(this@LoginActivity)
+                            Toast.makeText(
+                                this@LoginActivity,
+                                getString(R.string.login_error),
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+                    })
             }
 
-            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+            override fun onFailure(call: retrofit2.Call<CodeValidationResponse>, t: Throwable) {
                 setLoading(false)
-                Session.logout(this@LoginActivity)
-                Toast.makeText(this@LoginActivity, getString(R.string.login_error) + ": ${t.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this@LoginActivity,
+                    getString(R.string.login_error),
+                    Toast.LENGTH_LONG
+                ).show()
             }
         })
     }

@@ -13,6 +13,21 @@ data class UserInfo(
     @SerializedName("exp_date") val expDate: String? = null
 )
 
+/**
+ * Respuesta del panel privado de PlayMix al validar un código de acceso.
+ * Ejemplo éxito: {"status":"ok","username":"u","password":"p","server":"http://..."}
+ * Ejemplo error: {"status":"error","mensaje":"Código inválido"}
+ */
+data class CodeValidationResponse(
+    @SerializedName("status")   val status: String?,
+    @SerializedName("username") val username: String?,
+    @SerializedName("password") val password: String?,
+    @SerializedName("server")   val server: String?,
+    @SerializedName("mensaje")  val mensaje: String?
+) {
+    val isOk: Boolean get() = status == "ok" && !username.isNullOrBlank() && !password.isNullOrBlank()
+}
+
 data class Category(
     @SerializedName("category_id") val categoryId: String,
     @SerializedName("category_name") val categoryName: String

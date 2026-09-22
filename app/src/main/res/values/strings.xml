@@ -5,11 +5,13 @@
     <string name="login_title">Iniciar sesión</string>
     <string name="hint_choose_server">Elige tu servidor</string>
     <string name="hint_server">URL del servidor (http://midominio.com:8080)</string>
+    <string name="hint_access_code_label">Ingresa tu código de acceso</string>
+    <string name="hint_access_code">Ej: 8B4F9</string>
     <string name="hint_username">Usuario</string>
     <string name="hint_password">Contraseña</string>
     <string name="toggle_password_visibility">Ver contraseña</string>
     <string name="btn_login">Conectar</string>
-    <string name="login_error">No se pudo conectar. Revisa tus datos.</string>
+    <string name="login_error">Código inválido o sin conexión. Intenta de nuevo.</string>
     <!-- Solo se ve si la app se compiló sin la lista de servidores (playmix.servers vacío) -->
     <string name="login_sin_servidores">Esta versión se compiló sin servidores configurados.</string>
     <string name="loading">Cargando…</string>
