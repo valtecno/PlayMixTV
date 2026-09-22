@@ -1057,6 +1057,12 @@ class PlayerActivity : AppCompatActivity() {
             binding.btnPrevStation, binding.btnRadioPlayPause, binding.btnNextStation
         ).forEach { RemoteControl.applyIconFocus(it, true) }
 
+        // btnCast es un MediaRouteButton, no un ImageView, así que
+        // applyIconFocusToTree() no lo alcanza. Se trata igual que el resto.
+        if (binding.btnCast.visibility != View.GONE) {
+            RemoteControl.applyIconFocus(binding.btnCast, true, circular = true)
+        }
+
         // Rectangulares
         RemoteControl.applyIconFocus(binding.btnUnlock, true, circular = false)
         RemoteControl.applyIconFocus(binding.btnPlayNextNow, true, circular = false, cornerRadiusDp = 18f)

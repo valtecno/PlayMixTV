@@ -152,7 +152,18 @@ class EpisodeAdapter(private val onClick: (Episode) -> Unit) : RecyclerView.Adap
     private val items = mutableListOf<Episode>()
 
     fun submitList(newItems: List<Episode>) {
-        items.clear(); items.addAll(newItems); notifyDataSetChanged()
+        val oldSize = items.size
+        items.clear()
+        items.addAll(newItems)
+        // DiffUtil básico: si la temporada cambió entera es más rápido
+        // hacer notifyDataSetChanged, pero con el mando eso hace que el foco
+        // caiga en ningún lado. Con notifyItemRangeChanged el RecyclerView
+        // reutiliza las vistas existentes y el foco sobrevive.
+        if (oldSize == 0 || oldSize != newItems.size) {
+            notifyDataSetChanged()
+        } else {
+            notifyItemRangeChanged(0, items.size)
+        }
     }
 
     inner class VH(val view: TextView) : RecyclerView.ViewHolder(view)

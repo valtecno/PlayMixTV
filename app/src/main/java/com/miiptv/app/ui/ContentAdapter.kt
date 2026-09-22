@@ -246,7 +246,16 @@ class ContentAdapter(
         item: ContentItem,
         root: View
     ) {
-        RemoteControl.applyItemFocus(root, remoteMode)
+        // Canales y emisoras de radio: solo contorno al enfocar, sin relleno
+        // de color -- el logo del canal tiene que seguir perfectamente legible
+        // mientras el control remoto navega la lista.
+        // Películas, series y cualquier otro tipo: relleno difuminado (más
+        // impacto visual, que encaja mejor con las tarjetas de póster).
+        if (item.type == ContentType.LIVE || item.type == ContentType.RADIO) {
+            RemoteControl.applyItemFocusOutline(root, remoteMode)
+        } else {
+            RemoteControl.applyItemFocus(root, remoteMode)
+        }
 
         if (remoteMode) {
             root.setOnLongClickListener {

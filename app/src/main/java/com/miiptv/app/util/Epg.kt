@@ -48,7 +48,11 @@ object Epg {
     private const val TTL_MS = 3 * 60 * 1000L
 
     private val cache = HashMap<Int, Entry>()
-    private val pending = HashMap<Int, MutableList<(String?) -> Unit>>()
+    // El callback ahora recibe la lista cruda de EpgListing en vez del
+    // string ya formateado: así nowPlaying y nextPlaying pueden registrarse
+    // para el mismo canal y cada uno extrae lo que le corresponde, con una
+    // sola llamada de red compartida.
+    private val pending = HashMap<Int, MutableList<(List<EpgListing>) -> Unit>>()
 
     /**
      * Pide (o devuelve de caché) "ahora / a continuación" del canal [streamId],
@@ -62,13 +66,13 @@ object Epg {
         val cached = cache[streamId]
         val now = System.currentTimeMillis()
         if (cached != null && now - cached.fetchedAt < TTL_MS) {
-            onResult(render(cached.listings))
+            onResult(renderNow(cached.listings))
             return
         }
 
         val enEspera = pending.getOrPut(streamId) { mutableListOf() }
-        enEspera.add(onResult)
-        if (enEspera.size > 1) return // ya hay una consulta en curso; esta espera el mismo resultado
+        enEspera.add { listings -> onResult(renderNow(listings)) }
+        if (enEspera.size > 1) return
 
         Session.api(context.applicationContext)
             .getShortEpg(Session.username(context), Session.password(context), streamId = streamId)
@@ -76,19 +80,49 @@ object Epg {
                 override fun onResponse(call: Call<EpgResponse>, response: Response<EpgResponse>) {
                     val listados = response.body()?.epgListings.orEmpty()
                     cache[streamId] = Entry(listados, System.currentTimeMillis())
-                    pending.remove(streamId).orEmpty().forEach { it(render(listados)) }
+                    pending.remove(streamId).orEmpty().forEach { it(listados) }
                 }
 
                 override fun onFailure(call: Call<EpgResponse>, t: Throwable) {
-                    // No se cachea el error: un corte de red momentáneo no debe
-                    // dejar el canal "sin programa" pegado varios minutos.
-                    pending.remove(streamId).orEmpty().forEach { it(null) }
+                    pending.remove(streamId).orEmpty().forEach { it(emptyList()) }
+                }
+            })
+    }
+
+    /**
+     * Solo el programa que sigue, para mostrarlo separado debajo del preview.
+     * Reutiliza la misma caché que [nowPlaying]: si ya se cargó el EPG del
+     * canal para la fila de la lista, esta llamada es instantánea y sin red.
+     */
+    fun nextPlaying(context: Context, streamId: Int, onResult: (String?) -> Unit) {
+        val cached = cache[streamId]
+        val now = System.currentTimeMillis()
+        if (cached != null && now - cached.fetchedAt < TTL_MS) {
+            onResult(renderNext(cached.listings))
+            return
+        }
+        // Si todavía no hay caché, nowPlaying() la cargará; se encola después
+        val enEspera = pending.getOrPut(streamId) { mutableListOf() }
+        enEspera.add { listings -> onResult(renderNext(listings)) }
+        if (enEspera.size > 1) return
+
+        Session.api(context.applicationContext)
+            .getShortEpg(Session.username(context), Session.password(context), streamId = streamId)
+            .enqueue(object : Callback<EpgResponse> {
+                override fun onResponse(call: Call<EpgResponse>, response: Response<EpgResponse>) {
+                    val listados = response.body()?.epgListings.orEmpty()
+                    cache[streamId] = Entry(listados, System.currentTimeMillis())
+                    pending.remove(streamId).orEmpty().forEach { it(listados) }
+                }
+
+                override fun onFailure(call: Call<EpgResponse>, t: Throwable) {
+                    pending.remove(streamId).orEmpty().forEach { it(emptyList()) }
                 }
             })
     }
 
     /** Arma "HH:mm–HH:mm Título · Luego: Título (HH:mm)" a partir de lo vigente ahora mismo. */
-    private fun render(listados: List<EpgListing>): String? {
+    private fun renderNow(listados: List<EpgListing>): String? {
         val ahoraEpoch = System.currentTimeMillis() / 1000
         val idxActual = listados.indexOfFirst { estaVigente(it, ahoraEpoch) }
 
@@ -96,10 +130,6 @@ object Epg {
         val proximo = if (idxActual >= 0) {
             listados.getOrNull(idxActual + 1)
         } else {
-            // No se pudo confirmar cuál es "ahora" con el reloj del dispositivo
-            // (típico si el panel no cargó EPG para este momento): mejor no
-            // afirmar nada sobre el programa actual. Si hay algo que arranca
-            // más adelante, sí tiene sentido mostrarlo como "Luego".
             listados.firstOrNull { it.startTimestamp > ahoraEpoch }
         }
 
@@ -114,6 +144,21 @@ object Epg {
         }
 
         return partes.joinToString("  ·  ").ifBlank { null }
+    }
+
+    /** Solo el programa que sigue (para mostrarlo en una línea separada en el preview). */
+    private fun renderNext(listados: List<EpgListing>): String? {
+        val ahoraEpoch = System.currentTimeMillis() / 1000
+        val idxActual = listados.indexOfFirst { estaVigente(it, ahoraEpoch) }
+        val proximo = if (idxActual >= 0) {
+            listados.getOrNull(idxActual + 1)
+        } else {
+            listados.firstOrNull { it.startTimestamp > ahoraEpoch }
+        }
+        return proximo?.tituloLegible()?.let { titulo ->
+            val hora = horaLocal(proximo.startTimestamp)
+            if (hora.isNotEmpty()) "$titulo ($hora)" else titulo
+        }
     }
 
     /** true si [listado] cubre el instante [ahoraEpoch], según sus propios timestamps epoch. */

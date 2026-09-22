@@ -96,21 +96,34 @@ object RemoteControl {
             return
         }
 
-        /*
-         * En TV el foco tiene que saltar de tarjeta a tarjeta, no meterse
-         * adentro. Sin esto, la estrella de favoritos (que es clickable, o sea
-         * enfocable) se roba el foco y navegar la grilla con las flechas se
-         * vuelve un laberinto: derecha te lleva a la estrella de la misma
-         * tarjeta en vez de a la película de al lado.
-         *
-         * Quien llame a esto debe ofrecer otra forma de marcar favoritos; el
-         * adapter usa pulsación larga del botón central.
-         */
         (view as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         view.isFocusable = true
+        view.onFocusChangeListener = null
+    }
 
-        // Sin listener de foco: el StateListDrawable del fondo ya hace todo el
-        // trabajo, y lo hace sin código y sin animación que limpiar al reciclar.
+    /**
+     * Como [applyItemFocus] pero el estado enfocado muestra SOLO CONTORNO, sin
+     * relleno de color.
+     *
+     * Para filas de canales y emisoras: el logo y el texto siguen plenamente
+     * legibles mientras el control remoto navega la lista; solo aparece el
+     * borde de acento que señala la posición del mando.
+     */
+    fun applyItemFocusOutline(
+        view: View,
+        remoto: Boolean,
+        cornerRadiusDp: Float = 14f
+    ) {
+        view.background = Appearance.cardOutlineBackground(view.context, cornerRadiusDp)
+
+        if (!remoto) {
+            view.onFocusChangeListener = null
+            (view as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            return
+        }
+
+        (view as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        view.isFocusable = true
         view.onFocusChangeListener = null
     }
 

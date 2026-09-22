@@ -243,6 +243,25 @@ object Appearance {
         }
     }
 
+    /**
+     * Solo contorno de acento, sin relleno.
+     *
+     * Para filas de lista (canales, emisoras): el logo y el texto siguen
+     * completamente legibles porque el fondo de la tarjeta no cambia; solo
+     * aparece un borde de color que indica dónde está parado el control
+     * remoto, igual que el chip del menú superior cuando está seleccionado.
+     */
+    fun focusOutline(c: Context, cornerRadiusDp: Float): GradientDrawable {
+        val p = palette(c)
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = px(c, cornerRadiusDp)
+            setColor(android.graphics.Color.TRANSPARENT)
+            // Borde más grueso que focusFill para que se vea sin el relleno
+            setStroke(px(c, 3f).toInt(), p.start)
+        }
+    }
+
     /** Degradado pleno con anillo blanco: el foco sobre chips y botones. */
     private fun focusRing(c: Context, cornerRadiusDp: Float): GradientDrawable {
         val p = palette(c)
@@ -305,12 +324,6 @@ object Appearance {
     fun cardFocusBackground(
         c: Context,
         cornerRadiusDp: Float = 14f,
-        /**
-         * Fondo a conservar para el estado en reposo. Si es null se usa el
-         * vidrio de siempre. Lo usan las filas de Cuenta y Personalizar, que ya
-         * traen su propio fondo desde el estilo del XML y no deberían cambiar
-         * de aspecto solo por ganar un estado enfocado.
-         */
         normal: Drawable? = null
     ): StateListDrawable {
         val reposo = normal ?: GradientDrawable().apply {
@@ -332,6 +345,44 @@ object Appearance {
         return StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), enfocado)
             // state_selected para poder marcar el ítem que se está previsualizando
+            addState(intArrayOf(android.R.attr.state_selected), enfocado)
+            addState(intArrayOf(), reposo)
+        }
+    }
+
+    /**
+     * Como [cardFocusBackground] pero el estado enfocado es SOLO CONTORNO,
+     * sin relleno de color.
+     *
+     * Para las filas de canales/emisoras en modo TV: el logo y el nombre del
+     * canal tienen que seguir perfectamente legibles mientras el control remoto
+     * navega la lista. Con [cardFocusBackground] el lavado de acento puede
+     * competir visualmente con el logo oscuro del canal; con este variante el
+     * fondo de la tarjeta nunca cambia — solo aparece un borde de color que
+     * señala dónde está parado el mando, igual al chip activo del menú superior.
+     */
+    fun cardOutlineBackground(
+        c: Context,
+        cornerRadiusDp: Float = 14f
+    ): StateListDrawable {
+        val reposo = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = px(c, cornerRadiusDp)
+            setColor(
+                androidx.core.content.ContextCompat.getColor(
+                    c, com.miiptv.app.R.color.glass_card
+                )
+            )
+            setStroke(
+                px(c, 0.6f).toInt(),
+                androidx.core.content.ContextCompat.getColor(
+                    c, com.miiptv.app.R.color.glass_border
+                )
+            )
+        }
+        val enfocado = focusOutline(c, cornerRadiusDp)
+        return StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), enfocado)
             addState(intArrayOf(android.R.attr.state_selected), enfocado)
             addState(intArrayOf(), reposo)
         }

@@ -80,6 +80,7 @@
     <string name="section_radio">Radios del mundo</string>
     <string name="empty_ppv">No se encontraron categorías de fútbol en este servidor</string>
     <string name="preview_live">EN VIVO</string>
+    <string name="preview_epg_next">A continuación</string>
     <string name="preview_play">Ampliar</string>
     <string name="empty_radio">No se encontraron emisoras para este país</string>
     <string name="empty_radio_source">No se encontraron emisoras de %1$s. Toca la categoría otra vez para reintentar.</string>

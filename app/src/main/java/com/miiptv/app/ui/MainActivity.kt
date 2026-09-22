@@ -95,6 +95,12 @@ class MainActivity : AppCompatActivity() {
      * perdía "recuperando" el foco en vez de moverse.
      */
     private var idAlAbrirPantallaCompleta: Int? = null
+    /**
+     * Id de la vista del toolbar que tenía el foco al abrir el reproductor.
+     * Null si el foco venía de la lista de canales (cubierto por
+     * [idAlAbrirPantallaCompleta]) o de otro lugar.
+     */
+    private var idToolbarEnfoqueAntes: Int? = null
 
     /**
      * Reproductor de la previsualización. Vive con la pantalla (onStart/onStop)
@@ -156,15 +162,24 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
-        // Sin esto era el único botón de toda la pantalla de Canales que no
-        // mostraba nada al recibir el foco del control remoto: fondo fijo
-        // (bg_glass_card, puesto en el XML), sin ningún estado de foco. Con
-        // lo importante que es -- es el botón para pasar a pantalla completa.
         binding.previewPlayRow.background = Appearance.withFocusState(
             this, binding.previewPlayRow.background!!, 12f
         )
         binding.previewThumbFrame.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.btnPreviewMute.setOnClickListener { togglePreviewMute() }
+        // Los botones amarillos del minireproductor (mute y Ampliar) flotan sobre
+        // el video igual que los botones del reproductor a pantalla completa, así
+        // que merecen el mismo tratamiento: relleno opaco del color de acento más
+        // anillo blanco, que se ve sobre cualquier fondo claro u oscuro.
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.applyIconFocus(binding.btnPreviewMute, true, circular = true)
+            // previewPlayRow ya ganó withFocusState (línea de arriba), pero ese
+            // mecanismo es más suave que applyIconFocus. Para el botón "Ampliar"
+            // se reemplaza por el más marcado, que coincide con lo que pide el
+            // usuario: que se vea igual de claro que en el menú superior.
+            binding.previewPlayRow.background =
+                Appearance.iconFocusBackground(this, binding.previewPlayRow.background, circular = false, cornerRadiusDp = 18f)
+        }
 
         binding.tvToolbarTitle.applyBrandGradient()
 
@@ -561,7 +576,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Solo la ficha: nombre, categoría y logo. No conecta nada. */
+    /** Solo la ficha: nombre, categoría, logo y EPG. No conecta nada. */
     private fun showPreviewCard(item: ContentItem) {
         previewItem = item
         stopPreview()
@@ -572,6 +587,23 @@ class MainActivity : AppCompatActivity() {
             Picasso.get().load(item.icon).into(binding.ivPreviewLogo)
         } else {
             binding.ivPreviewLogo.setImageDrawable(null)
+        }
+
+        // EPG debajo del minireproductor: misma info que en la fila de la lista
+        binding.tvPreviewEpgNow.visibility = View.GONE
+        binding.tvPreviewEpgNext.visibility = View.GONE
+        binding.tvPreviewEpgNow.tag = item.id
+        Epg.nowPlaying(this, item.id) { titulo ->
+            if (binding.tvPreviewEpgNow.tag == item.id && !titulo.isNullOrBlank()) {
+                binding.tvPreviewEpgNow.text = titulo
+                binding.tvPreviewEpgNow.visibility = View.VISIBLE
+            }
+        }
+        Epg.nextPlaying(this, item.id) { titulo ->
+            if (binding.tvPreviewEpgNow.tag == item.id && !titulo.isNullOrBlank()) {
+                binding.tvPreviewEpgNext.text = "▶ ${getString(R.string.preview_epg_next)}: $titulo"
+                binding.tvPreviewEpgNext.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -912,11 +944,18 @@ class MainActivity : AppCompatActivity() {
     private fun fijarBajadaDelToolbar() {
         binding.toolbar.post {
             val destino = if (kidsMode) R.id.navLive else R.id.navHome
+            val remoto = RemoteControl.isEnabled(this)
             listOf(
                 R.id.action_refresh, R.id.action_search, R.id.action_parental,
                 R.id.action_multi, R.id.action_account, R.id.action_quick
             ).forEach { id ->
-                binding.toolbar.findViewById<View>(id)?.nextFocusDownId = destino
+                binding.toolbar.findViewById<View>(id)?.let { boton ->
+                    boton.nextFocusDownId = destino
+                    // Sin esto los íconos del toolbar reciben el foco (Android los
+                    // hace enfocables solos) pero no muestran ningún resalte: el
+                    // usuario no sabe si está parado en "Buscar" o en "Cuenta".
+                    if (remoto) RemoteControl.applyIconFocus(boton, true, circular = true)
+                }
             }
         }
     }
@@ -1586,10 +1625,15 @@ class MainActivity : AppCompatActivity() {
 
         when (item.type) {
             ContentType.LIVE -> {
-                // Se guarda acá y no en liveIntent(): liveIntent también se usa
-                // para armar el intent sin necesariamente estar por navegar
-                // (no es el caso hoy, pero evita un acoplamiento innecesario).
-                idAlAbrirPantallaCompleta = item.id
+                // Guarda el foco actual: si venía del toolbar (Buscar, Cuenta…)
+                // se recupera al volver; si venía de la lista, guarda el id del
+                // canal para recuperar esa fila (idAlAbrirPantallaCompleta).
+                idToolbarEnfoqueAntes = currentFocus?.id?.takeIf {
+                    it == R.id.action_refresh || it == R.id.action_search ||
+                    it == R.id.action_parental || it == R.id.action_multi ||
+                    it == R.id.action_account || it == R.id.action_quick
+                }
+                idAlAbrirPantallaCompleta = if (idToolbarEnfoqueAntes == null) item.id else null
                 startActivity(liveIntent(item))
             }
             ContentType.MOVIE -> {
@@ -1919,14 +1963,23 @@ class MainActivity : AppCompatActivity() {
      * instancia en la misma posición y hay que enfocar ESA.
      */
     private fun restaurarFocoTrasReproductor() {
+        if (!RemoteControl.isEnabled(this)) return
+
+        // Caso 1: el foco venía de un ícono del toolbar
+        val idToolbar = idToolbarEnfoqueAntes
+        idToolbarEnfoqueAntes = null
+        if (idToolbar != null) {
+            binding.toolbar.post {
+                enfocarSiTV(binding.toolbar.findViewById(idToolbar))
+            }
+            return
+        }
+
+        // Caso 2: el foco venía de una fila de la lista de canales
         val id = idAlAbrirPantallaCompleta ?: return
         idAlAbrirPantallaCompleta = null
-        if (!RemoteControl.isEnabled(this)) return
         val posicion = adapter.currentItems.indexOfFirst { it.id == id }
         if (posicion < 0) return
-        // La vista puede no estar creada todavía (recién vuelve de fondo, el
-        // RecyclerView no terminó su primer layout): se reintenta en el
-        // siguiente frame, como ya hace enfocarSiTV con focusWhenReady.
         binding.recyclerChannels.post {
             val vista = binding.recyclerChannels.layoutManager?.findViewByPosition(posicion)
             enfocarSiTV(vista ?: binding.recyclerChannels)
