@@ -170,14 +170,17 @@ class ContentAdapter(
                 if (esRadio(item) && onPreview != null) {
                     val enPreview = item.id == previewingId
                     root.setOnClickListener { onPreview.invoke(item) }
-                    root.setBackgroundResource(
-                        if (enPreview) R.drawable.bg_option_selected else R.drawable.bg_glass_card
-                    )
+                    // No se pisa el fondo: setupFocus() ya asignó el
+                    // StateListDrawable con estado enfocado. Solo se cambia
+                    // el estado selected para marcar la radio en preview.
+                    root.isSelected = enPreview
                     btnOpen.visibility = if (enPreview) View.VISIBLE else View.GONE
                     btnOpen.setOnClickListener { onClick(item) }
                 } else {
                     root.setOnClickListener { onClick(item) }
-                    root.setBackgroundResource(R.drawable.bg_glass_card)
+                    // Igual: no pisar el fondo de setupFocus(), solo
+                    // asegurarse de que no quede marcado como selected.
+                    root.isSelected = false
                     btnOpen.visibility = View.GONE
                     btnOpen.setOnClickListener(null)
                 }
