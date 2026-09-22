@@ -167,7 +167,7 @@ object Session {
         invalidateApi()
     }
 
-    private fun invalidateApi() {
+    fun invalidateApi() {
         synchronized(this) {
             cachedApi = null
             cachedApiFor = ""

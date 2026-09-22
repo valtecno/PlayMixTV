@@ -169,7 +169,12 @@ class LoginActivity : AppCompatActivity() {
                 val data = response.body()
                 if (!response.isSuccessful || data == null || !data.isOk) {
                     setLoading(false)
-                    val msg = data?.mensaje ?: getString(R.string.login_error)
+                    // Mostrar el mensaje exacto del panel, o el HTTP status si no hay body
+                    val msg = when {
+                        data?.mensaje != null -> data.mensaje
+                        !response.isSuccessful -> "Error del servidor (HTTP ${response.code()})"
+                        else -> getString(R.string.login_error)
+                    }
                     Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
                     return
                 }
@@ -182,7 +187,12 @@ class LoginActivity : AppCompatActivity() {
                 val urlFinal = data.server?.takeIf { it.isNotBlank() } ?: servidor.url
 
                 // Paso 2: con las credenciales reales, conectar al panel Xtream.
+                // invalidateApi() primero: si había una sesión anterior cacheada
+                // (otro usuario, otro servidor), Session.api() devolvería el
+                // Retrofit viejo en vez del nuevo, y el login iría al servidor
+                // equivocado sin saberlo.
                 Session.save(this@LoginActivity, urlFinal, user, pass)
+                Session.invalidateApi()
                 Session.api(this@LoginActivity).login(user, pass)
                     .enqueue(object : retrofit2.Callback<LoginResponse> {
                         override fun onResponse(
@@ -208,9 +218,10 @@ class LoginActivity : AppCompatActivity() {
                         override fun onFailure(call: retrofit2.Call<LoginResponse>, t: Throwable) {
                             setLoading(false)
                             Session.logout(this@LoginActivity)
+                            val detalle = t.message ?: t.javaClass.simpleName
                             Toast.makeText(
                                 this@LoginActivity,
-                                getString(R.string.login_error),
+                                "Error Xtream: $detalle",
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -219,9 +230,11 @@ class LoginActivity : AppCompatActivity() {
 
             override fun onFailure(call: retrofit2.Call<CodeValidationResponse>, t: Throwable) {
                 setLoading(false)
+                // Mostrar el error real para poder diagnosticar
+                val detalle = t.message ?: t.javaClass.simpleName
                 Toast.makeText(
                     this@LoginActivity,
-                    getString(R.string.login_error),
+                    "Error de conexión: $detalle",
                     Toast.LENGTH_LONG
                 ).show()
             }
