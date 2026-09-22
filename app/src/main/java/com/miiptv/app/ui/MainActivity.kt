@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
+import com.miiptv.app.util.Epg
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper

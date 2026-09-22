@@ -11,7 +11,6 @@
     android:gravity="center"
     android:padding="32dp">
 
-    <!-- Logo de la aplicación -->
     <ImageView
         android:layout_width="120dp"
         android:layout_height="120dp"
@@ -19,7 +18,6 @@
         android:src="@drawable/logo_playmix"
         android:contentDescription="@string/app_name" />
 
-    <!-- Nombre de la aplicación -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -27,53 +25,87 @@
         android:textColor="@color/text_light"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="32dp" />
 
-    <!-- Texto de instrucción -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Ingresa tu código de acceso en el TV"
-        android:textAlignment="center"
+        android:text="@string/hint_choose_server"
         android:textColor="@color/text_muted"
-        android:textSize="15sp"
-        android:layout_marginBottom="12dp" />
+        android:textSize="13sp"
+        android:layout_marginBottom="8dp" />
 
-    <!-- NUEVO: Única casilla para el código PIN -->
-    <EditText
-        android:id="@+id/etPinCode"
+    <!--
+        Contenedor vacío: LoginActivity mete acá un chip por cada servidor
+        configurado (ver gradle.properties -> playmix.servers). Antes eran dos
+        TextView fijos, o sea que agregar un tercer servidor obligaba a tocar
+        este archivo, LoginActivity y Servers.kt a la vez.
+    -->
+    <LinearLayout
+        android:id="@+id/serverChips"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Ej: 8B4F9"
-        android:gravity="center"
+        android:orientation="horizontal"
+        android:layout_marginBottom="20dp" />
+
+    <EditText
+        android:id="@+id/etUsername"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_username"
         android:textColor="@color/text_light"
         android:textColorHint="@color/text_muted"
         android:background="@drawable/bg_glass_card"
-        android:padding="16dp"
-        android:textSize="22sp"
-        android:maxLength="6"
-        android:inputType="textCapCharacters"
-        android:layout_marginBottom="32dp"
+        android:padding="14dp"
+        android:layout_marginBottom="12dp"
         android:importantForAutofill="no" />
 
-    <!-- Botón de Entrar -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp">
+
+        <EditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_password"
+            android:textColor="@color/text_light"
+            android:textColorHint="@color/text_muted"
+            android:inputType="textPassword"
+            android:background="@drawable/bg_glass_card"
+            android:padding="14dp"
+            android:paddingEnd="52dp"
+            android:importantForAutofill="no" />
+
+        <ImageView
+            android:id="@+id/btnTogglePassword"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end|center_vertical"
+            android:layout_marginEnd="4dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_eye_on"
+            android:contentDescription="@string/toggle_password_visibility"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </FrameLayout>
+
     <Button
         android:id="@+id/btnLogin"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/btn_login"
         android:background="@drawable/bg_button_gradient"
-        android:textColor="@color/text_light"
-        android:padding="14dp"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textColor="@color/text_light" />
 
-    <!-- Círculo de carga oculto -->
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="16dp"
         android:visibility="gone" />
 
 </LinearLayout>

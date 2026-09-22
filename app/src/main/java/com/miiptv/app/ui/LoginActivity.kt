@@ -3,28 +3,37 @@ package com.miiptv.app.ui
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.miiptv.app.R
 import com.miiptv.app.api.LoginResponse
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityLoginBinding
+import com.miiptv.app.databinding.ItemServerChipBinding
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import org.json.JSONObject
-import java.io.IOException
+import com.miiptv.app.util.RemoteControl
+import com.miiptv.app.util.Servers
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class LoginActivity : AppCompatActivity() {
 
+    companion object {
+        /** URL del servidor a preseleccionar al abrir (viene de "Cambiar de cuenta"). */
+        const val EXTRA_SERVER_URL = "extra_server_url"
+    }
+
     private lateinit var binding: ActivityLoginBinding
-    private val httpClient = OkHttpClient()
+
+    /** Chips creados, en el mismo orden que [Servers.all], para poder repintarlos. */
+    private val chips = mutableListOf<TextView>()
+    private var selectedServer: Servers.Server? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,74 +41,149 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Estilo del botón (Mantiene tu diseño original)
+        buildServerChips()
+
+        // Si venimos de "Cambiar de cuenta", arrancamos en el servidor pedido
+        val preselect = intent.getStringExtra(EXTRA_SERVER_URL)
+        selectServer(preselect?.let { Servers.byUrl(it) } ?: Servers.default)
+
+        // Sin preselección: al "Agregar otra cuenta" desde Ajustes esto
+        // precargaba el usuario de la cuenta YA activa en los campos, como si
+        // se estuviera editando esa misma cuenta en vez de cargar una nueva.
+        // Los campos arrancan vacíos siempre; la única precarga real es la
+        // del servidor (selectServer, arriba), que si tiene sentido reusar.
+
         binding.btnLogin.background = Appearance.withFocusState(
             this, Appearance.gradient(this, 12f), 12f
         )
         binding.btnLogin.setOnClickListener { attemptLogin() }
+
+        // Botón de ver/ocultar contraseña
+        var passwordVisible = false
+        binding.btnTogglePassword.setOnClickListener {
+            passwordVisible = !passwordVisible
+            val pos = binding.etPassword.selectionEnd
+            if (passwordVisible) {
+                binding.etPassword.inputType =
+                    android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+                binding.btnTogglePassword.setImageResource(R.drawable.ic_eye_off)
+            } else {
+                binding.etPassword.inputType =
+                    android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+                binding.btnTogglePassword.setImageResource(R.drawable.ic_eye_on)
+            }
+            // Mantener el cursor y la fuente coherente (ExoPlayer la resetea al cambiar inputType)
+            binding.etPassword.typeface = android.graphics.Typeface.DEFAULT
+            binding.etPassword.setSelection(pos.coerceAtMost(binding.etPassword.text?.length ?: 0))
+        }
+
+        // Con remoto, empezar con el foco puesto en el sistema preseleccionado
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Si esta pantalla ya estaba creada y se vuelve a ella (se abrió
+        // encima algún diálogo del sistema, o el diálogo de "Cuentas" se
+        // cerró justo al mismo tiempo que arrancaba esta Activity), el chip
+        // del servidor se quedaba sin ningún indicador visual de selección:
+        // el foco del control remoto no caía en ningún lado. onCreate solo
+        // corre una vez, así que esta pantalla necesita su propio resguardo
+        // al volver a primer plano.
+        if (RemoteControl.isEnabled(this) && currentFocus == null) {
+            RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
+        }
+    }
+
+    private fun indiceSeleccionado(): Int =
+        Servers.all.indexOfFirst { it.id == selectedServer?.id }.coerceAtLeast(0)
+
+    /**
+     * Dibuja un chip por cada servidor configurado, repartiendo el ancho en
+     * partes iguales.
+     *
+     * Antes los dos chips estaban escritos en el XML y referenciados por id, o
+     * sea que la app soportaba exactamente dos servidores: agregar un tercero
+     * pedía tocar el layout y esta clase. Ahora agregar servidores es editar
+     * una línea de gradle.properties.
+     */
+    private fun buildServerChips() {
+        binding.serverChips.removeAllViews()
+        chips.clear()
+
+        val servidores = Servers.all
+        if (servidores.isEmpty()) {
+            // Solo pasa con una compilación mal configurada. Es preferible
+            // avisarlo a que la pantalla quede muda y el botón no haga nada.
+            binding.btnLogin.isEnabled = false
+            Toast.makeText(this, R.string.login_sin_servidores, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        val margen = resources.getDimensionPixelSize(R.dimen.server_chip_gap)
+        servidores.forEachIndexed { i, servidor ->
+            val chip = ItemServerChipBinding.inflate(layoutInflater, binding.serverChips, false).root
+            chip.text = servidor.label
+            chip.layoutParams = LinearLayout.LayoutParams(
+                0,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                1f
+            ).apply {
+                if (i > 0) marginStart = margen
+                if (i < servidores.lastIndex) marginEnd = margen
+            }
+            chip.setOnClickListener { selectServer(servidor) }
+            binding.serverChips.addView(chip)
+            chips += chip
+        }
+    }
+
+    private fun selectServer(server: Servers.Server?) {
+        selectedServer = server ?: Servers.default
+        val elegido = selectedServer
+        Servers.all.forEachIndexed { i, servidor ->
+            chips.getOrNull(i)?.let { highlightChip(it, servidor.id == elegido?.id) }
+        }
+    }
+
+    /**
+     * Antes se asignaba un drawable plano, sin estados: con el control remoto no
+     * había forma de ver sobre qué sistema estabas parado antes de pulsar OK.
+     * Appearance.applyChipState devuelve un fondo con estado enfocado incluido.
+     */
+    private fun highlightChip(chip: TextView, selected: Boolean) {
+        Appearance.applyChipState(chip, selected, cornerRadiusDp = 12f)
     }
 
     private fun attemptLogin() {
-        // Lee el PIN y asegura que esté en mayúsculas
-        val pin = binding.etPinCode.text.toString().trim().uppercase()
+        val servidor = selectedServer
+        if (servidor == null) {
+            Toast.makeText(this, R.string.login_sin_servidores, Toast.LENGTH_LONG).show()
+            return
+        }
 
-        if (pin.length < 6) {
-            Toast.makeText(this, "Ingresa un PIN válido de 6 caracteres", Toast.LENGTH_SHORT).show()
+        val user = binding.etUsername.text.toString().trim()
+        val pass = binding.etPassword.text.toString().trim()
+
+        if (user.isBlank() || pass.isBlank()) {
+            Toast.makeText(this, "Completa usuario y contraseña", Toast.LENGTH_SHORT).show()
             return
         }
 
         setLoading(true)
+        Session.save(this, servidor.url, user, pass)
 
-        // 1. Consultar tu nuevo panel de accesos
-        val urlApi = "https://valtecno.cl/disc/paneltv/api.php?codigo=$pin"
-        val request = Request.Builder().url(urlApi).build()
-
-        httpClient.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread {
-                    setLoading(false)
-                    Toast.makeText(this@LoginActivity, "Error conectando al panel de acceso", Toast.LENGTH_LONG).show()
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                val responseBody = response.body?.string()
-                runOnUiThread {
-                    try {
-                        val json = JSONObject(responseBody ?: "")
-                        if (json.optString("status") == "success") {
-                            // Extrae los datos reales devueltos por el panel
-                            val userReal = json.getString("usuario_real")
-                            val passReal = json.getString("password_real")
-                            val dnsReal = json.getString("dns_servidor")
-                            
-                            // 2. Conectarse al servidor de streaming con los datos reales
-                            loginToStreamingServer(dnsReal, userReal, passReal)
-                        } else {
-                            setLoading(false)
-                            val msg = json.optString("mensaje", "Código inválido o ya utilizado")
-                            Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
-                        }
-                    } catch (e: Exception) {
-                        setLoading(false)
-                        Toast.makeText(this@LoginActivity, "Error leyendo los datos del panel", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        })
-    }
-
-    private fun loginToStreamingServer(serverUrl: String, user: String, pass: String) {
-        // Ejecuta tu lógica original de Retrofit hacia el servidor IPTV
-        Session.save(this, serverUrl, user, pass)
-
-        Session.api(this).login(user, pass).enqueue(object : retrofit2.Callback<LoginResponse> {
-            override fun onResponse(call: retrofit2.Call<LoginResponse>, response: retrofit2.Response<LoginResponse>) {
+        Session.api(this).login(user, pass).enqueue(object : Callback<LoginResponse> {
+            override fun onResponse(call: Call<LoginResponse>, response: Response<LoginResponse>) {
                 setLoading(false)
                 val auth = response.body()?.userInfo?.auth
                 if (response.isSuccessful && auth == 1) {
-                    // Guarda la cuenta y avanza a la pantalla principal
-                    Accounts.save(this@LoginActivity, serverUrl, user, pass)
+                    // Queda guardada para poder saltar entre Sistema L y XL sin re-escribirla
+                    Accounts.save(this@LoginActivity, servidor.url, user, pass)
                     Catalog.clear()
                     startActivity(Intent(this@LoginActivity, MainActivity::class.java))
                     finish()
@@ -109,7 +193,7 @@ class LoginActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onFailure(call: retrofit2.Call<LoginResponse>, t: Throwable) {
+            override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
                 setLoading(false)
                 Session.logout(this@LoginActivity)
                 Toast.makeText(this@LoginActivity, getString(R.string.login_error) + ": ${t.message}", Toast.LENGTH_LONG).show()
@@ -119,7 +203,6 @@ class LoginActivity : AppCompatActivity() {
 
     private fun setLoading(loading: Boolean) {
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.btnLogin.isEnabled = !loading
-        binding.etPinCode.isEnabled = !loading
+        binding.btnLogin.isEnabled = !loading && selectedServer != null
     }
 }
