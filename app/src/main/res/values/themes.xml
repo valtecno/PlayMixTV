@@ -21,6 +21,7 @@
         <item name="colorAccent">@color/brand_accent</item>
         <item name="android:windowBackground">@drawable/bg_screen</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <style name="Theme.MiIPTV.Splash" parent="Theme.MiIPTV">
