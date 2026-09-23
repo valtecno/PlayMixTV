@@ -158,6 +158,17 @@ object RadioCatalog {
         Source("\uD83C\uDF9B\uFE0F", "Electrónica", "radio_tag_electronic", "Electrónica en general: EDM, chill y experimental", tag = "electronic")
     )
 
+    private val cristiana = listOf(
+        Source("✝️", "Cristiana", "radio_tag_christian",
+            "Alabanza, adoración y música cristiana contemporánea", tag = "christian"),
+        Source("🎵", "Gospel", "radio_tag_gospel",
+            "Gospel, soul gospel y música espiritual afroamericana", tag = "gospel"),
+        Source("⛪", "Católica", "radio_tag_catholic",
+            "Radios católicas, misas, rosarios y programas religiosos", tag = "catholic"),
+        Source("🙏", "Religiosa", "radio_tag_religious",
+            "Emisoras religiosas en general: evangélicas, protestantes y más", tag = "religious")
+    )
+
     // ---------------- Carpetas ----------------
 
     /**
@@ -165,8 +176,9 @@ object RadioCatalog {
      * Países va primera porque es la que se abre por defecto.
      */
     val folders = listOf(
-        Folder("\uD83C\uDF0E", "Países", "radio_folder_paises", paises),
-        Folder("\uD83C\uDF9B\uFE0F", "Electrónica", "radio_folder_electronica", electronica)
+        Folder("🌎", "Países", "radio_folder_paises", paises),
+        Folder("🎛️", "Electrónica", "radio_folder_electronica", electronica),
+        Folder("✝️", "Cristiana", "radio_folder_cristiana", cristiana)
     )
 
     /** Carpeta que se abre al entrar a Radios. */
