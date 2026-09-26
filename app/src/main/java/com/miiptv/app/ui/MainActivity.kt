@@ -1483,11 +1483,18 @@ class MainActivity : AppCompatActivity() {
                             val todos = response.body().orEmpty()
                                 .map { it.toContentItem() }
                                 .filter { it.name.isNotBlank() }
-                            val (eventos, canales) = todos.partition { canal ->
+                            val serverId = Servers.current(this@MainActivity)?.id
+                            val (eventos, resto) = todos.partition { canal ->
                                 esPpv(canal.name) || esPpv(nombrePorId[canal.categoryId])
                             }
+                            // "Canales" es solo deportes: nunca se mezcla con
+                            // cine, misceláneo, países, etc. La lista de
+                            // palabras depende del servidor conectado.
                             ppvEventos = eventos
-                            ppvCanales = canales
+                            ppvCanales = resto.filter { canal ->
+                                PpvFilter.isSportsChannel(canal.name, serverId) ||
+                                    PpvFilter.isSportsChannel(nombrePorId[canal.categoryId], serverId)
+                            }
                             renderPpvChips()
                             mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
                         }

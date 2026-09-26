@@ -70,4 +70,42 @@ object PpvFilter {
         if (futbol.any { name.contains(normalize(it)) }) return true
         return genericas.any { name.contains(normalize(it)) }
     }
+
+    /**
+     * Palabras que identifican un canal de deportes para la carpeta "Canales"
+     * de Deportes - PPV. Cada servidor nombra sus carpetas distinto, así que
+     * la lista se arma por servidor en vez de una sola genérica: en Sistema L
+     * las carpetas dicen "Deportes", "NBA", "MLB", etc.; en Sistema XL dicen
+     * "Futbol", "Chile", "Fox Sports", "Liga", "Primera", etc. Fuera de esta
+     * lista, todo lo demás (cine, misceláneo, países, noticias...) queda
+     * excluido de "Canales": esa carpeta es solo deportes, nunca mezclada.
+     */
+    private val deportesSistemaL = listOf(
+        "deporte", "deportes", "sport", "sports",
+        "nba", "mlb", "nfl", "nhl", "ufc", "mma", "boxeo", "boxing",
+        "tenis", "tennis", "golf", "formula 1", "formula1", "f1", "nascar", "motogp", "moto gp",
+        "beisbol", "béisbol", "baseball", "basket", "baloncesto", "voley", "volley", "rugby", "hockey",
+        "futbol", "football", "soccer", "liga", "champions", "uefa", "mundial", "fifa",
+        "atp", "wta", "cricket", "atletismo", "ciclismo"
+    )
+
+    private val deportesSistemaXL = listOf(
+        "futbol", "football", "soccer", "chile", "deporte", "deportes", "sport", "sports",
+        "fox sports", "fox", "liga", "primera", "tenis", "tennis", "formula 1", "formula1", "f1", "league",
+        "nba", "mlb", "nfl", "nhl", "ufc", "mma", "boxeo", "boxing", "golf", "nascar", "motogp", "moto gp",
+        "beisbol", "béisbol", "baseball", "basket", "baloncesto", "voley", "volley", "rugby", "hockey",
+        "champions", "uefa", "mundial", "fifa", "atp", "wta", "cricket"
+    )
+
+    /**
+     * ¿Este nombre (de canal o de su categoría) es de deportes? Se usa para
+     * la carpeta "Canales" de Deportes - PPV: [serverId] es [Servers.Server.id]
+     * ("l" o "xl"); cualquier otro valor (o null) cae en la lista de Sistema L.
+     */
+    fun isSportsChannel(name: String?, serverId: String?): Boolean {
+        if (name.isNullOrBlank()) return false
+        val texto = normalize(name)
+        val lista = if (serverId == "xl") deportesSistemaXL else deportesSistemaL
+        return lista.any { texto.contains(normalize(it)) }
+    }
 }

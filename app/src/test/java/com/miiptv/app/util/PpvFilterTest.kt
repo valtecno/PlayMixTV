@@ -105,4 +105,54 @@ class PpvFilterTest {
     fun `normalizeLoose no deja espacios en los bordes`() {
         assertEquals("ppv", PpvFilter.normalizeLoose("  ** PPV **  "))
     }
+
+    // ---------------- Canales de deportes (carpeta "Canales" de PPV) ----------------
+
+    @Test
+    fun `sistema L reconoce sus palabras de deportes`() {
+        assertTrue(PpvFilter.isSportsChannel("Deportes HD", "l"))
+        assertTrue(PpvFilter.isSportsChannel("NBA", "l"))
+        assertTrue(PpvFilter.isSportsChannel("MLB Network", "l"))
+        assertTrue(PpvFilter.isSportsChannel("Futbol Chile", "l"))
+        assertTrue(PpvFilter.isSportsChannel("ESPN Tenis", "l"))
+    }
+
+    @Test
+    fun `sistema L descarta lo que no es deportes`() {
+        assertFalse(PpvFilter.isSportsChannel("Cine Accion", "l"))
+        assertFalse(PpvFilter.isSportsChannel("Miscelaneos", "l"))
+        assertFalse(PpvFilter.isSportsChannel("Chile", "l"))
+        assertFalse(PpvFilter.isSportsChannel("Estados Unidos", "l"))
+    }
+
+    @Test
+    fun `sistema XL reconoce sus palabras de deportes`() {
+        assertTrue(PpvFilter.isSportsChannel("Futbol Chile", "xl"))
+        assertTrue(PpvFilter.isSportsChannel("Chile HD", "xl"))
+        assertTrue(PpvFilter.isSportsChannel("Fox Sports 2", "xl"))
+        assertTrue(PpvFilter.isSportsChannel("Liga MX", "xl"))
+        assertTrue(PpvFilter.isSportsChannel("Primera Division", "xl"))
+        assertTrue(PpvFilter.isSportsChannel("Tenis Live", "xl"))
+        assertTrue(PpvFilter.isSportsChannel("Formula 1", "xl"))
+    }
+
+    @Test
+    fun `sistema XL descarta lo que no es deportes`() {
+        assertFalse(PpvFilter.isSportsChannel("Cine Latino", "xl"))
+        assertFalse(PpvFilter.isSportsChannel("Miscelaneos", "xl"))
+        assertFalse(PpvFilter.isSportsChannel("Peru", "xl"))
+    }
+
+    @Test
+    fun `sin servidor conocido se usa la lista de Sistema L`() {
+        assertTrue(PpvFilter.isSportsChannel("Deportes HD", null))
+        assertTrue(PpvFilter.isSportsChannel("Deportes HD", "otro"))
+    }
+
+    @Test
+    fun `nombre vacio o nulo nunca es deportes`() {
+        assertFalse(PpvFilter.isSportsChannel(null, "l"))
+        assertFalse(PpvFilter.isSportsChannel("", "xl"))
+        assertFalse(PpvFilter.isSportsChannel("   ", "l"))
+    }
 }
