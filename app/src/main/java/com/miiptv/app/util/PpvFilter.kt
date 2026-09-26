@@ -49,6 +49,23 @@ object PpvFilter {
             .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
 
     /**
+     * Versión ya normalizada de una lista de palabras clave, calculada una
+     * sola vez. Las listas de este archivo son constantes: normalizar cada
+     * palabra en cada llamada (como se hacía antes, `name.contains(normalize(it))`
+     * dentro del `any`) repite el mismo trabajo miles de veces cuando se
+     * revisan todos los canales del panel de una sola vez, que es justo lo
+     * que hace la carpeta "Canales" de Deportes - PPV. En un panel grande eso
+     * alcanza a colgar la app (ANR).
+     */
+    private fun List<String>.normalized(): List<String> = map { normalize(it) }
+
+    private val futbolNorm by lazy { futbol.normalized() }
+    private val genericasNorm by lazy { genericas.normalized() }
+    private val otrosDeportesNorm by lazy { otrosDeportes.normalized() }
+    private val deportesSistemaLNorm by lazy { deportesSistemaL.normalized() }
+    private val deportesSistemaXLNorm by lazy { deportesSistemaXL.normalized() }
+
+    /**
      * Igual que [normalize], pero además cambia cualquier separador
      * ("|", "-", "_", "·", etc.) por un espacio simple y junta espacios
      * repetidos. Sirve para comparar frases completas contra nombres de
@@ -66,9 +83,9 @@ object PpvFilter {
         if (categoryName.isNullOrBlank()) return false
         val name = normalize(categoryName)
 
-        if (otrosDeportes.any { name.contains(normalize(it)) }) return false
-        if (futbol.any { name.contains(normalize(it)) }) return true
-        return genericas.any { name.contains(normalize(it)) }
+        if (otrosDeportesNorm.any { name.contains(it) }) return false
+        if (futbolNorm.any { name.contains(it) }) return true
+        return genericasNorm.any { name.contains(it) }
     }
 
     /**
@@ -105,7 +122,7 @@ object PpvFilter {
     fun isSportsChannel(name: String?, serverId: String?): Boolean {
         if (name.isNullOrBlank()) return false
         val texto = normalize(name)
-        val lista = if (serverId == "xl") deportesSistemaXL else deportesSistemaL
-        return lista.any { texto.contains(normalize(it)) }
+        val lista = if (serverId == "xl") deportesSistemaXLNorm else deportesSistemaLNorm
+        return lista.any { texto.contains(it) }
     }
 }

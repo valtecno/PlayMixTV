@@ -1454,7 +1454,7 @@ class MainActivity : AppCompatActivity() {
         binding.tvSectionTitle.visibility = View.GONE
         binding.etPpvSearch.visibility = View.VISIBLE
         binding.etPpvSearch.setText("")
-        Catalog.ensureLoaded(this) { }
+        // loadPpvContent() ya se encarga de pedir (o reutilizar) el catálogo.
         loadPpvContent()
     }
 
@@ -1462,6 +1462,18 @@ class MainActivity : AppCompatActivity() {
     private fun esPpv(texto: String?): Boolean =
         PpvFilter.normalize(texto.orEmpty()).contains("ppv")
 
+    /**
+     * Antes esta función pedía TODOS los canales en vivo del panel de nuevo
+     * (`getLiveStreams(categoryId = null)`), aparte del catálogo que ya
+     * estaba bajando (o ya bajado) en [Catalog] para el buscador y el
+     * Inicio. Dos descargas masivas del panel entero al mismo tiempo, más el
+     * procesamiento de la segunda en el hilo principal (los callbacks de
+     * Retrofit corren ahí), era lo que colgaba la app (ANR) al entrar a
+     * Deportes - PPV en paneles con muchos canales: quedaba pegada sin
+     * responder y solo se recuperaba cerrándola a la fuerza. Ahora se
+     * reutiliza [Catalog.live], que de todas formas ya se está cargando
+     * desde que se abrió la app.
+     */
     private fun loadPpvContent() {
         setLoading(true)
         val user = Session.username(this)
@@ -1475,36 +1487,11 @@ class MainActivity : AppCompatActivity() {
                 categories = response.body().orEmpty()
                 val nombrePorId = categories.associate { it.categoryId to it.categoryName.orEmpty() }
 
-                Session.api(this@MainActivity).getLiveStreams(user, pass, categoryId = null)
-                    .enqueue(object : Callback<List<LiveStream>> {
-                        override fun onResponse(call: Call<List<LiveStream>>, response: Response<List<LiveStream>>) {
-                            if (isFinishing || isDestroyed) return
-                            setLoading(false)
-                            val todos = response.body().orEmpty()
-                                .map { it.toContentItem() }
-                                .filter { it.name.isNotBlank() }
-                            val serverId = Servers.current(this@MainActivity)?.id
-                            val (eventos, resto) = todos.partition { canal ->
-                                esPpv(canal.name) || esPpv(nombrePorId[canal.categoryId])
-                            }
-                            // "Canales" es solo deportes: nunca se mezcla con
-                            // cine, misceláneo, países, etc. La lista de
-                            // palabras depende del servidor conectado.
-                            ppvEventos = eventos
-                            ppvCanales = resto.filter { canal ->
-                                PpvFilter.isSportsChannel(canal.name, serverId) ||
-                                    PpvFilter.isSportsChannel(nombrePorId[canal.categoryId], serverId)
-                            }
-                            renderPpvChips()
-                            mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
-                        }
-
-                        override fun onFailure(call: Call<List<LiveStream>>, t: Throwable) {
-                            if (isFinishing) return
-                            setLoading(false)
-                            Toast.makeText(this@MainActivity, "Error cargando canales: ${t.message}", Toast.LENGTH_LONG).show()
-                        }
-                    })
+                Catalog.ensureLoaded(this@MainActivity) { stillLoading ->
+                    if (stillLoading) return@ensureLoaded
+                    if (isFinishing || isDestroyed) return@ensureLoaded
+                    procesarPpv(nombrePorId)
+                }
             }
 
             override fun onFailure(call: Call<List<Category>>, t: Throwable) {
@@ -1513,6 +1500,45 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
             }
         })
+    }
+
+    /**
+     * Reparte el catálogo ya cargado en las dos carpetas fijas de
+     * Deportes - PPV. Se hace en un hilo aparte a propósito: comparar el
+     * nombre de cada canal (y el de su categoría) contra varias listas de
+     * palabras es trabajo real cuando el catálogo tiene miles de canales, y
+     * hacerlo en el hilo principal —que es donde corre este callback,
+     * porque así entrega Retrofit las respuestas en Android— alcanza a
+     * bloquear la interfaz el tiempo suficiente para un ANR.
+     */
+    private fun procesarPpv(nombrePorId: Map<String?, String>) {
+        val serverId = Servers.current(this)?.id
+        // Copia inmutable tomada en el hilo principal: Catalog.live puede
+        // volver a llenarse (un refresco forzado) mientras el hilo de abajo
+        // todavía la está recorriendo.
+        val todos = Catalog.live.filter { it.name.isNotBlank() }
+
+        Thread {
+            val (eventos, resto) = todos.partition { canal ->
+                esPpv(canal.name) || esPpv(nombrePorId[canal.categoryId])
+            }
+            // "Canales" es solo deportes: nunca se mezcla con cine,
+            // misceláneo, países, etc. La lista de palabras depende del
+            // servidor conectado.
+            val canales = resto.filter { canal ->
+                PpvFilter.isSportsChannel(canal.name, serverId) ||
+                    PpvFilter.isSportsChannel(nombrePorId[canal.categoryId], serverId)
+            }
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                setLoading(false)
+                ppvEventos = eventos
+                ppvCanales = canales
+                renderPpvChips()
+                mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
+            }
+        }.start()
     }
 
     /** Dibuja las dos únicas carpetas de Deportes - PPV: Canales y PPV Eventos. */
