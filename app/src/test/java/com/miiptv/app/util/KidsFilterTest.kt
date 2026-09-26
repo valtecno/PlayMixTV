@@ -15,8 +15,9 @@ import org.junit.Test
  * aunque diga "animado".
  *
  * Los tests sin tramo explícito ejercitan el valor por defecto (AgeTier.DIEZ,
- * el comportamiento de siempre); los que sí lo pasan cubren los tres tramos
- * del selector de edad (Hasta 5 / Hasta 10 / Hasta 12).
+ * el comportamiento de siempre); los que sí lo pasan cubren los dos tramos
+ * del selector de edad (Hasta 5 / Hasta 10), que hoy filtran exactamente
+ * igual — la única diferencia es la etiqueta que ve el padre.
  */
 class KidsFilterTest {
 
@@ -90,24 +91,11 @@ class KidsFilterTest {
     }
 
     @Test
-    fun `solo quedan tres tramos`() {
+    fun `solo quedan dos tramos`() {
         assertEquals(
-            listOf("HASTA_5", "DIEZ", "HASTA_12"),
+            listOf("HASTA_5", "DIEZ"),
             AgeTier.values().map { it.name }
         )
-    }
-
-    @Test
-    fun `hasta doce anios suma familiar y mas-de-diez pero no lo demas`() {
-        assertTrue(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.HASTA_12))
-        assertTrue(KidsFilter.isKidsCategory("Kids Familia", AgeTier.HASTA_12))
-        assertTrue(KidsFilter.isKidsCategory("Infantil +12", AgeTier.HASTA_12))
-        assertTrue(KidsFilter.isKidsCategory("Kids 11+", AgeTier.HASTA_12))
-        // Lo que sigue vale para cualquier tramo, incluido este: nunca se abre.
-        assertFalse(KidsFilter.isKidsCategory("Terror Animado", AgeTier.HASTA_12))
-        assertFalse(KidsFilter.isKidsCategory("Cartoon 13+", AgeTier.HASTA_12))
-        assertFalse(KidsFilter.isKidsCategory("Teen", AgeTier.HASTA_12))
-        assertFalse(KidsFilter.isKidsCategory("Anime Infantil", AgeTier.HASTA_12))
     }
 
     @Test
