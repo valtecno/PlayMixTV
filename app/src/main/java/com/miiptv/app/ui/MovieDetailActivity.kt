@@ -57,7 +57,7 @@ class MovieDetailActivity : AppCompatActivity() {
 
         binding.toolbar.title = item.name
         binding.tvTitle.text = item.name
-        if (!item.icon.isNullOrBlank()) Picasso.get().load(item.icon).into(binding.ivPoster)
+        if (!item.icon.isNullOrBlank()) Picasso.get().load(item.icon).fit().centerCrop().into(binding.ivPoster)
 
         binding.btnPlay.background = Appearance.gradient(this, 10f)
         binding.btnPlay.setOnClickListener { play() }
@@ -113,7 +113,7 @@ class MovieDetailActivity : AppCompatActivity() {
 
     private fun render(info: VodInfo?, data: VodMovieData?) {
         // Si el servidor manda una carátula mejor que la de la lista, la usamos
-        if (!info?.image.isNullOrBlank()) Picasso.get().load(info?.image).into(binding.ivPoster)
+        if (!info?.image.isNullOrBlank()) Picasso.get().load(info?.image).fit().centerCrop().into(binding.ivPoster)
 
         // Extensión real del archivo, para que la URL de reproducción sea correcta
         if (!data?.containerExtension.isNullOrBlank()) {

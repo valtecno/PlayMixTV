@@ -83,6 +83,13 @@ object Catalog {
     var liveVersion: Int = 0
         private set
 
+    /**
+     * ¿Se puede usar lo que hay en memoria tal cual, en vez de pedírselo al
+     * panel? Tiene que ser de esta cuenta, estar dentro del tiempo de
+     * frescura y no estar a medio recargar (los bloques se vacían al empezar).
+     */
+    fun isFreshFor(context: Context): Boolean = !loading && isFresh(context.applicationContext)
+
     /** ¿Lo que hay en memoria es de la cuenta y el servidor conectados ahora? */
     fun isFor(context: Context): Boolean = !isEmpty && sameServer(context.applicationContext)
 

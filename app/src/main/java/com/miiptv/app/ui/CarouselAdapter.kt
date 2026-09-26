@@ -73,7 +73,13 @@ class CarouselAdapter(
             // fit(): decodifica al tamaño real de la tarjeta del carrusel en
             // vez de la resolución original de la carátula (ver mismo cambio
             // en ContentAdapter.loadImage).
-            Picasso.get().load(item.icon).fit().centerCrop().into(holder.binding.ivPoster)
+            // centerInside, no centerCrop: la tarjeta muestra la carátula
+            // completa (fitCenter, ver item_poster.xml); recortarla antes le
+            // comía los bordes a una carátula 2:3 en un espacio ancho.
+            // RGB_565: sin transparencia, mitad de memoria.
+            Picasso.get().load(item.icon).fit().centerInside()
+                .config(android.graphics.Bitmap.Config.RGB_565)
+                .into(holder.binding.ivPoster)
         } else {
             holder.binding.ivPoster.setImageDrawable(null)
         }

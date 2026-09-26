@@ -14,6 +14,7 @@ import com.miiptv.app.databinding.ActivitySettingsBinding
 import com.miiptv.app.databinding.DialogAccountsBinding
 import com.miiptv.app.databinding.DialogAudioBinding
 import com.miiptv.app.databinding.ItemAccountBinding
+import com.miiptv.app.util.ImageLoader
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Accounts
@@ -412,9 +413,17 @@ class SettingsActivity : AppCompatActivity() {
         // inutilizable para el resto de la app hasta reiniciarla.
         // También se tira el JSON del panel guardado por OkHttp, en un hilo aparte
         // porque borrar archivos en el hilo principal traba la pantalla.
+        //
+        // Las dos cachés de OkHttp (JSON del panel e imágenes) se vacían con
+        // su propio evictAll y sus carpetas NO se borran a mano: borrarlas con
+        // la caché abierta la dejaba sin guardar nada hasta reiniciar la app.
         Thread {
             runCatching { Session.dropHttpCache(this) }
-            runCatching { cacheDir.deleteRecursively() }
+            ImageLoader.vaciarDisco()
+            val enUso = setOf("xtream_http", ImageLoader.CARPETA_DISCO)
+            cacheDir.listFiles()?.forEach { f ->
+                if (f.name !in enUso) runCatching { f.deleteRecursively() }
+            }
         }.start()
         Toast.makeText(this, R.string.cache_cleared, Toast.LENGTH_SHORT).show()
     }

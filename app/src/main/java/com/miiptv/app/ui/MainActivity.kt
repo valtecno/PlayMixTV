@@ -40,6 +40,7 @@ import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.History
+import com.miiptv.app.util.ImageLoader
 import com.miiptv.app.util.KidsFilter
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
@@ -185,6 +186,7 @@ class MainActivity : AppCompatActivity() {
         adapter.remoteMode = RemoteControl.isEnabled(this)
         binding.recyclerChannels.layoutManager = GridLayoutManager(this, 1)
         binding.recyclerChannels.adapter = adapter
+        configurarListaRapida()
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
@@ -343,6 +345,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectSection(newSection: Section) {
+        // Un contenido que venía en camino para la sección anterior ya no
+        // sirve: si llegaba después, pisaba la lista de la sección nueva.
+        contenidoEnCurso?.cancel()
+        contenidoEnCurso = null
         // Cambiar de sección deja atrás la lista de radios: si había una
         // sonando en preview, no tiene sentido que siga (además, en otra
         // sección ese id ya no corresponde a ninguna fila visible).
@@ -630,7 +636,10 @@ class MainActivity : AppCompatActivity() {
         binding.tvPreviewCategory.text =
             categories.firstOrNull { it.categoryId == item.categoryId }?.categoryName.orEmpty()
         if (!item.icon.isNullOrBlank()) {
-            Picasso.get().load(item.icon).into(binding.ivPreviewLogo)
+            // fit(): esta ficha cambia con cada canal que se recorre con el
+            // control remoto; decodificar el logo a resolución completa en
+            // cada paso trababa el desplazamiento por la lista.
+            Picasso.get().load(item.icon).fit().centerInside().into(binding.ivPreviewLogo)
         } else {
             binding.ivPreviewLogo.setImageDrawable(null)
         }
@@ -1415,46 +1424,119 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Ajustes de rendimiento de la lista principal:
+     *  - Su tamaño no depende del contenido (ocupa el alto que le deja el
+     *    layout), así que cambiar la lista no obliga a remedir la pantalla.
+     *  - Guarda más filas ya armadas fuera de pantalla: al volver unas filas
+     *    atrás (algo constante con el control remoto) no se rearman ni se
+     *    vuelven a pedir sus imágenes.
+     *  - Mientras la lista se desplaza sola (un "fling" con el dedo, o
+     *    manteniendo apretada una flecha del control) las descargas de
+     *    imágenes se pausan: no tiene sentido bajar y decodificar cientos de
+     *    carátulas que pasan de largo. Se reanudan apenas se detiene.
+     */
+    private fun configurarListaRapida() {
+        val lista = binding.recyclerChannels
+        lista.setHasFixedSize(true)
+        lista.setItemViewCacheSize(12)
+        lista.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(
+                recyclerView: androidx.recyclerview.widget.RecyclerView,
+                newState: Int
+            ) {
+                val picasso = Picasso.get()
+                if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_SETTLING) {
+                    picasso.pauseTag(ImageLoader.TAG_LISTA)
+                } else {
+                    picasso.resumeTag(ImageLoader.TAG_LISTA)
+                }
+            }
+        })
+    }
+
+    /** Pedido de contenido en curso: se cancela si se elige otra categoría antes de que llegue. */
+    private var contenidoEnCurso: Call<*>? = null
+
+    /**
+     * Si el catálogo completo ya está en memoria (lo baja el Inicio al
+     * arrancar) y está fresco, el contenido de una categoría se saca de ahí
+     * en el acto, en vez de volver a pedírselo al panel. En el Sistema XL
+     * ese pedido tardaba varios segundos por carpeta. Devuelve null si no se
+     * puede (catálogo vacío, viejo, de otro servidor, o sin nada para esa
+     * categoría); ahí se sigue pidiendo al panel como siempre.
+     */
+    private fun contenidoDesdeCatalogo(type: ContentType, categoryId: String?): List<ContentItem>? {
+        if (categoryId == null || !Catalog.isFreshFor(this)) return null
+        val fuente = when (type) {
+            ContentType.LIVE -> Catalog.live
+            ContentType.MOVIE -> Catalog.movies
+            ContentType.SERIES -> Catalog.series
+        }
+        if (fuente.isEmpty()) return null
+        val items = fuente.filter { it.categoryId == categoryId && it.name.isNotBlank() }
+        return items.ifEmpty { null }
+    }
+
     private fun loadContent(type: ContentType, categoryId: String?) {
         currentCategoryId = categoryId
         refreshCategorySelection()
+        // Si todavía venía en camino la categoría anterior, ya no sirve: si
+        // llegaba después, pisaba la lista de la categoría recién elegida.
+        contenidoEnCurso?.cancel()
+        contenidoEnCurso = null
+
+        contenidoDesdeCatalogo(type, categoryId)?.let { items ->
+            setLoading(false)
+            mostrarContenido(items)
+            return
+        }
+
         setLoading(true)
         val user = Session.username(this)
         val pass = Session.password(this)
-        when (type) {
+        contenidoEnCurso = when (type) {
             ContentType.LIVE -> Session.api(this).getLiveStreams(user, pass, categoryId = categoryId)
-                .enqueue(simpleCallback { list -> list.map { it.toContentItem() } })
+                .also { it.enqueue(simpleCallback { list -> list.map { item -> item.toContentItem() } }) }
             ContentType.MOVIE -> Session.api(this).getVodStreams(user, pass, categoryId = categoryId)
-                .enqueue(simpleCallback { list -> list.map { it.toContentItem() } })
+                .also { it.enqueue(simpleCallback { list -> list.map { item -> item.toContentItem() } }) }
             ContentType.SERIES -> Session.api(this).getSeries(user, pass, categoryId = categoryId)
-                .enqueue(simpleCallback { list -> list.map { it.toContentItem() } })
+                .also { it.enqueue(simpleCallback { list -> list.map { item -> item.toContentItem() } }) }
         }
     }
 
     private fun <T> simpleCallback(map: (List<T>) -> List<ContentItem>) = object : Callback<List<T>> {
         override fun onResponse(call: Call<List<T>>, response: Response<List<T>>) {
-            if (isFinishing || isDestroyed) return
+            if (isFinishing || isDestroyed || call.isCanceled) return
+            if (contenidoEnCurso === call) contenidoEnCurso = null
             setLoading(false)
-            val items = map(response.body().orEmpty()).filter { it.name.isNotBlank() }
-            currentItems = items
-            adapter.submitList(items)
-            // Solo la ficha, sin arrancar el video: entrar a una categoría no
-            // debe disparar audio ni gastar una conexión del panel por su cuenta.
-            refreshPreviewCard(items)
-            // Si el perfil de niños tiene una búsqueda escrita, se respeta
-            if (kidsMode) {
-                val q = binding.etKidsSearch.text?.toString().orEmpty()
-                if (q.isNotBlank()) { applyKidsSearch(q); return }
-            }
-            binding.tvEmpty.setText(R.string.empty_list)
-            binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+            mostrarContenido(map(response.body().orEmpty()).filter { it.name.isNotBlank() })
         }
 
         override fun onFailure(call: Call<List<T>>, t: Throwable) {
-            if (isFinishing) return
+            if (isFinishing || call.isCanceled) return
+            if (contenidoEnCurso === call) contenidoEnCurso = null
             setLoading(false)
             Toast.makeText(this@MainActivity, "Error cargando contenido: ${t.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    /** Pone en pantalla el contenido de una categoría, venga del catálogo o del panel. */
+    private fun mostrarContenido(items: List<ContentItem>) {
+        currentItems = items
+        adapter.submitList(items)
+        // Categoría nueva: se arranca desde arriba, no en la posición de la anterior.
+        binding.recyclerChannels.scrollToPosition(0)
+        // Solo la ficha, sin arrancar el video: entrar a una categoría no
+        // debe disparar audio ni gastar una conexión del panel por su cuenta.
+        refreshPreviewCard(items)
+        // Si el perfil de niños tiene una búsqueda escrita, se respeta
+        if (kidsMode) {
+            val q = binding.etKidsSearch.text?.toString().orEmpty()
+            if (q.isNotBlank()) { applyKidsSearch(q); return }
+        }
+        binding.tvEmpty.setText(R.string.empty_list)
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 
     // ---------------- Deportes - PPV ----------------

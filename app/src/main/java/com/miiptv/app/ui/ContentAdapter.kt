@@ -1,6 +1,7 @@
 package com.miiptv.app.ui
 
 import android.content.res.ColorStateList
+import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +16,7 @@ import com.miiptv.app.databinding.ItemPosterGridBinding
 import com.miiptv.app.databinding.ItemSearchResultBinding
 import com.miiptv.app.util.Epg
 import com.miiptv.app.util.Favorites
+import com.miiptv.app.util.ImageLoader
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.RemoteControl
 import com.squareup.picasso.Picasso
@@ -159,7 +161,7 @@ class ContentAdapter(
         when (holder) {
             is RowHolder -> with(holder.binding) {
                 tvName.text = item.name
-                loadImage(item.icon, ivLogo)
+                loadImage(item.icon, ivLogo, esCaratula = false)
                 ivLock.visibility = if (locked) View.VISIBLE else View.GONE
                 ivFavorite.setImageResource(starRes)
                 ivFavorite.imageTintList = starTint
@@ -188,7 +190,7 @@ class ContentAdapter(
 
             is PosterHolder -> with(holder.binding) {
                 tvName.text = item.name
-                loadImage(item.icon, ivPoster)
+                loadImage(item.icon, ivPoster, esCaratula = true)
                 ivLock.visibility = if (locked) View.VISIBLE else View.GONE
                 ivFavorite.setImageResource(starRes)
                 ivFavorite.imageTintList = starTint
@@ -227,7 +229,10 @@ class ContentAdapter(
                     ivCover.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
                     ivCover.clipToOutline = true
                 }
-                loadImage(item.icon, ivCover)
+                loadImage(
+                    item.icon, ivCover,
+                    esCaratula = item.type == ContentType.MOVIE || item.type == ContentType.SERIES
+                )
 
                 ivLock.visibility = if (locked) View.VISIBLE else View.GONE
                 ivFavorite.setImageResource(starRes)
@@ -282,26 +287,39 @@ class ContentAdapter(
         }
     }
 
-    private fun loadImage(url: String?, target: android.widget.ImageView) {
+    /**
+     * @param esCaratula true para carátulas de películas y series (se recortan
+     *        para llenar la tarjeta), false para logos de canales y emisoras
+     *        (entran completos, con su transparencia).
+     */
+    private fun loadImage(url: String?, target: android.widget.ImageView, esCaratula: Boolean) {
         // Cancelar siempre primero: la vista viene reciclada y puede tener una
         // descarga a medio camino de OTRO ítem. Sin esto, esa descarga anterior
         // podía terminar después y pintar la imagen equivocada sobre esta fila.
         Picasso.get().cancelRequest(target)
-        if (!url.isNullOrBlank()) {
-            // fit() + centerInside/centerCrop: Picasso recién sabe el tamaño real
-            // del ImageView cuando este ya está en el layout, y decodifica el
-            // bitmap directo a ese tamaño en vez de a la resolución original de
-            // la imagen. En un catálogo XL (miles de logos/carátulas en la
-            // sesión) esto es la diferencia entre decodificar, por ejemplo,
-            // 1080x1920 y decodificar 96x96: baja mucho el pico de memoria y
-            // la presión de GC que antes hacía más lento el scroll.
-            Picasso.get()
-                .load(url)
-                .fit()
-                .centerInside()
-                .into(target)
-        } else {
+        if (url.isNullOrBlank()) {
             target.setImageDrawable(null)
+            return
+        }
+        // fit(): se decodifica al tamaño real de la vista y no a la resolución
+        // original de la imagen (1080x1920 contra 96x96, por ejemplo): menos
+        // memoria, menos GC y scroll más fluido en catálogos grandes.
+        //
+        // tag: con la lista desplazándose rápido estas descargas se pausan
+        // (ver MainActivity), así no se bajan ni decodifican cientos de
+        // imágenes que pasan de largo sin llegar a verse.
+        val pedido = Picasso.get().load(url).fit().tag(ImageLoader.TAG_LISTA)
+        if (esCaratula) {
+            // centerCrop igual que el ImageView de la tarjeta. Antes era
+            // centerInside: el bitmap quedaba más chico que la tarjeta y el
+            // ImageView lo estiraba después, así que las carátulas se veían
+            // borrosas. RGB_565 usa la mitad de memoria que ARGB_8888 y una
+            // carátula (JPEG, sin transparencia) se ve igual; así entran el
+            // doble en la caché de memoria y volver atrás no redecodifica.
+            pedido.centerCrop().config(Bitmap.Config.RGB_565).into(target)
+        } else {
+            // Los logos sí suelen tener transparencia: se quedan en ARGB_8888.
+            pedido.centerInside().into(target)
         }
     }
 

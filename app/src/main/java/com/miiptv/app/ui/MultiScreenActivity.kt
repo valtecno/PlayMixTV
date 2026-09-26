@@ -541,7 +541,7 @@ class MultiScreenActivity : AppCompatActivity() {
             if (item.icon.isNullOrBlank()) {
                 holder.v.ivLogo.setImageDrawable(null)
             } else {
-                Picasso.get().load(item.icon).into(holder.v.ivLogo)
+                Picasso.get().load(item.icon).fit().centerInside().into(holder.v.ivLogo)
             }
             holder.v.root.setOnClickListener { onPick(item) }
             // Mismo fondo fijo (bg_glass_card) que ya se corrigió en las

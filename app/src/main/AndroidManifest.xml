@@ -57,6 +57,7 @@
         dataExtractionRules lo lee Android 12 en adelante.
     -->
     <application
+        android:name=".PlayMixApp"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
