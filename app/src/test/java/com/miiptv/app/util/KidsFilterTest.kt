@@ -1,6 +1,7 @@
 package com.miiptv.app.util
 
 import com.miiptv.app.util.KidsFilter.AgeTier
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,7 +16,7 @@ import org.junit.Test
  *
  * Los tests sin tramo explícito ejercitan el valor por defecto (AgeTier.DIEZ,
  * el comportamiento de siempre); los que sí lo pasan cubren los tres tramos
- * nuevos del selector de edad.
+ * del selector de edad (Hasta 5 / Hasta 10 / Hasta 12).
  */
 class KidsFilterTest {
 
@@ -79,25 +80,21 @@ class KidsFilterTest {
     // ---------------- Tramos de edad (selector) ----------------
 
     @Test
-    fun `menores de 5 solo deja marcas de bebes y preescolar`() {
-        assertTrue(KidsFilter.isKidsCategory("Disney Junior", AgeTier.MENOR_5))
-        assertTrue(KidsFilter.isKidsCategory("Baby TV", AgeTier.MENOR_5))
-        assertTrue(KidsFilter.isKidsCategory("Pocoyó", AgeTier.MENOR_5))
-        // Genéricas como "cartoon"/"kids" traen series para más grandes:
-        // no entran en este tramo aunque sí entren en los demás.
-        assertFalse(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.MENOR_5))
-        assertFalse(KidsFilter.isKidsCategory("KIDS", AgeTier.MENOR_5))
-        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.MAYOR_5))
+    fun `hasta 5 y diez anios se comportan igual que el filtro de siempre`() {
+        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.HASTA_5))
+        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.DIEZ))
+        assertFalse(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.HASTA_5))
+        assertFalse(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.DIEZ))
+        assertFalse(KidsFilter.isKidsCategory("Infantil +12", AgeTier.HASTA_5))
+        assertFalse(KidsFilter.isKidsCategory("Infantil +12", AgeTier.DIEZ))
     }
 
     @Test
-    fun `mayores de 5 y diez anios se comportan igual que el filtro de siempre`() {
-        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.MAYOR_5))
-        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.DIEZ))
-        assertFalse(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.MAYOR_5))
-        assertFalse(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.DIEZ))
-        assertFalse(KidsFilter.isKidsCategory("Infantil +12", AgeTier.MAYOR_5))
-        assertFalse(KidsFilter.isKidsCategory("Infantil +12", AgeTier.DIEZ))
+    fun `solo quedan tres tramos`() {
+        assertEquals(
+            listOf("HASTA_5", "DIEZ", "HASTA_12"),
+            AgeTier.values().map { it.name }
+        )
     }
 
     @Test

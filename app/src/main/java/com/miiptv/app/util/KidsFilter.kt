@@ -10,10 +10,18 @@ import java.text.Normalizer
  *
  * El padre elige, cada vez que activa el perfil, un tramo de edad ([AgeTier])
  * que ajusta qué tan estricto es el filtro. La base histórica (todo lo
- * "infantil" hasta 12+ excluido) sigue siendo [AgeTier.MAYOR_5] y
+ * "infantil" hasta 12+ excluido) sigue siendo [AgeTier.HASTA_5] y
  * [AgeTier.DIEZ] — ambas se comportan exactamente igual que antes de que
  * existiera el selector, así que una app vieja sin tramo guardado no cambia
  * de comportamiento.
+ *
+ * Hubo un cuarto tramo, "Menores de 5 años", que solo dejaba pasar marcas de
+ * bebés/preescolar (Baby TV, Disney Junior, Pocoyó...). Se sacó: la carpeta
+ * "Infantiles" típica de un panel Xtream no menciona ninguna de esas marcas
+ * por nombre, así que ese tramo devolvía Canales, Películas y Series vacíos
+ * en la práctica. [AgeTier.HASTA_5] (antes "Mayores de 5 años") es ahora el
+ * tramo más chico, y sigue usando la lista general [infantil], que sí calza
+ * con cómo vienen nombradas las carpetas reales.
  */
 object KidsFilter {
 
@@ -25,12 +33,8 @@ object KidsFilter {
      * [etiqueta] y [descripcion] son lo que ve en el selector.
      */
     enum class AgeTier(val etiqueta: String, val descripcion: String) {
-        MENOR_5(
-            "Menores de 5 años",
-            "Solo marcas y franjas pensadas para bebés y preescolar"
-        ),
-        MAYOR_5(
-            "Mayores de 5 años",
+        HASTA_5(
+            "Hasta 5 años",
             "Dibujos y programas infantiles en general"
         ),
         DIEZ(
@@ -53,24 +57,12 @@ object KidsFilter {
     )
 
     /**
-     * Subconjunto de [infantil] para [AgeTier.MENOR_5]: solo marcas y
-     * franjas de bebés/preescolar (0-5), sin los términos genéricos
-     * ("cartoon", "dibujos", "kids"...) que en la práctica traen series
-     * pensadas para chicos de 6 a 10.
-     */
-    private val preescolar = listOf(
-        "baby tv", "babytv", "disney junior", "disney jr", "nick jr",
-        "pocoyo", "pocoyó", "peppa", "bluey", "plaza sesamo", "plaza sésamo",
-        "preescolar", "infancia", "jetix junior", "junior"
-    )
-
-    /**
      * Palabras que descartan la categoría aunque contenga alguna infantil.
      *
-     * Esta es la lista base, la que usan [AgeTier.MENOR_5], [AgeTier.MAYOR_5]
-     * y [AgeTier.DIEZ]: además del contenido adulto, descarta todo lo
-     * etiquetado para 11 años o más, y las categorías "familiares"/juveniles,
-     * que suelen mezclar títulos por encima de esa edad.
+     * Esta es la lista base, la que usan [AgeTier.HASTA_5] y [AgeTier.DIEZ]:
+     * además del contenido adulto, descarta todo lo etiquetado para 11 años o
+     * más, y las categorías "familiares"/juveniles, que suelen mezclar
+     * títulos por encima de esa edad.
      */
     private val exclusiones = listOf(
         // Contenido adulto o violento
@@ -118,11 +110,7 @@ object KidsFilter {
         val exclusionesDelTramo = if (tier == AgeTier.HASTA_12) exclusionesHasta12 else exclusiones
         if (exclusionesDelTramo.any { name.contains(normalize(it)) }) return false
 
-        val inclusionDelTramo = when (tier) {
-            AgeTier.MENOR_5 -> preescolar
-            AgeTier.HASTA_12 -> infantil + familiares
-            else -> infantil
-        }
+        val inclusionDelTramo = if (tier == AgeTier.HASTA_12) infantil + familiares else infantil
         return inclusionDelTramo.any { name.contains(normalize(it)) }
     }
 }

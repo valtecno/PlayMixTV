@@ -95,6 +95,8 @@
     <string name="kids_age_tier_title">¿Para qué edad es este contenido?</string>
     <string name="kids_age_tier_subtitle">Se elige cada vez que se activa el Perfil de niños</string>
     <string name="kids_age_tier_current">En uso</string>
+    <!-- Botón para cerrar el selector de tramo sin activar el Perfil de niños -->
+    <string name="kids_age_tier_salir">Salir</string>
     <string name="empty_kids">No se encontró contenido infantil en este servidor</string>
     <string name="section_ppv">PPV Fútbol VIP</string>
     <string name="section_radio">Radios del mundo</string>

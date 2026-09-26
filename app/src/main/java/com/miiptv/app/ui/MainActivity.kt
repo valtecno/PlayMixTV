@@ -300,11 +300,14 @@ class MainActivity : AppCompatActivity() {
         // de texto/ícono para indicar que, tocándolo de nuevo, se pide el PIN de salida.
         binding.navKids.text = getString(if (kidsMode) R.string.nav_kids_exit else R.string.nav_kids)
         paintNavItem(binding.navKids, kidsMode)
-        // El perfil de niños se distingue en verde, activo o no
+        // El ícono se distingue en verde, activo o no. El texto sigue esa
+        // misma regla salvo cuando dice "Salir" (perfil activo): ahí va en
+        // blanco, que se lee mejor que el verde sobre el fondo del botón.
         val verdeNinos = ContextCompat.getColor(
             this, if (kidsMode) R.color.kids_green else R.color.kids_green_dim
         )
-        binding.navKids.setTextColor(verdeNinos)
+        val colorTextoKids = if (kidsMode) ContextCompat.getColor(this, R.color.text_light) else verdeNinos
+        binding.navKids.setTextColor(colorTextoKids)
         binding.navKids.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(verdeNinos) }
     }
 
