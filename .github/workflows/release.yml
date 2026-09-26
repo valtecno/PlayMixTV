@@ -84,6 +84,15 @@ jobs:
           sha256sum "release/PlayMixTV-$VERSION.apk" \
             | awk '{print $1}' > "release/PlayMixTV-$VERSION.apk.sha256"
 
+          # Copia con nombre fijo (mismo contenido, sin el número de versión):
+          # GitHub arma un alias estable "…/releases/latest/download/<nombre>"
+          # que siempre resuelve al asset de la última Release, pero solo
+          # sirve si el nombre del asset no cambia de una versión a otra. Con
+          # esto hay un link de descarga que nunca cambia, sin depender de
+          # qué versión sea la más nueva.
+          cp "release/PlayMixTV-$VERSION.apk" "release/PlayMixTV-latest.apk"
+          cp "release/PlayMixTV-$VERSION.apk.sha256" "release/PlayMixTV-latest.apk.sha256"
+
           ls -lh release
 
       - name: Crear GitHub Release
@@ -95,5 +104,7 @@ jobs:
           files: |
             release/PlayMixTV-${{ env.VERSION }}.apk
             release/PlayMixTV-${{ env.VERSION }}.apk.sha256
+            release/PlayMixTV-latest.apk
+            release/PlayMixTV-latest.apk.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
