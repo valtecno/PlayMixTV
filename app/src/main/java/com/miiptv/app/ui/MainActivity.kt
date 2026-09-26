@@ -162,6 +162,28 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerChannels.adapter = adapter
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
+
+        // ---- Botones de contacto ----
+        binding.btnContactWhatsapp.setOnClickListener {
+            abrirUrl("https://wa.me/56948714030?text=Hola%2C%20me%20interesa%20PlayMix%20TV")
+        }
+        binding.btnContactTelegram.setOnClickListener {
+            abrirUrl("https://t.me/valtecno")
+        }
+        binding.btnContactInstagram.setOnClickListener {
+            abrirUrl("https://instagram.com/valtecno")
+        }
+        binding.btnContactWeb.setOnClickListener {
+            abrirUrl("https://linktr.ee/valtecno")
+        }
+        if (RemoteControl.isEnabled(this)) {
+            listOf(
+                binding.btnContactWhatsapp,
+                binding.btnContactTelegram,
+                binding.btnContactInstagram,
+                binding.btnContactWeb
+            ).forEach { RemoteControl.applyIconFocus(it, true, circular = true) }
+        }
         binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewPlayRow.background = Appearance.withFocusState(
             this, binding.previewPlayRow.background!!, 12f
@@ -249,6 +271,14 @@ class MainActivity : AppCompatActivity() {
      * eso funciona, se manda a la Play Store a la ficha correcta para el
      * tipo de aparato.
      */
+    private fun abrirUrl(url: String) {
+        try {
+            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            Toast.makeText(this, url, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun abrirYoutube() {
         val paqueteMovil = getString(R.string.youtube_package)
         val paqueteTv = getString(R.string.youtube_package_tv)
