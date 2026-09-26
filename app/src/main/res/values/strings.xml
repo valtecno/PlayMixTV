@@ -68,10 +68,8 @@
     <string name="nav_ppv">PPV</string>
     <string name="nav_radio">Radios</string>
     <string name="nav_kids">Niños</string>
-    <string name="nav_youtube">YouTube</string>
-    <string name="nav_youtube_exit">Salir a YouTube</string>
-    <string name="youtube_package">com.google.android.youtube</string>
-    <string name="youtube_package_tv">com.google.android.youtube.tv</string>
+    <string name="nav_send_contact">Enviar contacto</string>
+    <string name="contact_no_whatsapp">No se encontró WhatsApp instalado</string>
     <string name="nav_kids_exit">Salir</string>
     <string name="kids_mode_on">Perfil de niños activado: por protección a menores, solo se muestra contenido apto para hasta 10 años</string>
     <string name="kids_mode_off">Saliste del perfil de niños</string>
@@ -82,11 +80,6 @@
     <string name="section_radio">Radios del mundo</string>
     <string name="empty_ppv">No se encontraron categorías de fútbol en este servidor</string>
     <string name="preview_live">EN VIVO</string>
-    <string name="contact_title">¿Querés compartir PlayMix TV? Contactanos</string>
-    <string name="contact_whatsapp">WhatsApp</string>
-    <string name="contact_telegram">Telegram</string>
-    <string name="contact_instagram">Instagram</string>
-    <string name="contact_web">Sitio web</string>
     <string name="preview_epg_next">A continuación</string>
     <string name="preview_play">Ampliar</string>
     <string name="empty_radio">No se encontraron emisoras para este país</string>

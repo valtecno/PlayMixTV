@@ -162,28 +162,6 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerChannels.adapter = adapter
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
-
-        // ---- Botones de contacto ----
-        binding.btnContactWhatsapp.setOnClickListener {
-            abrirUrl("https://wa.me/56948714030?text=Hola%2C%20me%20interesa%20PlayMix%20TV")
-        }
-        binding.btnContactTelegram.setOnClickListener {
-            abrirUrl("https://t.me/valtecno")
-        }
-        binding.btnContactInstagram.setOnClickListener {
-            abrirUrl("https://instagram.com/valtecno")
-        }
-        binding.btnContactWeb.setOnClickListener {
-            abrirUrl("https://linktr.ee/valtecno")
-        }
-        if (RemoteControl.isEnabled(this)) {
-            listOf(
-                binding.btnContactWhatsapp,
-                binding.btnContactTelegram,
-                binding.btnContactInstagram,
-                binding.btnContactWeb
-            ).forEach { RemoteControl.applyIconFocus(it, true, circular = true) }
-        }
         binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewPlayRow.background = Appearance.withFocusState(
             this, binding.previewPlayRow.background!!, 12f
@@ -246,82 +224,30 @@ class MainActivity : AppCompatActivity() {
 
         binding.navKids.setOnClickListener { toggleKidsMode() }
 
-        binding.btnYoutube.setOnClickListener { abrirYoutube() }
+        binding.btnSendContact.setOnClickListener { enviarContacto() }
+        // Solo tiene sentido compartir por WhatsApp desde el celular, donde la
+        // persona tiene la app instalada y sus contactos a mano. En TV, con
+        // control remoto, no hay forma práctica de elegir un contacto.
+        binding.btnSendContact.visibility = if (DeviceMode.isTv(this)) View.GONE else View.VISIBLE
         // Ya no hace falta resaltado de foco a mano: ahora es un botón de
         // texto con el mismo estilo NavItem que el resto del menú (antes
         // era un ícono suelto con fondo propio, que sí lo necesitaba).
     }
 
     /**
-     * Abre la app de YouTube instalada en el dispositivo.
-     *
-     * El error de "no compatible con tu dispositivo" salía porque solo se
-     * probaba el paquete de YouTube para celular (com.google.android.youtube).
-     * En un televisor/deco lo normal es que venga instalada la versión para
-     * Android TV, que es OTRO paquete (com.google.android.youtube.tv); al no
-     * encontrarla, el código anterior mandaba directo a la Play Store a la
-     * ficha del paquete de celular, y la Play Store del televisor la marca
-     * como no compatible con el aparato.
-     *
-     * Ahora se prueban ambos paquetes conocidos, priorizando el que
-     * corresponde según el modo (TV o móvil) que ya está eligiendo el resto
-     * de la app; si ninguno de los dos está instalado, se intenta abrir con
-     * el esquema propio de YouTube (lo entienden otras variantes de
-     * fabricante que no usen ninguno de esos dos paquetes); y solo si nada de
-     * eso funciona, se manda a la Play Store a la ficha correcta para el
-     * tipo de aparato.
+     * Comparte PlayMix por WhatsApp con un mensaje ya escrito. Solo tiene
+     * sentido en móvil: es donde la gente tiene WhatsApp a mano para abrir el
+     * selector de contactos, a diferencia de un TV/TV box con control remoto.
+     * Por eso el botón mismo ya viene oculto en modo TV (ver applyDeviceMode).
      */
-    private fun abrirUrl(url: String) {
+    private fun enviarContacto() {
+        val mensaje = "Mira esta aplicación que uso para ver TV. Pide una prueba gratis a ver " +
+            "si te gusta y te unes a la comunidad que vemos más por menos dinero @valtecno"
+        val url = "https://wa.me/?text=" + Uri.encode(mensaje)
         try {
-            startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-        } catch (e: Exception) {
-            Toast.makeText(this, url, Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun abrirYoutube() {
-        val paqueteMovil = getString(R.string.youtube_package)
-        val paqueteTv = getString(R.string.youtube_package_tv)
-        val ordenPaquetes = if (DeviceMode.isTv(this)) {
-            listOf(paqueteTv, paqueteMovil)
-        } else {
-            listOf(paqueteMovil, paqueteTv)
-        }
-
-        for (paquete in ordenPaquetes) {
-            val intentApp = packageManager.getLaunchIntentForPackage(paquete)
-            if (intentApp != null) {
-                startActivity(intentApp)
-                return
-            }
-        }
-
-        // Ninguno de los dos paquetes conocidos está instalado: se prueba el
-        // esquema "vnd.youtube", que solo lo maneja una app de YouTube (a
-        // diferencia de un link https://youtube.com, que abriría el
-        // navegador en vez de la app).
-        val intentEsquema = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube://"))
-        if (intentEsquema.resolveActivity(packageManager) != null) {
-            startActivity(intentEsquema)
-            return
-        }
-
-        abrirEnPlayStore(ordenPaquetes.first())
-    }
-
-    /** Manda a la ficha de la Play Store del paquete indicado; si no hay Play Store, cae al navegador. */
-    private fun abrirEnPlayStore(paquete: String) {
-        try {
-            startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paquete"))
-            )
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         } catch (e: ActivityNotFoundException) {
-            startActivity(
-                Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=$paquete")
-                )
-            )
+            Toast.makeText(this, R.string.contact_no_whatsapp, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -347,7 +273,9 @@ class MainActivity : AppCompatActivity() {
         // tintIcon = false: el logo de YouTube tiene sus propios colores
         // (rojo + blanco) y no se tiñe de un solo color como el resto de
         // los íconos del menú -- si no, se pierde el rojo y queda todo blanco.
-        paintNavItem(binding.btnYoutube, active = false, tintIcon = false)
+        // El ícono de WhatsApp también tiene su color propio (verde de marca);
+        // igual que antes con YouTube, no se tiñe de un solo color.
+        paintNavItem(binding.btnSendContact, active = false, tintIcon = false)
         // El de Niños no representa una Section: se resalta según kidsMode y cambia
         // de texto/ícono para indicar que, tocándolo de nuevo, se pide el PIN de salida.
         binding.navKids.text = getString(if (kidsMode) R.string.nav_kids_exit else R.string.nav_kids)
