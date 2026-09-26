@@ -1514,7 +1514,7 @@ class MainActivity : AppCompatActivity() {
      * porque así entrega Retrofit las respuestas en Android— alcanza a
      * bloquear la interfaz el tiempo suficiente para un ANR.
      */
-    private fun procesarPpv(nombrePorId: Map<String?, String>) {
+    private fun procesarPpv(nombrePorId: Map<String, String>) {
         val serverId = Servers.current(this)?.id
         // Copia inmutable tomada en el hilo principal: Catalog.live puede
         // volver a llenarse (un refresco forzado) mientras el hilo de abajo
@@ -1522,15 +1522,21 @@ class MainActivity : AppCompatActivity() {
         val todos = Catalog.live.filter { it.name.isNotBlank() }
 
         Thread {
+            // categoryId es nulable en ContentItem; nombrePorId no acepta esa
+            // clave, así que se resuelve con el operador seguro antes de mirar
+            // el mapa (nombrePorId[canal.categoryId] no compila: el mapa es
+            // Map<String, String>, no Map<String?, String>).
+            fun nombreCategoria(canal: ContentItem) = canal.categoryId?.let { nombrePorId[it] }
+
             val (eventos, resto) = todos.partition { canal ->
-                esPpv(canal.name) || esPpv(nombrePorId[canal.categoryId])
+                esPpv(canal.name) || esPpv(nombreCategoria(canal))
             }
             // "Canales" es solo deportes: nunca se mezcla con cine,
             // misceláneo, países, etc. La lista de palabras depende del
             // servidor conectado.
             val canales = resto.filter { canal ->
                 PpvFilter.isSportsChannel(canal.name, serverId) ||
-                    PpvFilter.isSportsChannel(nombrePorId[canal.categoryId], serverId)
+                    PpvFilter.isSportsChannel(nombreCategoria(canal), serverId)
             }
 
             runOnUiThread {
