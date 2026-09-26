@@ -158,6 +158,37 @@ object PpvFilter {
     private val deportesSistemaLPalabras by lazy { deportesSistemaL.aPalabras() }
     private val deportesSistemaXLPalabras by lazy { deportesSistemaXL.aPalabras() }
 
+    /**
+     * Lo que NO es deporte aunque venga en una carpeta de PPV o de eventos:
+     * los paneles meten ahí también cine en estreno ("PPV CINEMA 01", Sistema
+     * L) y realities en vivo ("La Casa de los Famosos", "Gran Hermano",
+     * "La Casa de Alofoke", "Mansión VIP", Sistema XL). Todo eso queda fuera
+     * de Deportes - PPV, tanto de "PPV Eventos" como de "Canales".
+     *
+     * "series" no está a propósito: "World Series" es béisbol.
+     */
+    private val noDeportivo = listOf(
+        // Cine y ficción
+        "cinema", "cine", "cines", "pelicula", "peliculas", "movie", "movies",
+        "film", "films", "estreno", "estrenos", "novela", "novelas", "telenovela", "telenovelas",
+        // Realities
+        "reality", "realities", "realitys", "reality show", "famosos",
+        "la casa de los famosos", "gran hermano", "big brother", "alofoke",
+        "mansion vip", "mansion", "acapulco shore", "love island", "masterchef",
+        "la voz", "exatlon", "survivor", "la isla",
+        // Otros contenidos que tampoco son deportes. Noticias no está: "ESPN
+        // News" o un noticiero deportivo sí son deporte.
+        "infantil", "kids", "cartoon", "musica", "music", "adultos", "adulto", "xxx"
+    )
+
+    private val noDeportivoPalabras by lazy { noDeportivo.aPalabras() }
+
+    /** ¿Este nombre ya preparado es de algo que NO es deporte (cine, reality...)? */
+    fun esNoDeportivo(t: Texto?): Boolean = t != null && noDeportivoPalabras.apareceAlgunaEn(t)
+
+    /** Igual que [esNoDeportivo], a partir del nombre tal cual. */
+    fun isNonSports(name: String?): Boolean = esNoDeportivo(preparar(name))
+
     /** ¿Este nombre (de canal o de categoría) corresponde a un evento PPV? */
     fun esPpv(t: Texto?): Boolean = t != null && t.normalizado.contains("ppv")
 

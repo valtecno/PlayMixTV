@@ -1475,7 +1475,10 @@ class MainActivity : AppCompatActivity() {
     private fun showPpv() {
         binding.tvSectionTitle.visibility = View.GONE
         binding.etPpvSearch.visibility = View.VISIBLE
-        binding.etPpvSearch.setText("")
+        // Solo si había algo escrito: setText dispara el TextWatcher, que
+        // pintaba las carpetas con los datos anteriores justo antes de cargar
+        // (un parpadeo, y dos repintados seguidos para el control remoto).
+        if (binding.etPpvSearch.text?.isNotEmpty() == true) binding.etPpvSearch.setText("")
         // loadPpvContent() ya se encarga de pedir (o reutilizar) el catálogo.
         loadPpvContent()
     }
@@ -1581,7 +1584,12 @@ class MainActivity : AppCompatActivity() {
         val todos = Catalog.live.toList()
 
         Thread {
-            class InfoCategoria(val ppv: Boolean, val deporte: Boolean, val tag: PpvFilter.SportTag?)
+            class InfoCategoria(
+                val ppv: Boolean,
+                val deporte: Boolean,
+                val noDeportivo: Boolean,
+                val tag: PpvFilter.SportTag?
+            )
 
             val infoPorCategoria = HashMap<String, InfoCategoria>(categorias.size * 2)
             for (c in categorias) {
@@ -1589,6 +1597,7 @@ class MainActivity : AppCompatActivity() {
                 infoPorCategoria[c.categoryId] = InfoCategoria(
                     ppv = PpvFilter.esPpv(t),
                     deporte = PpvFilter.esDeporte(t, serverId),
+                    noDeportivo = PpvFilter.esNoDeportivo(t),
                     tag = PpvFilter.deporteDe(t)
                 )
             }
@@ -1600,19 +1609,24 @@ class MainActivity : AppCompatActivity() {
             for (canal in todos) {
                 if (canal.name.isBlank()) continue
                 val cat = canal.categoryId?.let { infoPorCategoria[it] }
-                if (cat?.ppv == true) {
-                    eventos.add(canal)
-                    continue
-                }
                 val t = PpvFilter.preparar(canal.name)
-                if (PpvFilter.esPpv(t)) {
+
+                // Cine, realities, etc. nunca entran, aunque vengan en una
+                // carpeta de PPV ("PPV CINEMA 01", "Gran Hermano" en
+                // "PPV- Eventos"). Si lo que no es deporte es la CATEGORÍA,
+                // el canal todavía se salva si su propio nombre es de deporte.
+                if (PpvFilter.esNoDeportivo(t)) continue
+                val nombreEsDeporte = PpvFilter.esDeporte(t, serverId)
+                if (cat?.noDeportivo == true && !nombreEsDeporte) continue
+
+                if (cat?.ppv == true || PpvFilter.esPpv(t)) {
                     eventos.add(canal)
                     continue
                 }
                 // "Canales" es solo deportes: nunca se mezcla con cine,
                 // misceláneo, países, etc. La lista de palabras depende del
                 // servidor conectado.
-                if (cat?.deporte == true || PpvFilter.esDeporte(t, serverId)) {
+                if (cat?.deporte == true || nombreEsDeporte) {
                     canales.add(canal)
                     val tag = PpvFilter.deporteDe(t) ?: cat?.tag
                     if (tag != null) porDeporte.getOrPut(tag) { ArrayList() }.add(canal)
@@ -1635,6 +1649,10 @@ class MainActivity : AppCompatActivity() {
                 categories = categorias
                 renderPpvChips()
                 mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
+                // Si el foco estaba en una fila de la lista, esa fila
+                // desapareció al vaciarla durante la carga: sin esto el mando
+                // quedaba mudo hasta pulsar varias flechas.
+                if (currentFocus == null) enfocarPrimerChip()
             }
         }.start()
     }
@@ -1670,6 +1688,7 @@ class MainActivity : AppCompatActivity() {
             binding.ppvSportFilterScroll.visibility = View.GONE
             currentItems = ppvEventos
             adapter.submitList(ppvEventos)
+            binding.recyclerChannels.scrollToPosition(0)
             refreshPreviewCard(ppvEventos)
             binding.tvEmpty.setText(R.string.empty_ppv)
             binding.tvEmpty.visibility = if (ppvEventos.isEmpty()) View.VISIBLE else View.GONE
@@ -1701,13 +1720,25 @@ class MainActivity : AppCompatActivity() {
             val chip: TextView =
                 ItemCategoryBinding.inflate(layoutInflater, binding.ppvSportFilterContainer, false).root
             chip.text = tag?.etiqueta ?: getString(R.string.fav_all)
+            chip.tag = tag
             Appearance.applyChipState(chip, tag == ppvSportTag)
             chip.setOnClickListener {
                 ppvSportTag = tag
-                renderPpvSportFilters()
+                // Se repintan los chips que ya están, en vez de volver a
+                // armarlos: armarlos de nuevo destruía justo el chip que tenía
+                // el foco y el control remoto quedaba "sin cursor".
+                refreshPpvSportSelection()
                 mostrarListaPpvCanales()
             }
             binding.ppvSportFilterContainer.addView(chip)
+        }
+    }
+
+    /** Repinta los chips de deporte para reflejar cuál está elegido, sin reconstruirlos. */
+    private fun refreshPpvSportSelection() {
+        for (i in 0 until binding.ppvSportFilterContainer.childCount) {
+            val chip = binding.ppvSportFilterContainer.getChildAt(i) as? TextView ?: continue
+            Appearance.applyChipState(chip, chip.tag == ppvSportTag)
         }
     }
 
@@ -1717,6 +1748,9 @@ class MainActivity : AppCompatActivity() {
         val items = if (tag == null) ppvCanales else ppvCanalesPorDeporte[tag].orEmpty()
         currentItems = items
         adapter.submitList(items)
+        // Lista nueva: se vuelve al principio. Si no, quedaba en la posición
+        // de la lista anterior, a veces con una fila cortada arriba.
+        binding.recyclerChannels.scrollToPosition(0)
         refreshPreviewCard(items)
         binding.tvEmpty.setText(R.string.empty_ppv)
         binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
@@ -2215,8 +2249,27 @@ class MainActivity : AppCompatActivity() {
         // 3. Radios: dos niveles propios (carpeta y fuente), así que dos pasos.
         if (section == Section.RADIO && retrocederEnRadio()) return
 
+        // 4a. Deportes - PPV tiene sus propios niveles: primero se quita el
+        // filtro por deporte, después se vuelve de "PPV Eventos" a "Canales".
+        // Antes caía en el paso 4 de abajo, que abría la primera categoría
+        // del panel (una carpeta cualquiera de canales) dentro de esta sección.
+        if (section == Section.PPV) {
+            if (ppvSportTag != null) {
+                ppvSportTag = null
+                refreshPpvSportSelection()
+                mostrarListaPpvCanales()
+                enfocarSiTV(binding.ppvSportFilterContainer.getChildAt(0))
+                return
+            }
+            if (currentCategoryId == PPV_TAB_EVENTOS && ppvCanales.isNotEmpty()) {
+                mostrarGrupoPpv(PPV_TAB_CANALES)
+                enfocarPrimerChip()
+                return
+            }
+        }
+
         // 4. Categoría abierta que no es la que se abre por defecto al entrar.
-        if (section in listOf(Section.LIVE, Section.PPV, Section.MOVIES, Section.SERIES)) {
+        if (section in listOf(Section.LIVE, Section.MOVIES, Section.SERIES)) {
             val porDefecto = categories.firstOrNull()?.categoryId
             if (porDefecto != null && currentCategoryId != porDefecto) {
                 loadContent(currentType(), porDefecto)

@@ -201,6 +201,31 @@ class PpvFilterTest {
         assertEquals(null, PpvFilter.sportTagFor("24 Hours | The Transporter"))
     }
 
+    // ---------------- Lo que no es deporte (cine, realities) ----------------
+
+    @Test
+    fun `cine y realities no son deporte aunque vengan como PPV`() {
+        // Sistema L: cine en estreno dentro de carpetas PPV
+        assertTrue(PpvFilter.isNonSports("PPV CINEMA 01"))
+        assertTrue(PpvFilter.isNonSports("PPV Peliculas Estreno"))
+        // Sistema XL: realities en "PPV- Eventos"
+        assertTrue(PpvFilter.isNonSports("LA CASA DE LOS FAMOSOS"))
+        assertTrue(PpvFilter.isNonSports("LA CASA DE LOS FAMOSOS #2"))
+        assertTrue(PpvFilter.isNonSports("- Gran Hermano - Cámara 3"))
+        assertTrue(PpvFilter.isNonSports("La Casa de Alofoke"))
+        assertTrue(PpvFilter.isNonSports("Mansión VIP"))
+    }
+
+    @Test
+    fun `los eventos deportivos no se confunden con cine o realities`() {
+        assertFalse(PpvFilter.isNonSports("24 HORAS | UFC PPV"))
+        assertFalse(PpvFilter.isNonSports("PPV Boxeo Canelo"))
+        assertFalse(PpvFilter.isNonSports("MLB World Series"))
+        assertFalse(PpvFilter.isNonSports("ESPN News"))
+        assertFalse(PpvFilter.isNonSports("Liga de Primera"))
+        assertFalse(PpvFilter.isNonSports(null))
+    }
+
     @Test
     fun `sportTagFor sin nombre o sin coincidencia devuelve null`() {
         assertEquals(null, PpvFilter.sportTagFor(null))

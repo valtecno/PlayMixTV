@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de los buscadores (Canales, Deportes - PPV, Perfil de niños).
+     Igual que bg_glass_card, pero con un borde blanco marcado cuando tiene
+     el foco: con control remoto, bg_glass_card solo no cambiaba nada y no se
+     veía cuándo el cursor estaba parado en el buscador. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/glass_card" />
+            <corners android:radius="14dp" />
+            <stroke android:width="2dp" android:color="@color/text_light" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/bg_glass_card" />
+</selector>
