@@ -167,6 +167,15 @@ object Session {
         invalidateApi()
     }
 
+    /** Guarda la fecha de vencimiento devuelta por Xtream para mostrarla en la bienvenida. */
+    fun saveExpDate(context: Context, expDate: String?) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putString("exp_date", expDate).apply()
+    }
+
+    fun getExpDate(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("exp_date", null)
+
     fun invalidateApi() {
         synchronized(this) {
             cachedApi = null

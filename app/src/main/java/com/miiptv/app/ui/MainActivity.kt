@@ -45,6 +45,7 @@ import com.miiptv.app.util.PlaybackHolder
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.PlayerFactory
 import com.miiptv.app.util.PpvFilter
+import com.miiptv.app.util.EpgReminder
 import com.miiptv.app.util.RadioCatalog
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PinDialog
@@ -189,6 +190,8 @@ class MainActivity : AppCompatActivity() {
         setupNav()
         setupPpvSearch()
         setupKidsSearch()
+        setupChannelFilter()
+        EpgReminder.crearCanal(this)
         setupCarousel()
         setupBackNavigation()
         applyKidsVisibility()
@@ -241,8 +244,13 @@ class MainActivity : AppCompatActivity() {
      * Por eso el botón mismo ya viene oculto en modo TV (ver applyDeviceMode).
      */
     private fun enviarContacto() {
+        // El mensaje que el usuario verá antes de elegir a quién mandarlo.
+        // Al final incluye el enlace directo al chat con el número de contacto
+        // de PlayMix, para que quien lo reciba pueda escribir con un solo toque.
+        val enlaceContacto = "https://wa.me/56948714030"
         val mensaje = "Mira esta aplicación que uso para ver TV. Pide una prueba gratis a ver " +
-            "si te gusta y te unes a la comunidad que vemos más por menos dinero @valtecno"
+            "si te gusta y te unes a la comunidad que vemos más por menos dinero. " +
+            "Escríbele aquí: $enlaceContacto"
         val url = "https://wa.me/?text=" + Uri.encode(mensaje)
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -340,6 +348,14 @@ class MainActivity : AppCompatActivity() {
         binding.etKidsSearch.visibility =
             if (kidsMode && newSection in listOf(Section.LIVE, Section.MOVIES, Section.SERIES))
                 View.VISIBLE else View.GONE
+        // El filtro rápido de canales aparece en Canales y PPV (no en niños,
+        // que tiene su propio buscador, ni en las secciones sin lista de canales).
+        if (newSection !in listOf(Section.LIVE, Section.PPV)) {
+            binding.etChannelFilter.visibility = View.GONE
+            binding.etChannelFilter.setText("")
+        } else if (!kidsMode) {
+            binding.etChannelFilter.visibility = View.VISIBLE
+        }
 
         applyLayoutMode(newSection)
         updatePreviewVisibility(newSection)
@@ -563,6 +579,21 @@ class MainActivity : AppCompatActivity() {
                 binding.tvPreviewEpgNext.text = "▶ ${getString(R.string.preview_epg_next)}: $titulo"
                 binding.tvPreviewEpgNext.visibility = View.VISIBLE
             }
+        }
+        // Toque largo en "A continuación" para crear un recordatorio
+        binding.tvPreviewEpgNext.setOnLongClickListener {
+            val titulo = binding.tvPreviewEpgNext.text?.toString()
+                ?.removePrefix("▶ ${getString(R.string.preview_epg_next)}: ")
+                ?.trim()
+            if (!titulo.isNullOrBlank()) {
+                // Inicio aproximado: ahora + duración del programa actual (estimado en 60 min)
+                val inicioEstimado = System.currentTimeMillis() + 60 * 60 * 1000L
+                val ok = EpgReminder.programar(this, item.name, titulo, inicioEstimado)
+                val msg = if (ok) getString(R.string.epg_reminder_set)
+                          else getString(R.string.epg_reminder_past)
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
+            true
         }
     }
 
@@ -825,6 +856,14 @@ class MainActivity : AppCompatActivity() {
          */
         val tocaRefrescoDelDia = DailyRefresh.toca(this)
         if (tocaRefrescoDelDia) DailyRefresh.marcarHecho(this)
+
+        // Si el catálogo está vacío y hay datos guardados en disco, los cargamos
+        // de inmediato para que la pantalla no quede en blanco mientras baja el
+        // nuevo. El usuario ve contenido al instante aunque no haya conexión.
+        if (Catalog.isEmpty && Catalog.loadFromDisk(this)) {
+            Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
+        }
+
         Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
 
         // Y se deja programado el corte de esta noche por si la app queda abierta.
@@ -1297,18 +1336,20 @@ class MainActivity : AppCompatActivity() {
 
     // ---------------- PPV Fútbol VIP ----------------
 
-    /** Solo las categorías de fútbol del servidor (PPV y eventos); el resto se descarta. */
     /**
-     * PPV: muestra directamente las carpetas de fútbol del servidor, sin rótulo,
-     * y con un buscador propio para filtrarlas por nombre.
+     * Deportes - PPV: muestra TODOS los canales del servidor con la categoría
+     * deportiva configurada en gradle.properties como primera pestaña
+     * (DEPORTES LATINO en Sistema L, DEPORTES en Sistema XL). El resto de las
+     * categorías sigue disponible a continuación, igual que en Canales.
+     * El mini reproductor funciona igual que en la sección de Canales.
      */
     private fun showPpv() {
         binding.tvSectionTitle.visibility = View.GONE
         binding.etPpvSearch.visibility = View.VISIBLE
         binding.etPpvSearch.setText("")
-        // El buscador necesita el catálogo en memoria para buscar por equipo o país
         Catalog.ensureLoaded(this) { }
-        loadCategories(ContentType.LIVE) { PpvFilter.isFootball(it.categoryName) }
+        // Sin filtro: todas las categorías del servidor, con la deportiva primero
+        loadCategories(ContentType.LIVE) { true }
     }
 
     /** Buscador propio del perfil de niños: filtra lo que ya está en pantalla. */
@@ -1328,6 +1369,30 @@ class MainActivity : AppCompatActivity() {
         else currentItems.filter { it.name.contains(q, ignoreCase = true) }
         adapter.submitList(visibles)
         binding.tvEmpty.setText(if (q.isBlank()) R.string.empty_kids else R.string.kids_no_match)
+        binding.tvEmpty.visibility = if (visibles.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Filtro rápido de canales: escribe parte del nombre y la lista se acota
+     * al instante, sin salir a la búsqueda global. Aparece en Canales, PPV y
+     * Favoritos (pestaña Canales); se oculta en el resto de las secciones.
+     */
+    private fun setupChannelFilter() {
+        binding.etChannelFilter.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                applyChannelFilter(s?.toString().orEmpty())
+            }
+        })
+    }
+
+    private fun applyChannelFilter(query: String) {
+        val q = query.trim()
+        val visibles = if (q.isBlank()) currentItems
+        else currentItems.filter { it.name.contains(q, ignoreCase = true) }
+        adapter.submitList(visibles)
+        binding.tvEmpty.setText(R.string.empty_list)
         binding.tvEmpty.visibility = if (visibles.isEmpty()) View.VISIBLE else View.GONE
     }
 

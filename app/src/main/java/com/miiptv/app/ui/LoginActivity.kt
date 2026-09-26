@@ -202,8 +202,11 @@ class LoginActivity : AppCompatActivity() {
                             setLoading(false)
                             if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
                                 Accounts.save(this@LoginActivity, urlFinal, user, pass)
+                                Session.saveExpDate(this@LoginActivity, response.body()?.userInfo?.expDate)
                                 Catalog.clear()
-                                startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+                                val destino = if (WelcomeActivity.debesMostrar(this@LoginActivity))
+                                    WelcomeActivity::class.java else MainActivity::class.java
+                                startActivity(Intent(this@LoginActivity, destino))
                                 finish()
                             } else {
                                 Session.logout(this@LoginActivity)

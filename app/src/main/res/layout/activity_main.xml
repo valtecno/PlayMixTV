@@ -266,6 +266,31 @@
 
     </FrameLayout>
 
+    <!-- ===== Filtro rápido de canales =====
+         Aparece solo en la sección Canales, PPV y Favoritos (pestaña canales).
+         Permite escribir parte del nombre y la lista se filtra al instante,
+         sin salir a la pantalla de búsqueda global. -->
+    <EditText
+        android:id="@+id/etChannelFilter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_glass_card"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:hint="@string/channel_filter_hint"
+        android:textColor="@color/text_light"
+        android:textColorHint="@color/text_muted"
+        android:textCursorDrawable="@null"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch"
+        android:visibility="gone" />
+
     <!-- ===== Buscador dedicado del perfil de niños ===== -->
     <EditText
         android:id="@+id/etKidsSearch"

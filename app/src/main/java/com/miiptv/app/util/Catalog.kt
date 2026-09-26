@@ -3,6 +3,8 @@ package com.miiptv.app.util
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.miiptv.app.api.*
 import retrofit2.Call
 import retrofit2.Callback
@@ -86,6 +88,56 @@ object Catalog {
     private val listeners = mutableListOf<(Boolean) -> Unit>()
 
     private enum class Block { LIVE, MOVIES, SERIES }
+
+    // ---- Caché offline ----
+    // Cuando el catálogo carga correctamente se guarda en disco.
+    // Si la próxima vez no hay conexión, se muestra el guardado para que la app
+    // no quede con la pantalla vacía sin explicación.
+    private val gson = Gson()
+    private const val CACHE_PREFS = "miiptv_catalog_cache"
+    private const val CACHE_KEY_LIVE    = "live"
+    private const val CACHE_KEY_MOVIES  = "movies"
+    private const val CACHE_KEY_SERIES  = "series"
+    private const val CACHE_KEY_SERVER  = "server"
+
+    private fun saveToDisk(context: Context) {
+        val prefs = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
+        val type = object : TypeToken<List<ContentItem>>() {}.type
+        prefs.edit()
+            .putString(CACHE_KEY_LIVE,   gson.toJson(live,   type))
+            .putString(CACHE_KEY_MOVIES, gson.toJson(movies, type))
+            .putString(CACHE_KEY_SERIES, gson.toJson(series, type))
+            .putString(CACHE_KEY_SERVER, "${Session.server(context)}|${Session.username(context)}")
+            .apply()
+    }
+
+    /**
+     * Carga el catálogo guardado en disco y devuelve true si había algo.
+     * Solo se usa cuando la descarga en línea falla por completo.
+     */
+    fun loadFromDisk(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
+        val stamp = prefs.getString(CACHE_KEY_SERVER, null) ?: return false
+        val serverNow = "${Session.server(context)}|${Session.username(context)}"
+        if (stamp != serverNow) return false   // caché de otro sistema, no sirve
+
+        val type = object : TypeToken<List<ContentItem>>() {}.type
+        return try {
+            val liveJson   = prefs.getString(CACHE_KEY_LIVE,   null) ?: return false
+            val moviesJson = prefs.getString(CACHE_KEY_MOVIES, null) ?: return false
+            val seriesJson = prefs.getString(CACHE_KEY_SERIES, null) ?: return false
+            val liveList:   List<ContentItem> = gson.fromJson(liveJson,   type)
+            val moviesList: List<ContentItem> = gson.fromJson(moviesJson, type)
+            val seriesList: List<ContentItem> = gson.fromJson(seriesJson, type)
+            if (liveList.isEmpty() && moviesList.isEmpty() && seriesList.isEmpty()) return false
+            live.addAll(liveList); movies.addAll(moviesList); series.addAll(seriesList)
+            stampServer = Session.server(context).trim().trimEnd('/')
+            stampUser   = Session.username(context)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     val isEmpty: Boolean get() = live.isEmpty() && movies.isEmpty() && series.isEmpty()
 
@@ -237,6 +289,8 @@ object Catalog {
             current.clear()
             noCache = null
             loadedAt = System.currentTimeMillis()
+            // Guardar en disco para tener datos offline la próxima vez
+            if (!isEmpty) saveToDisk(context)
             broadcast(false)
         }
     }

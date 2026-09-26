@@ -49,6 +49,7 @@ import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.CastHelper
+import com.miiptv.app.util.EpisodeProgress
 import com.miiptv.app.util.Epg
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.History
@@ -93,6 +94,8 @@ class PlayerActivity : AppCompatActivity() {
          * puede saltar con los botones anterior/siguiente.
          */
         const val EXTRA_IS_RADIO = "extra_is_radio"
+        /** Posición inicial en milisegundos, para continuar un episodio donde se dejó. */
+        const val EXTRA_RESUME_MS = "extra_resume_ms"
         const val EXTRA_PLAYLIST_ICONS = "extra_playlist_icons"
         const val EXTRA_PLAYLIST_IDS = "extra_playlist_ids"
         /** De dónde salió la lista: "🇪🇸  España", "🎧  Loca FM", etc. */
@@ -307,16 +310,28 @@ class PlayerActivity : AppCompatActivity() {
             }
         } else {
             PlaybackHolder.release()
-            startPlayback(streamUrl, resumeAtMs = 0L)
+            // Para episodios de series, arrancar desde donde se dejó la última vez
+            val resumeMs = if (itemType == ContentType.SERIES)
+                intent.getLongExtra(EXTRA_RESUME_MS, 0L)
+            else 0L
+            startPlayback(streamUrl, resumeAtMs = resumeMs)
         }
     }
 
     override fun onStop() {
         super.onStop()
         ui.removeCallbacks(countdownTick)
-        // Sin pantalla visible las animaciones solo gastan batería
         stopEqualizer()
         CastHelper.sessionManager(this)?.removeSessionManagerListener(castSessionListener, CastSession::class.java)
+
+        // Guarda la posición del episodio para poder continuar donde se dejó.
+        // Solo aplica a series: los canales en vivo siempre arrancan desde el
+        // principio, y las películas también tienen su propio historial de posición.
+        if (itemType == ContentType.SERIES) {
+            val pos = player?.currentPosition ?: 0L
+            val dur = player?.duration?.takeIf { it > 0 } ?: 0L
+            if (pos > 0) EpisodeProgress.save(this, streamUrl, pos, dur)
+        }
 
         val seguirSonando = PlayerPrefs.getBackground(this) && !isFinishing && player?.playWhenReady == true
         if (seguirSonando) {

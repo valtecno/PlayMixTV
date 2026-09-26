@@ -18,6 +18,7 @@ import com.miiptv.app.databinding.ActivitySeriesDetailBinding
 import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.DeviceMode
+import com.miiptv.app.util.EpisodeProgress
 import com.miiptv.app.util.RemoteControl
 import retrofit2.Call
 import retrofit2.Callback
@@ -134,16 +135,21 @@ class SeriesDetailActivity : AppCompatActivity() {
             "E${ep.episodeNum ?: (i + 1)} — ${ep.title ?: "Episodio"}"
         })
         val index = currentSeason.indexOfFirst { it.id == episode.id }.coerceAtLeast(0)
+        val episodeUrl = urls.getOrElse(index) {
+            Session.seriesEpisodeUrl(this, episode.id, episode.containerExtension ?: "mp4")
+        }
+
+        // Recuperar la posición donde se dejó este episodio (si existe)
+        val resumeMs = EpisodeProgress.get(this, episodeUrl)
 
         startActivity(
             Intent(this, PlayerActivity::class.java)
-                .putExtra(PlayerActivity.EXTRA_URL, urls.getOrElse(index) {
-                    Session.seriesEpisodeUrl(this, episode.id, episode.containerExtension ?: "mp4")
-                })
+                .putExtra(PlayerActivity.EXTRA_URL, episodeUrl)
                 .putExtra(PlayerActivity.EXTRA_TITLE, titles.getOrElse(index) { episode.title ?: "Episodio" })
                 .putStringArrayListExtra(PlayerActivity.EXTRA_PLAYLIST_URLS, urls)
                 .putStringArrayListExtra(PlayerActivity.EXTRA_PLAYLIST_TITLES, titles)
                 .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, index)
+                .putExtra(PlayerActivity.EXTRA_RESUME_MS, resumeMs)
         )
     }
 }
