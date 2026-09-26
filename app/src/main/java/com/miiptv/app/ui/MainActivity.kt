@@ -535,14 +535,47 @@ class MainActivity : AppCompatActivity() {
             panel.height = LinearLayout.LayoutParams.MATCH_PARENT
             panel.weight = 1.4f
 
+            // Antes: height=0 + weight=1, la única vista con peso en una
+            // columna vertical junto al título, la categoría y las dos
+            // líneas de EPG (todas wrap_content). El LinearLayout mide
+            // primero esas cuatro a su alto natural y recién ahí reparte
+            // TODO lo que sobra en el marco: un canal sin EPG lo dejaba
+            // grande, uno con EPG largo (como los "evento programado" de
+            // Deportes - PPV) lo dejaba mucho más chico. El tamaño del
+            // video terminaba dependiendo del canal elegido, no de la
+            // sección. Ahora se fija en 16:9 según el ancho ya medido
+            // (fijarAltoVideo16x9), igual que en el modo apilado de arriba.
             marco.width = LinearLayout.LayoutParams.MATCH_PARENT
-            marco.height = 0
-            marco.weight = 1f
+            marco.height = LinearLayout.LayoutParams.WRAP_CONTENT
+            marco.weight = 0f
         }
 
         binding.listColumn.layoutParams = lista
         binding.previewPanel.layoutParams = panel
         binding.previewThumbFrame.layoutParams = marco
+        if (!apilado && conPreview) fijarAltoVideo16x9()
+    }
+
+    /**
+     * Modo TV/tablet (no apilado): el marco de video pasó a WRAP_CONTENT
+     * para no competir por altura con el texto de al lado, así que ahora
+     * mide 0 hasta que haya un layout. En cuanto tiene un ancho real, se le
+     * pone una altura fija en proporción 16:9 — la misma cuenta que ya usa
+     * el modo apilado de arriba, solo que acá el ancho no es el de la
+     * pantalla completa sino el de la columna de previsualización.
+     */
+    private fun fijarAltoVideo16x9() {
+        binding.previewThumbFrame.post {
+            if (!::binding.isInitialized) return@post
+            val ancho = binding.previewThumbFrame.width
+            if (ancho <= 0) return@post
+            val lp = binding.previewThumbFrame.layoutParams
+            val alto = ancho * 9 / 16
+            if (lp.height != alto) {
+                lp.height = alto
+                binding.previewThumbFrame.layoutParams = lp
+            }
+        }
     }
 
     private fun handleItemClick(item: ContentItem) {

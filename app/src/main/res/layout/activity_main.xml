@@ -465,12 +465,16 @@
             android:paddingTop="6dp"
             android:visibility="gone">
 
+            <!-- El alto real lo fija MainActivity.applyPreviewLayout() en
+                 código (16:9 sobre el ancho ya medido, ver
+                 fijarAltoVideo16x9()); estos valores son solo el arranque
+                 antes del primer layout. android:maxHeight no se usa: un
+                 FrameLayout no lo respeta (es una propiedad de ImageView,
+                 no de ViewGroup), así que dejarlo acá era engañoso. -->
             <FrameLayout
                 android:id="@+id/previewThumbFrame"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="0.6"
-                android:maxHeight="220dp"
+                android:layout_height="wrap_content"
                 android:background="@drawable/bg_glass_card"
                 android:clickable="true"
                 android:focusable="true">
