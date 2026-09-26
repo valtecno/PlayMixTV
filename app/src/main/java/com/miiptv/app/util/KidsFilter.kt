@@ -93,6 +93,14 @@ object KidsFilter {
      */
     private val exclusionesHasta12 = exclusiones - setOf("+11", "11+", "+12", "12+", "familiar", "familia")
 
+    /**
+     * Palabras que solo cuentan como infantiles en [AgeTier.HASTA_12]: no
+     * alcanza con sacarlas de la exclusión, porque una categoría como "Cine
+     * Familiar" no menciona ninguna palabra de [infantil]. Sin esto, sacarlas
+     * de [exclusionesHasta12] no lograba que ese tramo sumara nada nuevo.
+     */
+    private val familiares = listOf("familiar", "familia", "family")
+
     /** Quita acentos y pasa a minúsculas, para comparar sin sorpresas. */
     private fun normalize(text: String): String =
         Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
@@ -110,7 +118,11 @@ object KidsFilter {
         val exclusionesDelTramo = if (tier == AgeTier.HASTA_12) exclusionesHasta12 else exclusiones
         if (exclusionesDelTramo.any { name.contains(normalize(it)) }) return false
 
-        val inclusionDelTramo = if (tier == AgeTier.MENOR_5) preescolar else infantil
+        val inclusionDelTramo = when (tier) {
+            AgeTier.MENOR_5 -> preescolar
+            AgeTier.HASTA_12 -> infantil + familiares
+            else -> infantil
+        }
         return inclusionDelTramo.any { name.contains(normalize(it)) }
     }
 }
