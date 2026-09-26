@@ -75,6 +75,17 @@ object Catalog {
     private var stampServer: String = ""
     private var stampUser: String = ""
 
+    /**
+     * Cambia cada vez que cambia el contenido de [live] (se vació, llegó
+     * nuevo, se cargó del disco). Deportes - PPV lo usa para saber si puede
+     * reutilizar el reparto que ya calculó en vez de recorrer todo de nuevo.
+     */
+    var liveVersion: Int = 0
+        private set
+
+    /** ¿Lo que hay en memoria es de la cuenta y el servidor conectados ahora? */
+    fun isFor(context: Context): Boolean = !isEmpty && sameServer(context.applicationContext)
+
     /** Motivo del último bloque que no se pudo traer. null = todo bien. */
     var lastError: String? = null
         private set
@@ -131,6 +142,7 @@ object Catalog {
             val seriesList: List<ContentItem> = gson.fromJson(seriesJson, type)
             if (liveList.isEmpty() && moviesList.isEmpty() && seriesList.isEmpty()) return false
             live.addAll(liveList); movies.addAll(moviesList); series.addAll(seriesList)
+            liveVersion++
             stampServer = Session.server(context).trim().trimEnd('/')
             stampUser   = Session.username(context)
             true
@@ -166,7 +178,10 @@ object Catalog {
         // Si cambió el servidor o la cuenta, lo que haya en memoria ya no sirve.
         if (!isEmpty && !sameServer(ctx)) hardReset()
 
-        if (isFresh(ctx) && !force) {
+        // Mientras hay una descarga en curso NO se da por fresco aunque la
+        // anterior sea reciente: los bloques ya se vaciaron, y avisar
+        // "listo" en ese momento entregaba listas vacías.
+        if (isFresh(ctx) && !force && !loading) {
             onUpdate(false)
             return
         }
@@ -177,6 +192,7 @@ object Catalog {
         loading = true
         lastError = null
         live.clear(); movies.clear(); series.clear()
+        liveVersion++
         stampServer = Session.server(ctx).trim().trimEnd('/')
         stampUser = Session.username(ctx)
 
@@ -247,6 +263,7 @@ object Catalog {
                 }
 
                 target.addAll(items)
+                if (block == Block.LIVE) liveVersion++
                 advance(context, block)
             }
 
@@ -336,6 +353,7 @@ object Catalog {
         current.clear()
         pending = 0
         live.clear(); movies.clear(); series.clear()
+        liveVersion++
         loadedAt = 0L
         loading = false
         lastError = null

@@ -68,10 +68,19 @@ object KidsFilter {
         "wwe", "lucha", "ufc", "boxeo"
     )
 
+    /** Compilada una sola vez (antes se armaba de nuevo en cada comparación). */
+    private val DIACRITICOS = Regex("\\p{InCombiningDiacriticalMarks}+")
+
     /** Quita acentos y pasa a minúsculas, para comparar sin sorpresas. */
-    private fun normalize(text: String): String =
-        Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
-            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+    private fun normalize(text: String): String {
+        val minusculas = text.lowercase()
+        if (minusculas.all { it.code < 128 }) return minusculas
+        return DIACRITICOS.replace(Normalizer.normalize(minusculas, Normalizer.Form.NFD), "")
+    }
+
+    /** Las listas son constantes: se normalizan una sola vez, no en cada categoría. */
+    private val infantilNorm by lazy { infantil.map { normalize(it) } }
+    private val exclusionesNorm by lazy { exclusiones.map { normalize(it) } }
 
     /**
      * ¿Esta categoría es apta para el Perfil de niños? [tier] queda como
@@ -83,7 +92,7 @@ object KidsFilter {
         if (categoryName.isNullOrBlank()) return false
         val name = normalize(categoryName)
 
-        if (exclusiones.any { name.contains(normalize(it)) }) return false
-        return infantil.any { name.contains(normalize(it)) }
+        if (exclusionesNorm.any { name.contains(it) }) return false
+        return infantilNorm.any { name.contains(it) }
     }
 }

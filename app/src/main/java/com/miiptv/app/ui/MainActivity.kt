@@ -88,6 +88,17 @@ class MainActivity : AppCompatActivity() {
      * renderPpvSportFilters). null = "Todos", sin acotar.
      */
     private var ppvSportTag: PpvFilter.SportTag? = null
+    /** Canales de "Canales" agrupados por deporte, calculado una vez en procesarPpv. */
+    private var ppvCanalesPorDeporte: Map<PpvFilter.SportTag, List<ContentItem>> = emptyMap()
+    /**
+     * Caché del reparto de Deportes - PPV: mientras Catalog.liveVersion y el
+     * servidor sean los mismos, volver a la sección no recalcula nada.
+     */
+    private var ppvCacheVersion: Int = -1
+    private var ppvCacheServer: String? = null
+    private var ppvCategorias: List<Category> = emptyList()
+    /** Sube en cada entrada a la sección: descarta resultados de una carga vieja. */
+    private var ppvGeneracion: Int = 0
     /** Chip de radios abierto ahora mismo (país o marca). */
     private var currentRadioSource: RadioCatalog.Source? = null
     private var currentRadioFolder: RadioCatalog.Folder? = null
@@ -1469,92 +1480,159 @@ class MainActivity : AppCompatActivity() {
         loadPpvContent()
     }
 
-    /** ¿Este texto (nombre de categoría o de canal) corresponde a un evento PPV? */
-    private fun esPpv(texto: String?): Boolean =
-        PpvFilter.normalize(texto.orEmpty()).contains("ppv")
-
     /**
-     * Antes esta función pedía TODOS los canales en vivo del panel de nuevo
-     * (`getLiveStreams(categoryId = null)`), aparte del catálogo que ya
-     * estaba bajando (o ya bajado) en [Catalog] para el buscador y el
-     * Inicio. Dos descargas masivas del panel entero al mismo tiempo, más el
-     * procesamiento de la segunda en el hilo principal (los callbacks de
-     * Retrofit corren ahí), era lo que colgaba la app (ANR) al entrar a
-     * Deportes - PPV en paneles con muchos canales: quedaba pegada sin
-     * responder y solo se recuperaba cerrándola a la fuerza. Ahora se
-     * reutiliza [Catalog.live], que de todas formas ya se está cargando
-     * desde que se abrió la app.
+     * Carga Deportes - PPV lo más rápido posible. Tres cosas que antes la
+     * volvían lenta, y cómo se evitan ahora:
+     *
+     *  1. Se esperaba el catálogo COMPLETO (canales + películas + series)
+     *     aunque acá solo se usan canales; en el Sistema XL películas y
+     *     series tardan mucho. Ahora alcanza con que esté el bloque de
+     *     canales, y si ya hay canales en memoria no se espera nada (aunque
+     *     tengan más de 30 min: el Inicio se encarga de refrescarlos).
+     *  2. La lista de categorías y el catálogo se pedían uno DESPUÉS del
+     *     otro; ahora van a la vez.
+     *  3. Cada vez que se entraba se volvía a recorrer todo el catálogo. Ahora
+     *     el reparto queda guardado y se reutiliza mientras los canales en
+     *     memoria no cambien ([Catalog.liveVersion]): volver a la sección es
+     *     instantáneo.
      */
     private fun loadPpvContent() {
-        setLoading(true)
-        val user = Session.username(this)
-        val pass = Session.password(this)
-        Session.api(this).getLiveCategories(user, pass).enqueue(object : Callback<List<Category>> {
-            override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
-                if (isFinishing || isDestroyed) return
-                // Se guarda en el campo compartido `categories`: es lo que usa
-                // showPreviewCard() para mostrar el nombre real de la
-                // categoría bajo el mini reproductor, igual que en Canales.
-                categories = response.body().orEmpty()
-                val nombrePorId = categories.associate { it.categoryId to it.categoryName.orEmpty() }
+        val generacion = ++ppvGeneracion
+        val servidor = Session.server(this)
 
-                Catalog.ensureLoaded(this@MainActivity) { stillLoading ->
-                    if (stillLoading) return@ensureLoaded
-                    if (isFinishing || isDestroyed) return@ensureLoaded
-                    procesarPpv(nombrePorId)
+        val hayCache = ppvCacheVersion == Catalog.liveVersion &&
+            ppvCacheServer == servidor &&
+            Catalog.isFor(this) &&
+            (ppvCanales.isNotEmpty() || ppvEventos.isNotEmpty())
+        if (hayCache) {
+            setLoading(false)
+            categories = ppvCategorias
+            renderPpvChips()
+            mostrarGrupoPpv(
+                if (currentCategoryId == PPV_TAB_EVENTOS || ppvCanales.isEmpty()) PPV_TAB_EVENTOS
+                else PPV_TAB_CANALES
+            )
+            return
+        }
+
+        setLoading(true)
+        // Mientras carga no se muestra el aviso de "vacío" (antes aparecía
+        // junto a la ruedita, como si no hubiera nada) ni la lista anterior.
+        binding.tvEmpty.visibility = View.GONE
+        binding.ppvSportFilterScroll.visibility = View.GONE
+        adapter.submitList(emptyList())
+        var categoriasListas: List<Category>? = null
+        var catalogoListo = false
+        var lanzado = false
+
+        fun intentar() {
+            if (lanzado || generacion != ppvGeneracion || isFinishing || isDestroyed) return
+            val cats = categoriasListas ?: return
+            if (!catalogoListo) return
+            lanzado = true
+            procesarPpv(cats, generacion)
+        }
+
+        Session.api(this).getLiveCategories(Session.username(this), Session.password(this))
+            .enqueue(object : Callback<List<Category>> {
+                override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
+                    categoriasListas = response.body().orEmpty()
+                    intentar()
+                }
+
+                override fun onFailure(call: Call<List<Category>>, t: Throwable) {
+                    // Sin categorías igual se puede repartir mirando solo el
+                    // nombre de cada canal: mejor eso que dejar la sección vacía.
+                    categoriasListas = emptyList()
+                    intentar()
+                }
+            })
+
+        if (Catalog.live.isNotEmpty() && Catalog.isFor(this)) {
+            catalogoListo = true
+            intentar()
+        } else {
+            Catalog.ensureLoaded(this) { todaviaCargando ->
+                // Basta con que haya llegado el bloque de canales; no hace
+                // falta esperar películas ni series.
+                if (Catalog.live.isNotEmpty() || (!todaviaCargando && !Catalog.isLoading)) {
+                    catalogoListo = true
+                    intentar()
                 }
             }
-
-            override fun onFailure(call: Call<List<Category>>, t: Throwable) {
-                if (isFinishing) return
-                setLoading(false)
-                Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
-            }
-        })
+        }
     }
 
     /**
-     * Reparte el catálogo ya cargado en las dos carpetas fijas de
-     * Deportes - PPV. Se hace en un hilo aparte a propósito: comparar el
-     * nombre de cada canal (y el de su categoría) contra varias listas de
-     * palabras es trabajo real cuando el catálogo tiene miles de canales, y
-     * hacerlo en el hilo principal —que es donde corre este callback,
-     * porque así entrega Retrofit las respuestas en Android— alcanza a
-     * bloquear la interfaz el tiempo suficiente para un ANR.
+     * Reparte los canales en "Canales" (solo deportes) y "PPV Eventos", y de
+     * paso deja calculado a qué deporte corresponde cada canal (para los
+     * chips de filtro rápido, que así no recalculan nada al tocarlos).
+     *
+     * Corre en un hilo aparte y evalúa cada CATEGORÍA una sola vez (son
+     * cientos) en vez de una vez por canal (son miles): la mayoría de los
+     * canales se resuelven con solo mirar la categoría ya evaluada.
      */
-    private fun procesarPpv(nombrePorId: Map<String, String>) {
+    private fun procesarPpv(categorias: List<Category>, generacion: Int) {
         val serverId = Servers.current(this)?.id
-        // Copia inmutable tomada en el hilo principal: Catalog.live puede
-        // volver a llenarse (un refresco forzado) mientras el hilo de abajo
-        // todavía la está recorriendo.
-        val todos = Catalog.live.filter { it.name.isNotBlank() }
+        val servidor = Session.server(this)
+        val version = Catalog.liveVersion
+        // Copia tomada en el hilo principal: Catalog.live puede volver a
+        // llenarse (un refresco forzado) mientras el hilo de abajo la recorre.
+        val todos = Catalog.live.toList()
 
         Thread {
-            // categoryId es nulable en ContentItem; nombrePorId no acepta esa
-            // clave, así que se resuelve con el operador seguro antes de mirar
-            // el mapa (nombrePorId[canal.categoryId] no compila: el mapa es
-            // Map<String, String>, no Map<String?, String>).
-            fun nombreCategoria(canal: ContentItem) = canal.categoryId?.let { nombrePorId[it] }
+            class InfoCategoria(val ppv: Boolean, val deporte: Boolean, val tag: PpvFilter.SportTag?)
 
-            val (eventos, resto) = todos.partition { canal ->
-                esPpv(canal.name) || esPpv(nombreCategoria(canal))
+            val infoPorCategoria = HashMap<String, InfoCategoria>(categorias.size * 2)
+            for (c in categorias) {
+                val t = PpvFilter.preparar(c.categoryName)
+                infoPorCategoria[c.categoryId] = InfoCategoria(
+                    ppv = PpvFilter.esPpv(t),
+                    deporte = PpvFilter.esDeporte(t, serverId),
+                    tag = PpvFilter.deporteDe(t)
+                )
             }
-            // "Canales" es solo deportes: nunca se mezcla con cine,
-            // misceláneo, países, etc. La lista de palabras depende del
-            // servidor conectado.
-            val canales = resto.filter { canal ->
-                PpvFilter.isSportsChannel(canal.name, serverId) ||
-                    PpvFilter.isSportsChannel(nombreCategoria(canal), serverId)
+
+            val eventos = ArrayList<ContentItem>()
+            val canales = ArrayList<ContentItem>()
+            val porDeporte = HashMap<PpvFilter.SportTag, MutableList<ContentItem>>()
+
+            for (canal in todos) {
+                if (canal.name.isBlank()) continue
+                val cat = canal.categoryId?.let { infoPorCategoria[it] }
+                if (cat?.ppv == true) {
+                    eventos.add(canal)
+                    continue
+                }
+                val t = PpvFilter.preparar(canal.name)
+                if (PpvFilter.esPpv(t)) {
+                    eventos.add(canal)
+                    continue
+                }
+                // "Canales" es solo deportes: nunca se mezcla con cine,
+                // misceláneo, países, etc. La lista de palabras depende del
+                // servidor conectado.
+                if (cat?.deporte == true || PpvFilter.esDeporte(t, serverId)) {
+                    canales.add(canal)
+                    val tag = PpvFilter.deporteDe(t) ?: cat?.tag
+                    if (tag != null) porDeporte.getOrPut(tag) { ArrayList() }.add(canal)
+                }
             }
 
             runOnUiThread {
-                if (isFinishing || isDestroyed) return@runOnUiThread
-                setLoading(false)
+                if (generacion != ppvGeneracion || isFinishing || isDestroyed) return@runOnUiThread
                 ppvEventos = eventos
                 ppvCanales = canales
+                ppvCanalesPorDeporte = porDeporte
+                ppvCategorias = categorias
+                ppvCacheVersion = version
+                ppvCacheServer = servidor
                 // Contenido nuevo: el filtro por deporte elegido la vez
                 // anterior puede ni existir en este panel.
                 ppvSportTag = null
+                if (section != Section.PPV) return@runOnUiThread
+                setLoading(false)
+                categories = categorias
                 renderPpvChips()
                 mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
             }
@@ -1603,22 +1681,21 @@ class MainActivity : AppCompatActivity() {
      * elegir cuando se sabe qué deporte se quiere ver pero no un canal
      * puntual, sin tener que escribir nada. Solo se muestran los tipos que
      * de verdad tienen canales en este panel — y solo si hay más de uno: con
-     * un solo tipo el filtro no acota nada y sobra.
+     * un solo tipo el filtro no acota nada y sobra. El deporte de cada canal
+     * ya viene calculado de procesarPpv, así que esto no recorre nada.
      */
     private fun renderPpvSportFilters() {
-        val nombrePorId = categories.associate { it.categoryId to it.categoryName }
-        val tagsPresentes = ppvCanales.mapNotNull { ppvSportTagDe(it, nombrePorId) }.toSet()
         binding.ppvSportFilterContainer.removeAllViews()
+        val presentes = PpvFilter.SportTag.values().filter { ppvCanalesPorDeporte[it].isNullOrEmpty().not() }
 
-        if (tagsPresentes.size < 2) {
+        if (presentes.size < 2) {
             binding.ppvSportFilterScroll.visibility = View.GONE
             ppvSportTag = null
             return
         }
 
         binding.ppvSportFilterScroll.visibility = View.VISIBLE
-        val opciones: List<PpvFilter.SportTag?> =
-            listOf(null) + PpvFilter.SportTag.values().filter { it in tagsPresentes }
+        val opciones: List<PpvFilter.SportTag?> = listOf<PpvFilter.SportTag?>(null) + presentes
 
         opciones.forEach { tag ->
             val chip: TextView =
@@ -1634,21 +1711,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** A qué deporte corresponde este canal, mirando su nombre y el de su categoría. */
-    private fun ppvSportTagDe(canal: ContentItem, nombrePorId: Map<String, String>): PpvFilter.SportTag? {
-        val nombreCategoria = canal.categoryId?.let { nombrePorId[it] }
-        return PpvFilter.sportTagFor(canal.name) ?: PpvFilter.sportTagFor(nombreCategoria)
-    }
-
     /** Aplica ppvSportTag (si hay uno elegido) sobre ppvCanales y refresca la lista en pantalla. */
     private fun mostrarListaPpvCanales() {
         val tag = ppvSportTag
-        val items = if (tag == null) {
-            ppvCanales
-        } else {
-            val nombrePorId = categories.associate { it.categoryId to it.categoryName }
-            ppvCanales.filter { ppvSportTagDe(it, nombrePorId) == tag }
-        }
+        val items = if (tag == null) ppvCanales else ppvCanalesPorDeporte[tag].orEmpty()
         currentItems = items
         adapter.submitList(items)
         refreshPreviewCard(items)

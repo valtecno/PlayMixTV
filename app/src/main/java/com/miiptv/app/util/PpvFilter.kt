@@ -43,10 +43,22 @@ object PpvFilter {
         "adultos", "adulto", "xxx", "+18", "18+"
     )
 
+    /**
+     * Compiladas una sola vez. Antes `normalize` armaba la expresión regular
+     * de nuevo en CADA llamada, y se llama miles de veces al repartir el
+     * catálogo en Deportes - PPV (una o dos por canal).
+     */
+    private val DIACRITICOS = Regex("\\p{InCombiningDiacriticalMarks}+")
+    private val NO_ALFANUMERICO = Regex("[^a-z0-9]+")
+
     /** Quita acentos y pasa a minúsculas, para comparar sin sorpresas. */
-    fun normalize(text: String): String =
-        Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
-            .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+    fun normalize(text: String): String {
+        val minusculas = text.lowercase()
+        // Atajo: la gran mayoría de los nombres son ASCII puro, sin acentos
+        // que sacar; ahí no hace falta pasar por Normalizer ni por la regex.
+        if (minusculas.all { it.code < 128 }) return minusculas
+        return DIACRITICOS.replace(Normalizer.normalize(minusculas, Normalizer.Form.NFD), "")
+    }
 
     /**
      * Igual que [normalize], pero además cambia cualquier separador
@@ -57,53 +69,88 @@ object PpvFilter {
      * No se usa en isFootball, que depende de los espacios tal cual vienen.
      */
     fun normalizeLoose(text: String): String =
-        normalize(text)
-            .replace(Regex("[^a-z0-9]+"), " ")
-            .trim()
+        NO_ALFANUMERICO.replace(normalize(text), " ").trim()
 
     /**
-     * Una palabra clave, lista para compararse contra un nombre ya
-     * normalizado. Antes esto era `nombre.contains(normalize(palabra))`, un
-     * simple "substring": funcionaba mal con palabras cortas, porque
-     * cualquier nombre que las tuviera COMO PARTE de otra palabra también
-     * calzaba. Así, "CANTINFLAS" entraba a Deportes por contener "nfl",
-     * "GILIGANT" por contener "liga", "TRANSPORTER" por contener "sport" y
-     * "CHAMPIONSHIP" (de un programa de repostería) por contener "champions".
-     * Ninguno de esos canales tiene que ver con deportes.
+     * Un nombre (de canal o de categoría) preparado UNA vez para compararlo
+     * contra muchas palabras clave: normalizado, partido en palabras (en un
+     * conjunto, para buscar cada palabra clave de un solo golpe) y en una
+     * versión "acolchada" con espacios en los bordes para buscar frases.
      *
-     * La solución es exigir que la palabra aparezca completa (con un borde
-     * de palabra a cada lado), no como fragmento de una más larga. Eso solo
-     * tiene sentido cuando la palabra clave empieza y termina en letra o
-     * número: una como "+18" ya tiene un símbolo en el borde que la vuelve
-     * rara de encontrar por accidente, así que esas se quedan con el
-     * "substring" de siempre.
+     * Así se exige que la palabra clave aparezca completa y no como parte
+     * de otra (el problema de "CANTINFLAS" por "nfl", "GILIGANT" por "liga",
+     * "Transporter" por "sport"...), pero sin usar una expresión regular por
+     * palabra clave: esa versión anterior hacía ~90 búsquedas con regex por
+     * canal y, con miles de canales, era lo que volvía lenta la sección.
+     */
+    class Texto internal constructor(original: String) {
+        internal val normalizado: String = normalize(original)
+        internal val palabras: Set<String>
+        internal val acolchado: String
+
+        init {
+            val lista = ArrayList<String>()
+            val actual = StringBuilder()
+            for (c in normalizado) {
+                if (c in 'a'..'z' || c in '0'..'9') {
+                    actual.append(c)
+                } else if (actual.isNotEmpty()) {
+                    lista.add(actual.toString())
+                    actual.setLength(0)
+                }
+            }
+            if (actual.isNotEmpty()) lista.add(actual.toString())
+            palabras = lista.toHashSet()
+            acolchado = lista.joinToString(" ", prefix = " ", postfix = " ")
+        }
+    }
+
+    /** Prepara un nombre para las comparaciones de este archivo; null si está vacío. */
+    fun preparar(texto: String?): Texto? = if (texto.isNullOrBlank()) null else Texto(texto)
+
+    /**
+     * Una palabra clave, lista para compararse. Tres formas según cómo sea:
+     *  - Una sola palabra alfanumérica ("nfl", "liga"): se busca en el
+     *    conjunto de palabras del nombre. Tiene que estar completa.
+     *  - Varias palabras ("formula 1", "fox sports"): se busca la frase con
+     *    un espacio a cada lado, así tampoco calza a medias.
+     *  - Con símbolos en el borde ("+18", "box "): se busca tal cual, como
+     *    siempre. El símbolo ya la vuelve rara de encontrar por accidente.
      */
     private class Palabra(clave: String) {
         private val normalizada = normalize(clave)
-        private val regexPalabraCompleta: Regex? = run {
-            val esAlfanumerica = normalizada.isNotEmpty() &&
-                normalizada.first().isLetterOrDigit() && normalizada.last().isLetterOrDigit()
-            if (esAlfanumerica) Regex("\\b" + Regex.escape(normalizada) + "\\b") else null
+        private val frase = " $normalizada "
+        private val tipo: Int = run {
+            val limpia = normalizada.isNotEmpty() &&
+                normalizada.first() != ' ' && normalizada.last() != ' ' &&
+                normalizada.all { it in 'a'..'z' || it in '0'..'9' || it == ' ' }
+            when {
+                !limpia -> TAL_CUAL
+                ' ' in normalizada -> FRASE
+                else -> PALABRA
+            }
         }
 
-        fun apareceEn(textoNormalizado: String): Boolean =
-            regexPalabraCompleta?.containsMatchIn(textoNormalizado)
-                ?: textoNormalizado.contains(normalizada)
+        fun apareceEn(t: Texto): Boolean = when (tipo) {
+            PALABRA -> normalizada in t.palabras
+            FRASE -> t.acolchado.contains(frase)
+            else -> t.normalizado.contains(normalizada)
+        }
+
+        private companion object {
+            const val PALABRA = 0
+            const val FRASE = 1
+            const val TAL_CUAL = 2
+        }
     }
 
     /**
      * Versión de una lista de palabras clave lista para comparar, calculada
-     * una sola vez. Las listas de este archivo son constantes: prepararlas
-     * en cada llamada (compilar expresiones regulares, normalizar texto)
-     * repite el mismo trabajo miles de veces cuando se revisan todos los
-     * canales del panel de una sola vez, que es justo lo que hace la carpeta
-     * "Canales" de Deportes - PPV. En un panel grande eso alcanza a colgar
-     * la app (ANR).
+     * una sola vez: las listas de este archivo son constantes.
      */
     private fun List<String>.aPalabras(): List<Palabra> = map { Palabra(it) }
 
-    private fun List<Palabra>.apareceAlgunaEn(textoNormalizado: String): Boolean =
-        any { it.apareceEn(textoNormalizado) }
+    private fun List<Palabra>.apareceAlgunaEn(t: Texto): Boolean = any { it.apareceEn(t) }
 
     private val futbolPalabras by lazy { futbol.aPalabras() }
     private val genericasPalabras by lazy { genericas.aPalabras() }
@@ -111,14 +158,15 @@ object PpvFilter {
     private val deportesSistemaLPalabras by lazy { deportesSistemaL.aPalabras() }
     private val deportesSistemaXLPalabras by lazy { deportesSistemaXL.aPalabras() }
 
+    /** ¿Este nombre (de canal o de categoría) corresponde a un evento PPV? */
+    fun esPpv(t: Texto?): Boolean = t != null && t.normalizado.contains("ppv")
+
     /** ¿Esta categoría entra en la sección PPV Fútbol? */
     fun isFootball(categoryName: String?): Boolean {
-        if (categoryName.isNullOrBlank()) return false
-        val name = normalize(categoryName)
-
-        if (otrosDeportesPalabras.apareceAlgunaEn(name)) return false
-        if (futbolPalabras.apareceAlgunaEn(name)) return true
-        return genericasPalabras.apareceAlgunaEn(name)
+        val t = preparar(categoryName) ?: return false
+        if (otrosDeportesPalabras.apareceAlgunaEn(t)) return false
+        if (futbolPalabras.apareceAlgunaEn(t)) return true
+        return genericasPalabras.apareceAlgunaEn(t)
     }
 
     /**
@@ -152,11 +200,14 @@ object PpvFilter {
      * la carpeta "Canales" de Deportes - PPV: [serverId] es [Servers.Server.id]
      * ("l" o "xl"); cualquier otro valor (o null) cae en la lista de Sistema L.
      */
-    fun isSportsChannel(name: String?, serverId: String?): Boolean {
-        if (name.isNullOrBlank()) return false
-        val texto = normalize(name)
+    fun isSportsChannel(name: String?, serverId: String?): Boolean =
+        esDeporte(preparar(name), serverId)
+
+    /** Igual que [isSportsChannel], para un nombre ya preparado con [preparar]. */
+    fun esDeporte(t: Texto?, serverId: String?): Boolean {
+        if (t == null) return false
         val lista = if (serverId == "xl") deportesSistemaXLPalabras else deportesSistemaLPalabras
-        return lista.apareceAlgunaEn(texto)
+        return lista.apareceAlgunaEn(t)
     }
 
     // ---------------- Filtro rápido por tipo de deporte ----------------
@@ -203,9 +254,14 @@ object PpvFilter {
      * calza con más de una (poco común), gana la que aparece primero en
      * [SportTag], en el mismo orden en que se muestran los chips.
      */
-    fun sportTagFor(name: String?): SportTag? {
-        if (name.isNullOrBlank()) return null
-        val texto = normalize(name)
-        return SportTag.values().firstOrNull { tag -> tagPalabras.getValue(tag).apareceAlgunaEn(texto) }
+    fun sportTagFor(name: String?): SportTag? = deporteDe(preparar(name))
+
+    /** Igual que [sportTagFor], para un nombre ya preparado con [preparar]. */
+    fun deporteDe(t: Texto?): SportTag? {
+        if (t == null) return null
+        return TAGS.firstOrNull { tag -> tagPalabras.getValue(tag).apareceAlgunaEn(t) }
     }
+
+    /** SportTag.values() crea un arreglo nuevo en cada llamada; este se arma una vez. */
+    private val TAGS = SportTag.values().toList()
 }
