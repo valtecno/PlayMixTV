@@ -73,8 +73,14 @@ class MainActivity : AppCompatActivity() {
     /** Tipo elegido dentro de Favoritos: null = todos. */
     private var favFilter: ContentType? = null
     private var favIsRadio = false
-    /** Categorías de PPV sin filtrar, para el buscador propio de esa sección. */
-    private var ppvCategories: List<Category> = emptyList()
+    /**
+     * Deportes - PPV ya no navega por las categorías tal como vienen del
+     * panel: se reparten en dos carpetas fijas según si el nombre (de la
+     * categoría o del canal) menciona "PPV". Estas listas son la base del
+     * buscador propio de la sección.
+     */
+    private var ppvCanales: List<ContentItem> = emptyList()
+    private var ppvEventos: List<ContentItem> = emptyList()
     /** Chip de radios abierto ahora mismo (país o marca). */
     private var currentRadioSource: RadioCatalog.Source? = null
     private var currentRadioFolder: RadioCatalog.Folder? = null
@@ -348,9 +354,10 @@ class MainActivity : AppCompatActivity() {
         binding.etKidsSearch.visibility =
             if (kidsMode && newSection in listOf(Section.LIVE, Section.MOVIES, Section.SERIES))
                 View.VISIBLE else View.GONE
-        // El filtro rápido de canales aparece en Canales y PPV (no en niños,
-        // que tiene su propio buscador, ni en las secciones sin lista de canales).
-        if (newSection !in listOf(Section.LIVE, Section.PPV)) {
+        // El filtro rápido de canales aparece solo en Canales (no en niños,
+        // que tiene su propio buscador). En PPV este cuadro no se usa: ahí el
+        // buscador propio de la sección (etPpvSearch) hace ese trabajo.
+        if (newSection != Section.LIVE) {
             binding.etChannelFilter.visibility = View.GONE
             binding.etChannelFilter.setText("")
         } else if (!kidsMode) {
@@ -1195,7 +1202,6 @@ class MainActivity : AppCompatActivity() {
                 categories = response.body().orEmpty().let { list ->
                     if (filter != null) list.filter(filter) else list
                 }.let { list -> reorderPreferredFirst(list) }
-                if (section == Section.PPV) ppvCategories = categories
                 renderCategoryChips(categories)
                 if (categories.isEmpty()) {
                     setLoading(false)
@@ -1334,13 +1340,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- PPV Fútbol VIP ----------------
+    // ---------------- Deportes - PPV ----------------
+
+    /** Tags fijos de las dos únicas carpetas de esta sección (no vienen del panel). */
+    private val PPV_TAB_CANALES = "ppv_tab_canales"
+    private val PPV_TAB_EVENTOS = "ppv_tab_eventos"
 
     /**
-     * Deportes - PPV: muestra TODOS los canales del servidor con la categoría
-     * deportiva configurada en gradle.properties como primera pestaña
-     * (DEPORTES LATINO en Sistema L, DEPORTES en Sistema XL). El resto de las
-     * categorías sigue disponible a continuación, igual que en Canales.
+     * Deportes - PPV ya no navega por las categorías del panel tal como
+     * vienen: trae TODAS las categorías y TODOS los canales en vivo del
+     * servidor de una sola vez y los reparte en dos carpetas fijas según el
+     * nombre (de la categoría o del propio canal):
+     *  - "PPV Eventos": menciona "PPV".
+     *  - "Canales": todo lo demás.
      * El mini reproductor funciona igual que en la sección de Canales.
      */
     private fun showPpv() {
@@ -1348,8 +1360,85 @@ class MainActivity : AppCompatActivity() {
         binding.etPpvSearch.visibility = View.VISIBLE
         binding.etPpvSearch.setText("")
         Catalog.ensureLoaded(this) { }
-        // Sin filtro: todas las categorías del servidor, con la deportiva primero
-        loadCategories(ContentType.LIVE) { true }
+        loadPpvContent()
+    }
+
+    /** ¿Este texto (nombre de categoría o de canal) corresponde a un evento PPV? */
+    private fun esPpv(texto: String?): Boolean =
+        PpvFilter.normalize(texto.orEmpty()).contains("ppv")
+
+    private fun loadPpvContent() {
+        setLoading(true)
+        val user = Session.username(this)
+        val pass = Session.password(this)
+        Session.api(this).getLiveCategories(user, pass).enqueue(object : Callback<List<Category>> {
+            override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
+                if (isFinishing || isDestroyed) return
+                // Se guarda en el campo compartido `categories`: es lo que usa
+                // showPreviewCard() para mostrar el nombre real de la
+                // categoría bajo el mini reproductor, igual que en Canales.
+                categories = response.body().orEmpty()
+                val nombrePorId = categories.associate { it.categoryId to it.categoryName.orEmpty() }
+
+                Session.api(this@MainActivity).getLiveStreams(user, pass, categoryId = null)
+                    .enqueue(object : Callback<List<LiveStream>> {
+                        override fun onResponse(call: Call<List<LiveStream>>, response: Response<List<LiveStream>>) {
+                            if (isFinishing || isDestroyed) return
+                            setLoading(false)
+                            val todos = response.body().orEmpty()
+                                .map { it.toContentItem() }
+                                .filter { it.name.isNotBlank() }
+                            val (eventos, canales) = todos.partition { canal ->
+                                esPpv(canal.name) || esPpv(nombrePorId[canal.categoryId])
+                            }
+                            ppvEventos = eventos
+                            ppvCanales = canales
+                            renderPpvChips()
+                            mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
+                        }
+
+                        override fun onFailure(call: Call<List<LiveStream>>, t: Throwable) {
+                            if (isFinishing) return
+                            setLoading(false)
+                            Toast.makeText(this@MainActivity, "Error cargando canales: ${t.message}", Toast.LENGTH_LONG).show()
+                        }
+                    })
+            }
+
+            override fun onFailure(call: Call<List<Category>>, t: Throwable) {
+                if (isFinishing) return
+                setLoading(false)
+                Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
+            }
+        })
+    }
+
+    /** Dibuja las dos únicas carpetas de Deportes - PPV: Canales y PPV Eventos. */
+    private fun renderPpvChips() {
+        binding.categoryContainer.removeAllViews()
+        listOf(
+            PPV_TAB_CANALES to getString(R.string.ppv_tab_canales),
+            PPV_TAB_EVENTOS to getString(R.string.ppv_tab_eventos)
+        ).forEach { (tag, label) ->
+            val chip: TextView = ItemCategoryBinding.inflate(layoutInflater, binding.categoryContainer, false).root
+            chip.text = label
+            chip.tag = tag
+            Appearance.applyChipState(chip, tag == currentCategoryId)
+            chip.setOnClickListener { mostrarGrupoPpv(tag) }
+            binding.categoryContainer.addView(chip)
+        }
+    }
+
+    /** Cambia entre las carpetas Canales / PPV Eventos, sin ir al servidor: ya está todo en memoria. */
+    private fun mostrarGrupoPpv(tab: String) {
+        currentCategoryId = tab
+        refreshCategorySelection()
+        val items = if (tab == PPV_TAB_CANALES) ppvCanales else ppvEventos
+        currentItems = items
+        adapter.submitList(items)
+        refreshPreviewCard(items)
+        binding.tvEmpty.setText(R.string.empty_ppv)
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 
     /** Buscador propio del perfil de niños: filtra lo que ya está en pantalla. */
@@ -1374,8 +1463,8 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Filtro rápido de canales: escribe parte del nombre y la lista se acota
-     * al instante, sin salir a la búsqueda global. Aparece en Canales, PPV y
-     * Favoritos (pestaña Canales); se oculta en el resto de las secciones.
+     * al instante, sin salir a la búsqueda global. Aparece solo en Canales;
+     * Deportes - PPV tiene su propio buscador (etPpvSearch, ver más abajo).
      */
     private fun setupChannelFilter() {
         binding.etChannelFilter.addTextChangedListener(object : TextWatcher {
@@ -1407,37 +1496,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Busca en **todo** el contenido PPV, no solo en los nombres de carpeta:
-     * recorre los canales de todas las categorías de fútbol, así se encuentra
-     * por equipo, país, liga o nombre del evento.
+     * Busca en **todo** el contenido de Deportes - PPV (las dos carpetas
+     * juntas), no solo en la que está abierta: así se encuentra por equipo,
+     * liga, país, canal o nombre del evento sin tener que cambiar de pestaña.
      */
     private fun filterPpvCategories(query: String) {
         val q = query.trim()
+        val todo = ppvCanales + ppvEventos
 
         if (q.isBlank()) {
-            // Sin búsqueda: vuelve la navegación normal por carpetas
-            categories = ppvCategories
-            renderCategoryChips(ppvCategories)
-            if (ppvCategories.isEmpty()) {
-                adapter.submitList(emptyList())
-                binding.tvEmpty.setText(R.string.empty_ppv)
-                binding.tvEmpty.visibility = View.VISIBLE
-            } else {
-                loadContent(ContentType.LIVE, ppvCategories.first().categoryId)
-            }
+            // Sin búsqueda: vuelve la navegación normal por las dos carpetas
+            renderPpvChips()
+            mostrarGrupoPpv(
+                if (currentCategoryId == PPV_TAB_EVENTOS) PPV_TAB_EVENTOS else PPV_TAB_CANALES
+            )
             return
         }
 
-        val idsPpv = ppvCategories.mapNotNull { it.categoryId }.toSet()
-        val nombresPorId = ppvCategories.associate { it.categoryId to it.categoryName.orEmpty() }
-
-        // Se busca sobre el catálogo ya cargado en memoria: es instantáneo
-        val resultados = Catalog.live
-            .filter { it.categoryId in idsPpv }
-            .filter { canal ->
-                canal.name.contains(q, ignoreCase = true) ||
-                    nombresPorId[canal.categoryId].orEmpty().contains(q, ignoreCase = true)
-            }
+        val resultados = todo
+            .filter { it.name.contains(q, ignoreCase = true) }
             .take(300)
 
         currentCategoryId = null
@@ -1446,11 +1523,7 @@ class MainActivity : AppCompatActivity() {
         currentItems = resultados
 
         binding.tvEmpty.setText(
-            when {
-                ppvCategories.isEmpty() -> R.string.empty_ppv
-                Catalog.live.isEmpty() -> R.string.search_loading_catalog
-                else -> R.string.ppv_no_match
-            }
+            if (todo.isEmpty()) R.string.empty_ppv else R.string.ppv_no_match
         )
         binding.tvEmpty.visibility = if (resultados.isEmpty()) View.VISIBLE else View.GONE
     }

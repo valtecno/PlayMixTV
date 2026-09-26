@@ -267,9 +267,10 @@
     </FrameLayout>
 
     <!-- ===== Filtro rápido de canales =====
-         Aparece solo en la sección Canales, PPV y Favoritos (pestaña canales).
-         Permite escribir parte del nombre y la lista se filtra al instante,
-         sin salir a la pantalla de búsqueda global. -->
+         Aparece solo en la sección Canales. Permite escribir parte del
+         nombre y la lista se filtra al instante, sin salir a la pantalla de
+         búsqueda global. Deportes - PPV usa su propio buscador (etPpvSearch,
+         más abajo), no este. -->
     <EditText
         android:id="@+id/etChannelFilter"
         android:layout_width="match_parent"
