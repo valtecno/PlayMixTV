@@ -83,6 +83,11 @@ class MainActivity : AppCompatActivity() {
      */
     private var ppvCanales: List<ContentItem> = emptyList()
     private var ppvEventos: List<ContentItem> = emptyList()
+    /**
+     * Filtro rápido por tipo de deporte dentro de "Canales" (ver
+     * renderPpvSportFilters). null = "Todos", sin acotar.
+     */
+    private var ppvSportTag: PpvFilter.SportTag? = null
     /** Chip de radios abierto ahora mismo (país o marca). */
     private var currentRadioSource: RadioCatalog.Source? = null
     private var currentRadioFolder: RadioCatalog.Folder? = null
@@ -359,7 +364,10 @@ class MainActivity : AppCompatActivity() {
         if (newSection != Section.RADIO) binding.radioSubScroll.visibility = View.GONE
         binding.favFilterScroll.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
-        if (newSection != Section.PPV) binding.etPpvSearch.visibility = View.GONE
+        if (newSection != Section.PPV) {
+            binding.etPpvSearch.visibility = View.GONE
+            binding.ppvSportFilterScroll.visibility = View.GONE
+        }
         binding.etKidsSearch.visibility =
             if (kidsMode && newSection in listOf(Section.LIVE, Section.MOVIES, Section.SERIES))
                 View.VISIBLE else View.GONE
@@ -1544,6 +1552,9 @@ class MainActivity : AppCompatActivity() {
                 setLoading(false)
                 ppvEventos = eventos
                 ppvCanales = canales
+                // Contenido nuevo: el filtro por deporte elegido la vez
+                // anterior puede ni existir en este panel.
+                ppvSportTag = null
                 renderPpvChips()
                 mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
             }
@@ -1570,7 +1581,74 @@ class MainActivity : AppCompatActivity() {
     private fun mostrarGrupoPpv(tab: String) {
         currentCategoryId = tab
         refreshCategorySelection()
-        val items = if (tab == PPV_TAB_CANALES) ppvCanales else ppvEventos
+        if (tab == PPV_TAB_CANALES) {
+            // El filtro por deporte es propio de esta carpeta; en PPV Eventos
+            // no tiene sentido (son eventos puntuales, no canales de un
+            // deporte fijo).
+            renderPpvSportFilters()
+            mostrarListaPpvCanales()
+        } else {
+            ppvSportTag = null
+            binding.ppvSportFilterScroll.visibility = View.GONE
+            currentItems = ppvEventos
+            adapter.submitList(ppvEventos)
+            refreshPreviewCard(ppvEventos)
+            binding.tvEmpty.setText(R.string.empty_ppv)
+            binding.tvEmpty.visibility = if (ppvEventos.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    /**
+     * Chips "Todos / Fútbol / Tenis / Box / ..." dentro de "Canales": ayuda a
+     * elegir cuando se sabe qué deporte se quiere ver pero no un canal
+     * puntual, sin tener que escribir nada. Solo se muestran los tipos que
+     * de verdad tienen canales en este panel — y solo si hay más de uno: con
+     * un solo tipo el filtro no acota nada y sobra.
+     */
+    private fun renderPpvSportFilters() {
+        val nombrePorId = categories.associate { it.categoryId to it.categoryName }
+        val tagsPresentes = ppvCanales.mapNotNull { ppvSportTagDe(it, nombrePorId) }.toSet()
+        binding.ppvSportFilterContainer.removeAllViews()
+
+        if (tagsPresentes.size < 2) {
+            binding.ppvSportFilterScroll.visibility = View.GONE
+            ppvSportTag = null
+            return
+        }
+
+        binding.ppvSportFilterScroll.visibility = View.VISIBLE
+        val opciones: List<PpvFilter.SportTag?> =
+            listOf(null) + PpvFilter.SportTag.values().filter { it in tagsPresentes }
+
+        opciones.forEach { tag ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.ppvSportFilterContainer, false).root
+            chip.text = tag?.etiqueta ?: getString(R.string.fav_all)
+            Appearance.applyChipState(chip, tag == ppvSportTag)
+            chip.setOnClickListener {
+                ppvSportTag = tag
+                renderPpvSportFilters()
+                mostrarListaPpvCanales()
+            }
+            binding.ppvSportFilterContainer.addView(chip)
+        }
+    }
+
+    /** A qué deporte corresponde este canal, mirando su nombre y el de su categoría. */
+    private fun ppvSportTagDe(canal: ContentItem, nombrePorId: Map<String, String>): PpvFilter.SportTag? {
+        val nombreCategoria = canal.categoryId?.let { nombrePorId[it] }
+        return PpvFilter.sportTagFor(canal.name) ?: PpvFilter.sportTagFor(nombreCategoria)
+    }
+
+    /** Aplica ppvSportTag (si hay uno elegido) sobre ppvCanales y refresca la lista en pantalla. */
+    private fun mostrarListaPpvCanales() {
+        val tag = ppvSportTag
+        val items = if (tag == null) {
+            ppvCanales
+        } else {
+            val nombrePorId = categories.associate { it.categoryId to it.categoryName }
+            ppvCanales.filter { ppvSportTagDe(it, nombrePorId) == tag }
+        }
         currentItems = items
         adapter.submitList(items)
         refreshPreviewCard(items)
@@ -1656,6 +1734,9 @@ class MainActivity : AppCompatActivity() {
 
         currentCategoryId = null
         refreshCategorySelection()
+        // El filtro por deporte es de la carpeta "Canales"; buscando texto se
+        // mezclan las dos carpetas, así que no tiene dónde aplicarse.
+        binding.ppvSportFilterScroll.visibility = View.GONE
         adapter.submitList(resultados)
         currentItems = resultados
 

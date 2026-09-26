@@ -49,23 +49,6 @@ object PpvFilter {
             .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
 
     /**
-     * Versión ya normalizada de una lista de palabras clave, calculada una
-     * sola vez. Las listas de este archivo son constantes: normalizar cada
-     * palabra en cada llamada (como se hacía antes, `name.contains(normalize(it))`
-     * dentro del `any`) repite el mismo trabajo miles de veces cuando se
-     * revisan todos los canales del panel de una sola vez, que es justo lo
-     * que hace la carpeta "Canales" de Deportes - PPV. En un panel grande eso
-     * alcanza a colgar la app (ANR).
-     */
-    private fun List<String>.normalized(): List<String> = map { normalize(it) }
-
-    private val futbolNorm by lazy { futbol.normalized() }
-    private val genericasNorm by lazy { genericas.normalized() }
-    private val otrosDeportesNorm by lazy { otrosDeportes.normalized() }
-    private val deportesSistemaLNorm by lazy { deportesSistemaL.normalized() }
-    private val deportesSistemaXLNorm by lazy { deportesSistemaXL.normalized() }
-
-    /**
      * Igual que [normalize], pero además cambia cualquier separador
      * ("|", "-", "_", "·", etc.) por un espacio simple y junta espacios
      * repetidos. Sirve para comparar frases completas contra nombres de
@@ -78,14 +61,64 @@ object PpvFilter {
             .replace(Regex("[^a-z0-9]+"), " ")
             .trim()
 
+    /**
+     * Una palabra clave, lista para compararse contra un nombre ya
+     * normalizado. Antes esto era `nombre.contains(normalize(palabra))`, un
+     * simple "substring": funcionaba mal con palabras cortas, porque
+     * cualquier nombre que las tuviera COMO PARTE de otra palabra también
+     * calzaba. Así, "CANTINFLAS" entraba a Deportes por contener "nfl",
+     * "GILIGANT" por contener "liga", "TRANSPORTER" por contener "sport" y
+     * "CHAMPIONSHIP" (de un programa de repostería) por contener "champions".
+     * Ninguno de esos canales tiene que ver con deportes.
+     *
+     * La solución es exigir que la palabra aparezca completa (con un borde
+     * de palabra a cada lado), no como fragmento de una más larga. Eso solo
+     * tiene sentido cuando la palabra clave empieza y termina en letra o
+     * número: una como "+18" ya tiene un símbolo en el borde que la vuelve
+     * rara de encontrar por accidente, así que esas se quedan con el
+     * "substring" de siempre.
+     */
+    private class Palabra(clave: String) {
+        private val normalizada = normalize(clave)
+        private val regexPalabraCompleta: Regex? = run {
+            val esAlfanumerica = normalizada.isNotEmpty() &&
+                normalizada.first().isLetterOrDigit() && normalizada.last().isLetterOrDigit()
+            if (esAlfanumerica) Regex("\\b" + Regex.escape(normalizada) + "\\b") else null
+        }
+
+        fun apareceEn(textoNormalizado: String): Boolean =
+            regexPalabraCompleta?.containsMatchIn(textoNormalizado)
+                ?: textoNormalizado.contains(normalizada)
+    }
+
+    /**
+     * Versión de una lista de palabras clave lista para comparar, calculada
+     * una sola vez. Las listas de este archivo son constantes: prepararlas
+     * en cada llamada (compilar expresiones regulares, normalizar texto)
+     * repite el mismo trabajo miles de veces cuando se revisan todos los
+     * canales del panel de una sola vez, que es justo lo que hace la carpeta
+     * "Canales" de Deportes - PPV. En un panel grande eso alcanza a colgar
+     * la app (ANR).
+     */
+    private fun List<String>.aPalabras(): List<Palabra> = map { Palabra(it) }
+
+    private fun List<Palabra>.apareceAlgunaEn(textoNormalizado: String): Boolean =
+        any { it.apareceEn(textoNormalizado) }
+
+    private val futbolPalabras by lazy { futbol.aPalabras() }
+    private val genericasPalabras by lazy { genericas.aPalabras() }
+    private val otrosDeportesPalabras by lazy { otrosDeportes.aPalabras() }
+    private val deportesSistemaLPalabras by lazy { deportesSistemaL.aPalabras() }
+    private val deportesSistemaXLPalabras by lazy { deportesSistemaXL.aPalabras() }
+
     /** ¿Esta categoría entra en la sección PPV Fútbol? */
     fun isFootball(categoryName: String?): Boolean {
         if (categoryName.isNullOrBlank()) return false
         val name = normalize(categoryName)
 
-        if (otrosDeportesNorm.any { name.contains(it) }) return false
-        if (futbolNorm.any { name.contains(it) }) return true
-        return genericasNorm.any { name.contains(it) }
+        if (otrosDeportesPalabras.apareceAlgunaEn(name)) return false
+        if (futbolPalabras.apareceAlgunaEn(name)) return true
+        return genericasPalabras.apareceAlgunaEn(name)
     }
 
     /**
@@ -122,7 +155,57 @@ object PpvFilter {
     fun isSportsChannel(name: String?, serverId: String?): Boolean {
         if (name.isNullOrBlank()) return false
         val texto = normalize(name)
-        val lista = if (serverId == "xl") deportesSistemaXLNorm else deportesSistemaLNorm
-        return lista.any { texto.contains(it) }
+        val lista = if (serverId == "xl") deportesSistemaXLPalabras else deportesSistemaLPalabras
+        return lista.apareceAlgunaEn(texto)
+    }
+
+    // ---------------- Filtro rápido por tipo de deporte ----------------
+
+    /**
+     * Etiquetas del filtro rápido que se muestra dentro de "Canales", para
+     * ayudar a elegir cuando se sabe qué deporte se quiere ver pero no un
+     * canal o evento puntual. No reemplaza el buscador (etPpvSearch): es una
+     * forma más rápida de acotar por tipo, sin tener que escribir nada.
+     */
+    enum class SportTag(val etiqueta: String) {
+        FUTBOL("Fútbol"),
+        BALONCESTO("Básquet"),
+        BEISBOL("Béisbol"),
+        TENIS("Tenis"),
+        BOXEO("Boxeo / UFC"),
+        MOTOR("Fórmula 1 / Motor"),
+        OTROS("Otros deportes")
+    }
+
+    private val tagKeywords: Map<SportTag, List<String>> = mapOf(
+        SportTag.FUTBOL to listOf(
+            "futbol", "football", "soccer", "liga", "champions", "uefa", "europa league",
+            "mundial", "fifa", "copa", "libertadores", "sudamericana", "concacaf",
+            "bundesliga", "serie a", "ligue 1", "premier", "laliga", "mls", "primera",
+            "eredivisie", "eliminatorias", "supercopa"
+        ),
+        SportTag.BALONCESTO to listOf("nba", "basket", "baloncesto"),
+        SportTag.BEISBOL to listOf("mlb", "beisbol", "béisbol", "baseball"),
+        SportTag.TENIS to listOf("tenis", "tennis", "atp", "wta"),
+        SportTag.BOXEO to listOf("boxeo", "boxing", "box ", "ufc", "mma"),
+        SportTag.MOTOR to listOf("f1", "formula 1", "formula1", "nascar", "motogp", "moto gp"),
+        SportTag.OTROS to listOf(
+            "nfl", "nhl", "rugby", "hockey", "voley", "volley", "cricket",
+            "atletismo", "ciclismo", "golf"
+        )
+    )
+
+    private val tagPalabras by lazy { tagKeywords.mapValues { (_, claves) -> claves.aPalabras() } }
+
+    /**
+     * A qué deporte corresponde este nombre (canal o categoría), o null si
+     * no calza con ninguna etiqueta del filtro rápido. Cuando un nombre
+     * calza con más de una (poco común), gana la que aparece primero en
+     * [SportTag], en el mismo orden en que se muestran los chips.
+     */
+    fun sportTagFor(name: String?): SportTag? {
+        if (name.isNullOrBlank()) return null
+        val texto = normalize(name)
+        return SportTag.values().firstOrNull { tag -> tagPalabras.getValue(tag).apareceAlgunaEn(texto) }
     }
 }

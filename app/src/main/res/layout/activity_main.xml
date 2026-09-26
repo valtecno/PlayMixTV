@@ -387,6 +387,31 @@
                     android:paddingEnd="8dp" />
             </HorizontalScrollView>
 
+            <!-- ===== Filtro rápido por tipo de deporte: SOLO en Deportes - PPV,
+                 dentro de la carpeta "Canales" =====
+                 Ayuda a elegir cuando se sabe qué deporte se quiere ver
+                 (fútbol, tenis, box, etc.) pero no un canal puntual, sin
+                 tener que escribir nada en el buscador. Se arma con los
+                 tipos que de verdad tienen canales en este panel (ver
+                 renderPpvSportFilters en MainActivity), así que puede traer
+                 menos chips que tipos existen, o ninguno si todo es de un
+                 solo tipo. -->
+            <HorizontalScrollView
+                android:id="@+id/ppvSportFilterScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/ppvSportFilterContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
+            </HorizontalScrollView>
+
             <!-- ===== Segunda fila de chips: SOLO para Radios =====
                  Arriba van las carpetas (Países · Tomorrowland · Electrónica) y
                  acá lo que hay dentro de la carpeta abierta: los países, o los

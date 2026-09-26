@@ -155,4 +155,56 @@ class PpvFilterTest {
         assertFalse(PpvFilter.isSportsChannel("", "xl"))
         assertFalse(PpvFilter.isSportsChannel("   ", "l"))
     }
+
+    // ---------------- Palabra completa, no fragmento de otra ----------------
+    // Casos reales que se colaban en Deportes - PPV: la palabra clave era
+    // corta y aparecía COMO PARTE de un nombre sin relación con deportes.
+
+    @Test
+    fun `una palabra clave no cuela por ser parte de otra palabra`() {
+        // "nfl" dentro de "caNTINFLAS", no como palabra suelta
+        assertFalse(PpvFilter.isSportsChannel("24 Horas | Cantinflas y sus amigos", "l"))
+        // "liga" dentro de "giLIGAnt"
+        assertFalse(PpvFilter.isSportsChannel("24 Horas | La Isla de Giligant", "l"))
+        // "sport" dentro de "tranSPORTer"
+        assertFalse(PpvFilter.isSportsChannel("24 Hours | The Transporter", "l"))
+        // "champions" dentro de "CHAMPIONShip"
+        assertFalse(PpvFilter.isSportsChannel("24 Hours | Halloween Baking Championship", "l"))
+        // Igual del lado de Sistema XL: "chile" dentro de "CHILEna"
+        assertFalse(PpvFilter.isSportsChannel("Novela Chilena", "xl"))
+    }
+
+    @Test
+    fun `la palabra clave si entra cuando aparece suelta`() {
+        assertTrue(PpvFilter.isSportsChannel("Canal NFL Network", "l"))
+        assertTrue(PpvFilter.isSportsChannel("Liga MX", "l"))
+        assertTrue(PpvFilter.isSportsChannel("Fox Sports 2", "l"))
+        assertTrue(PpvFilter.isSportsChannel("Champions League", "l"))
+    }
+
+    // ---------------- Filtro rápido por tipo de deporte ----------------
+
+    @Test
+    fun `sportTagFor reconoce el tipo de deporte`() {
+        assertEquals(PpvFilter.SportTag.FUTBOL, PpvFilter.sportTagFor("Liga MX"))
+        assertEquals(PpvFilter.SportTag.BALONCESTO, PpvFilter.sportTagFor("NBA TV"))
+        assertEquals(PpvFilter.SportTag.BEISBOL, PpvFilter.sportTagFor("MLB Network"))
+        assertEquals(PpvFilter.SportTag.TENIS, PpvFilter.sportTagFor("ESPN Tenis"))
+        assertEquals(PpvFilter.SportTag.BOXEO, PpvFilter.sportTagFor("UFC 300"))
+        assertEquals(PpvFilter.SportTag.MOTOR, PpvFilter.sportTagFor("Formula 1"))
+        assertEquals(PpvFilter.SportTag.OTROS, PpvFilter.sportTagFor("Rugby Championship"))
+    }
+
+    @Test
+    fun `sportTagFor tampoco cuela por palabra parcial`() {
+        assertEquals(null, PpvFilter.sportTagFor("24 Horas | Cantinflas y sus amigos"))
+        assertEquals(null, PpvFilter.sportTagFor("24 Hours | The Transporter"))
+    }
+
+    @Test
+    fun `sportTagFor sin nombre o sin coincidencia devuelve null`() {
+        assertEquals(null, PpvFilter.sportTagFor(null))
+        assertEquals(null, PpvFilter.sportTagFor(""))
+        assertEquals(null, PpvFilter.sportTagFor("Cine de Accion"))
+    }
 }
