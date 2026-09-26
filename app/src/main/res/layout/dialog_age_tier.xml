@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selector de tramo de edad para el Perfil de niños. Mismo patrón visual
+     que dialog_accounts.xml: tarjetas propias, no la lista pelada del
+     sistema, para que el foco del control remoto se vea sobre cada fila. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/kids_age_tier_title"
+        android:textColor="@color/text_light"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="14dp"
+        android:text="@string/kids_age_tier_subtitle"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:id="@+id/ageTierContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <TextView
+        android:id="@+id/btnCloseAgeTier"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_option"
+        android:gravity="center"
+        android:paddingTop="13dp"
+        android:paddingBottom="13dp"
+        android:text="@string/cancel"
+        android:textColor="@color/text_muted"
+        android:textSize="14sp"
+        android:focusable="true"
+        android:clickable="true" />
+
+</LinearLayout>

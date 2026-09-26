@@ -32,6 +32,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import com.miiptv.app.R
 import com.miiptv.app.api.*
 import com.miiptv.app.databinding.ActivityMainBinding
+import com.miiptv.app.databinding.DialogAgeTierBinding
+import com.miiptv.app.databinding.ItemAgeTierBinding
 import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
@@ -216,7 +218,11 @@ class MainActivity : AppCompatActivity() {
         // Si la app abre directo en el perfil de niños (venía activo de antes),
         // hay que avisar la regla igual que cuando se activa con el botón.
         if (kidsMode) {
-            Toast.makeText(this, R.string.kids_mode_on, Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                getString(R.string.kids_mode_on, KidsMode.getAgeTier(this).etiqueta),
+                Toast.LENGTH_LONG
+            ).show()
         }
     }
 
@@ -384,8 +390,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Filtro adicional de categorías cuando el Perfil de niños está activo. */
-    private fun kidsFilterOrNull(): ((Category) -> Boolean)? =
-        if (kidsMode) { c -> KidsFilter.isKidsCategory(c.categoryName) } else null
+    private fun kidsFilterOrNull(): ((Category) -> Boolean)? {
+        if (!kidsMode) return null
+        val tramo = KidsMode.getAgeTier(this)
+        return { c -> KidsFilter.isKidsCategory(c.categoryName, tramo) }
+    }
 
     /**
      * Películas y Series se muestran como grilla de pósters, con las columnas
@@ -1125,9 +1134,58 @@ class MainActivity : AppCompatActivity() {
     private fun enterKidsMode() {
         if (!Parental.hasPin(this)) {
             Toast.makeText(this, R.string.kids_mode_need_pin, Toast.LENGTH_LONG).show()
-            PinDialog.create(this) { activateKidsMode() }
+            PinDialog.create(this) { pickAgeTier { activateKidsMode() } }
         } else {
-            activateKidsMode()
+            pickAgeTier { activateKidsMode() }
+        }
+    }
+
+    /**
+     * Antes de activar el perfil, el padre elige el tramo de edad para esta
+     * vez (ver [KidsFilter.AgeTier]). Arranca marcado en el último elegido,
+     * así que si siempre es el mismo chico no hace falta tocar nada más que
+     * "Usar este tramo". Si cancela, [activateKidsMode] no se llama y el
+     * perfil no se activa.
+     */
+    private fun pickAgeTier(onElegido: () -> Unit) {
+        val tramos = KidsFilter.AgeTier.values()
+        val actual = KidsMode.getAgeTier(this)
+        val vista = DialogAgeTierBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this).setView(vista.root).create()
+
+        tramos.forEach { tramo ->
+            val fila = ItemAgeTierBinding.inflate(layoutInflater, vista.ageTierContainer, false)
+            fila.tvAgeTierLabel.text = tramo.etiqueta
+            fila.tvAgeTierDesc.text = tramo.descripcion
+            fila.root.background = Appearance.withFocusState(
+                this, ContextCompat.getDrawable(this, R.drawable.bg_option)!!, 12f
+            )
+            val esActual = tramo == actual
+            if (esActual) {
+                fila.tvAgeTierBadge.visibility = View.VISIBLE
+                fila.tvAgeTierBadge.text = getString(R.string.kids_age_tier_current)
+                fila.tvAgeTierBadge.background = Appearance.gradient(this, 14f)
+                fila.root.alpha = 1f
+            } else {
+                fila.tvAgeTierBadge.visibility = View.GONE
+                fila.root.alpha = 0.85f
+            }
+            fila.root.setOnClickListener {
+                KidsMode.setAgeTier(this, tramo)
+                dialog.dismiss()
+                onElegido()
+            }
+            vista.ageTierContainer.addView(fila.root)
+        }
+
+        vista.btnCloseAgeTier.background = Appearance.withFocusState(
+            this, ContextCompat.getDrawable(this, R.drawable.bg_option)!!, 12f
+        )
+        vista.btnCloseAgeTier.setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(vista.ageTierContainer.getChildAt(tramos.indexOf(actual).coerceAtLeast(0)))
         }
     }
 
@@ -1135,7 +1193,11 @@ class MainActivity : AppCompatActivity() {
         kidsMode = true
         KidsMode.setActive(this, true)
         applyKidsVisibility()
-        Toast.makeText(this, R.string.kids_mode_on, Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            this,
+            getString(R.string.kids_mode_on, KidsMode.getAgeTier(this).etiqueta),
+            Toast.LENGTH_LONG
+        ).show()
         selectSection(Section.LIVE)
     }
 

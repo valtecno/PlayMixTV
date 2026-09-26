@@ -1,5 +1,6 @@
 package com.miiptv.app.util
 
+import com.miiptv.app.util.KidsFilter.AgeTier
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -11,6 +12,10 @@ import org.junit.Test
  * Por eso los tests insisten en el orden de las reglas: las exclusiones se
  * evalúan ANTES que las palabras infantiles, así "Terror Animado" queda fuera
  * aunque diga "animado".
+ *
+ * Los tests sin tramo explícito ejercitan el valor por defecto (AgeTier.DIEZ,
+ * el comportamiento de siempre); los que sí lo pasan cubren los tres tramos
+ * nuevos del selector de edad.
  */
 class KidsFilterTest {
 
@@ -69,5 +74,48 @@ class KidsFilterTest {
         assertFalse(KidsFilter.isKidsCategory(null))
         assertFalse(KidsFilter.isKidsCategory(""))
         assertFalse(KidsFilter.isKidsCategory("   "))
+    }
+
+    // ---------------- Tramos de edad (selector) ----------------
+
+    @Test
+    fun `menores de 5 solo deja marcas de bebes y preescolar`() {
+        assertTrue(KidsFilter.isKidsCategory("Disney Junior", AgeTier.MENOR_5))
+        assertTrue(KidsFilter.isKidsCategory("Baby TV", AgeTier.MENOR_5))
+        assertTrue(KidsFilter.isKidsCategory("Pocoyó", AgeTier.MENOR_5))
+        // Genéricas como "cartoon"/"kids" traen series para más grandes:
+        // no entran en este tramo aunque sí entren en los demás.
+        assertFalse(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.MENOR_5))
+        assertFalse(KidsFilter.isKidsCategory("KIDS", AgeTier.MENOR_5))
+        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.MAYOR_5))
+    }
+
+    @Test
+    fun `mayores de 5 y diez anios se comportan igual que el filtro de siempre`() {
+        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.MAYOR_5))
+        assertTrue(KidsFilter.isKidsCategory("Cartoon Network", AgeTier.DIEZ))
+        assertFalse(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.MAYOR_5))
+        assertFalse(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.DIEZ))
+        assertFalse(KidsFilter.isKidsCategory("Infantil +12", AgeTier.MAYOR_5))
+        assertFalse(KidsFilter.isKidsCategory("Infantil +12", AgeTier.DIEZ))
+    }
+
+    @Test
+    fun `hasta doce anios suma familiar y mas-de-diez pero no lo demas`() {
+        assertTrue(KidsFilter.isKidsCategory("Cine Familiar", AgeTier.HASTA_12))
+        assertTrue(KidsFilter.isKidsCategory("Kids Familia", AgeTier.HASTA_12))
+        assertTrue(KidsFilter.isKidsCategory("Infantil +12", AgeTier.HASTA_12))
+        assertTrue(KidsFilter.isKidsCategory("Kids 11+", AgeTier.HASTA_12))
+        // Lo que sigue vale para cualquier tramo, incluido este: nunca se abre.
+        assertFalse(KidsFilter.isKidsCategory("Terror Animado", AgeTier.HASTA_12))
+        assertFalse(KidsFilter.isKidsCategory("Cartoon 13+", AgeTier.HASTA_12))
+        assertFalse(KidsFilter.isKidsCategory("Teen", AgeTier.HASTA_12))
+        assertFalse(KidsFilter.isKidsCategory("Anime Infantil", AgeTier.HASTA_12))
+    }
+
+    @Test
+    fun `sin tramo se usa el de siempre (diez anios)`() {
+        assertTrue(KidsFilter.isKidsCategory("Infantil") == KidsFilter.isKidsCategory("Infantil", AgeTier.DIEZ))
+        assertTrue(KidsFilter.isKidsCategory("Cine Familiar") == KidsFilter.isKidsCategory("Cine Familiar", AgeTier.DIEZ))
     }
 }

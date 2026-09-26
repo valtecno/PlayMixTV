@@ -236,7 +236,10 @@ class MultiScreenActivity : AppCompatActivity() {
                     val todas = response.body().orEmpty()
                         .filter { !Parental.isCategoryLocked(this@MultiScreenActivity, it.categoryId) }
                         .let { lista ->
-                            if (kidsMode) lista.filter { KidsFilter.isKidsCategory(it.categoryName) } else lista
+                            if (kidsMode) {
+                                val tramo = KidsMode.getAgeTier(this@MultiScreenActivity)
+                                lista.filter { KidsFilter.isKidsCategory(it.categoryName, tramo) }
+                            } else lista
                         }
 
                     if (todas.isEmpty()) {
