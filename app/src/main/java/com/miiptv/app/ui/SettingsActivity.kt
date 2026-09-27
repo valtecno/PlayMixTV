@@ -42,6 +42,11 @@ class SettingsActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
 
+        // ---------- Ayuda ----------
+        binding.rowHelp.setOnClickListener { startActivity(Intent(this, HelpActivity::class.java)) }
+        binding.ivHelpVanessa.outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+        binding.ivHelpVanessa.clipToOutline = true
+
         // ---------- Reproductor ----------
         binding.rowBuffer.setOnClickListener { pickBuffer() }
         binding.rowAspect.setOnClickListener { pickAspect() }

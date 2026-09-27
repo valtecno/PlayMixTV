@@ -341,4 +341,15 @@
     <string name="exit_message">Se cerrará la aplicación y volverás al inicio del dispositivo.</string>
     <string name="exit_confirm">Cerrar</string>
     <string name="exit_cancel">Seguir aquí</string>
+    <!-- Asistente de ayuda (Vanessa) -->
+    <string name="help_title">Asistente de ayuda</string>
+    <string name="help_vanessa_name">Hola, soy Vanessa, la asistente de PlayMix.</string>
+    <string name="help_vanessa_intro">Escribe tu duda o elige un tema y te explico cómo hacerlo.</string>
+    <string name="help_search_hint">Escribe tu pregunta… (ej: cómo pongo subtítulos)</string>
+    <string name="help_topic_all">Todos</string>
+    <string name="help_no_results">No encontré nada sobre eso. Prueba con otras palabras, o escríbenos por WhatsApp y te ayudamos.</string>
+    <string name="help_whatsapp">¿No está tu respuesta? Escríbenos por WhatsApp</string>
+    <string name="help_whatsapp_message">Hola, necesito ayuda con PlayMix TV.</string>
+    <string name="setting_help">Asistente de ayuda</string>
+    <string name="setting_help_desc">Pregúntale a Vanessa cómo usar la app</string>
 </resources>

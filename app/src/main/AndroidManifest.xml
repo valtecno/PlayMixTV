@@ -114,6 +114,7 @@
         <activity android:name=".ui.SeriesDetailActivity" android:exported="false" />
         <activity android:name=".ui.ParentalSettingsActivity" android:exported="false" />
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
+        <activity android:name=".ui.HelpActivity" android:exported="false" />
         <activity android:name=".ui.PersonalizeActivity" android:exported="false" />
 
         <service

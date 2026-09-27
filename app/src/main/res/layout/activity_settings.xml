@@ -23,6 +23,44 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- ===== Ayuda: primero, para que se encuentre sin buscarla ===== -->
+            <LinearLayout android:id="@+id/rowHelp" style="@style/SettingsRow">
+                <ImageView
+                    android:id="@+id/ivHelpVanessa"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/bg_avatar"
+                    android:padding="1dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/img_vanessa_avatar"
+                    android:contentDescription="@null" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setting_help"
+                        android:textColor="@color/text_light"
+                        android:textSize="15sp" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setting_help_desc"
+                        android:textColor="@color/text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/text_muted"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
             <!-- ===== Reproductor ===== -->
             <TextView style="@style/SettingsHeader" android:text="@string/settings_player" />
 
