@@ -352,4 +352,13 @@
     <string name="help_whatsapp_message">Hola, necesito ayuda con PlayMix TV.</string>
     <string name="setting_help">Asistente de ayuda</string>
     <string name="setting_help_desc">Pregúntale a Vanessa cómo usar la app</string>
+    <!-- Recuperar PIN olvidado (diálogo del PIN) -->
+    <string name="pin_recover">Recuperar PIN</string>
+    <string name="pin_recover_title">Recuperar PIN</string>
+    <string name="pin_recover_message">Escríbenos por WhatsApp y te enviaremos un código de recuperación. Ingrésalo en el teclado en lugar de tu PIN: se borrará el PIN anterior y podrás crear uno nuevo.</string>
+    <string name="pin_recover_qr_hint">Escanea este código con la cámara de tu celular para escribirnos por WhatsApp</string>
+    <string name="pin_recover_whatsapp">Pedir ayuda por WhatsApp</string>
+    <string name="pin_recover_back">Volver al PIN</string>
+    <string name="pin_recover_whatsapp_message">Hola, necesito ayuda para recuperar el PIN de seguridad de mi aplicación PlayMix TV. Lo olvidé y necesito restablecerlo.</string>
+    <string name="pin_reset_done">PIN anterior borrado. Crea tu nuevo PIN</string>
 </resources>

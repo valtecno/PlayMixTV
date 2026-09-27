@@ -208,9 +208,10 @@ object HelpContent {
         Pregunta(
             Tema.NINOS,
             "Olvidé mi PIN, ¿qué hago?",
-            "El PIN queda guardado solo en este aparato y no se puede ver. Escríbenos por WhatsApp con el " +
-                "botón de abajo y te ayudamos.",
-            listOf("olvide", "pin", "clave", "contraseña", "recuperar")
+            "En la pantalla donde se pide el PIN toca Recuperar PIN y escríbenos por WhatsApp (en la TV, " +
+                "escanea el código QR con tu celular). Te enviaremos un código de recuperación: ingrésalo " +
+                "en el teclado en lugar de tu PIN, se borra el PIN anterior y creas uno nuevo.",
+            listOf("olvide", "pin", "clave", "contraseña", "recuperar", "recuperar pin", "resetear", "codigo")
         ),
 
         // ---------------- Reproductor ----------------

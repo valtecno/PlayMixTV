@@ -52,6 +52,20 @@ object Parental {
     fun checkPin(context: Context, pin: String): Boolean =
         prefs(context).getString(KEY_PIN_HASH, null) == hash(pin)
 
+    /**
+     * PIN maestro de recuperación. Soporte lo da por WhatsApp a quien olvidó
+     * su PIN: ingresado en el teclado en lugar del PIN, borra el PIN guardado
+     * y pide crear uno nuevo (ver PinDialog.ask).
+     *
+     * Se guarda como hash SHA-256 y no como texto, para que no aparezca con
+     * solo abrir el APK y buscar cadenas. Ojo: con 4 dígitos eso solo frena
+     * a un curioso, no a alguien decidido (son 10.000 combinaciones). Para
+     * cambiarlo, reemplazar este valor por el SHA-256 del PIN nuevo.
+     */
+    private const val MASTER_PIN_HASH = "1ea2f89d934cb4a2af0b486736609cf9cb4bdafdc6e946e79aecb02b9d9dceb4"
+
+    fun isMasterPin(pin: String): Boolean = hash(pin) == MASTER_PIN_HASH
+
     fun lockedCategories(context: Context): Set<String> {
         cachedLocked?.let { return it }
         synchronized(this) {
