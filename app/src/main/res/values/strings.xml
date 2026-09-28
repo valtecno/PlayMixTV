@@ -21,6 +21,10 @@
     <string name="tab_movies">Películas</string>
     <string name="tab_series">Series</string>
     <string name="tab_favorites">Favoritos</string>
+    <!-- Botón del menú principal: ya no dice solo "Favoritos" -- ahora reúne
+         favoritos, vistas y continuar viendo en un solo lugar (ver Mi Espacio
+         más abajo). El ícono de corazón se mantiene igual. -->
+    <string name="nav_my_space">Mi Espacio</string>
     <string name="empty_list">No hay contenido para mostrar</string>
 
     <string name="action_search">Buscar</string>
@@ -364,4 +368,12 @@
     <!-- Continuar viendo (películas y series a medio ver) -->
     <string name="continue_chip">▶ Continuar viendo</string>
     <string name="continue_resuming">Continuando desde %1$s</string>
+
+    <!-- Mi Espacio: mismos chips de Favoritos de siempre + estas dos, que
+         solo aparecen cuando hay algo que mostrar en ellas. -->
+    <string name="my_space_watched_chip">✓ Vistas</string>
+    <string name="title_continue_watching">Continuar viendo</string>
+    <string name="title_watched">Vistas recientemente</string>
+    <string name="empty_continue_watching">No tienes nada pendiente por continuar</string>
+    <string name="empty_watched">Aún no has visto ninguna película o serie</string>
 </resources>

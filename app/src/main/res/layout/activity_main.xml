@@ -101,7 +101,7 @@
                     android:text="@string/nav_ppv" android:drawableStart="@drawable/ic_ball" />
 
                 <TextView android:id="@+id/navFavorites" style="@style/NavItem"
-                    android:text="@string/tab_favorites" android:drawableStart="@drawable/ic_favorite" />
+                    android:text="@string/nav_my_space" android:drawableStart="@drawable/ic_favorite" />
 
                 <TextView android:id="@+id/navKids" style="@style/NavItem"
                     android:text="@string/nav_kids" android:drawableStart="@drawable/ic_kids" />

@@ -78,6 +78,15 @@ class MainActivity : AppCompatActivity() {
     private var favFilter: ContentType? = null
     private var favIsRadio = false
     /**
+     * Pestaña activa dentro de "Mi Espacio" (antes "Favoritos"): además de
+     * los favoritos de siempre, ahora reúne "Continuar viendo" y "Vistas"
+     * (películas/series ya reproducidas). CONTINUAR y VISTAS ignoran
+     * favFilter/favIsRadio por completo; esos dos solo tienen sentido dentro
+     * de FAVORITOS, tal como funcionaban antes de agregar las otras pestañas.
+     */
+    private enum class EspacioModo { FAVORITOS, CONTINUAR, VISTAS }
+    private var espacioModo: EspacioModo = EspacioModo.FAVORITOS
+    /**
      * Deportes - PPV ya no navega por las categorías tal como vienen del
      * panel: se reparten en dos carpetas fijas según si el nombre (de la
      * categoría o del canal) menciona "PPV". Estas listas son la base del
@@ -460,7 +469,8 @@ class MainActivity : AppCompatActivity() {
      */
     private fun showPreviewFor(s: Section): Boolean =
         s == Section.LIVE || s == Section.PPV ||
-            (s == Section.FAVORITES && favFilter == ContentType.LIVE && !favIsRadio)
+            (s == Section.FAVORITES && espacioModo == EspacioModo.FAVORITOS &&
+                favFilter == ContentType.LIVE && !favIsRadio)
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
@@ -2098,33 +2108,67 @@ class MainActivity : AppCompatActivity() {
         binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 
+    /**
+     * Películas y series a medio ver, de las dos listas juntas y ordenadas
+     * por lo último tocado primero (cada una ya viene ordenada por separado,
+     * pero mezcladas hay que reordenar de nuevo).
+     */
+    private fun itemsContinuarTodo(): List<ContentItem> {
+        val permitidas = if (kidsMode) categories.map { it.categoryId }.toSet() else null
+        return (ContinueWatching.list(this, ContentType.MOVIE) + ContinueWatching.list(this, ContentType.SERIES))
+            .filter { permitidas == null || it.categoryId in permitidas }
+            .sortedByDescending { it.updatedAt }
+            .map { it.toContentItem() }
+    }
+
+    /** Películas y series ya reproducidas (el Historial completo también trae canales). */
+    private fun itemsVistas(): List<ContentItem> =
+        History.getAll(this).filter { it.type == ContentType.MOVIE || it.type == ContentType.SERIES }
+
     private fun showFavorites() {
         setLoading(false)
         binding.categoryContainer.removeAllViews()
+        // Si la pestaña en la que se había quedado ya no tiene nada (se
+        // terminó la última pendiente, o el historial se borró) se cae a
+        // Favoritos en vez de quedar mostrando un chip que ya no está.
+        if (espacioModo == EspacioModo.CONTINUAR && itemsContinuarTodo().isEmpty()) espacioModo = EspacioModo.FAVORITOS
+        if (espacioModo == EspacioModo.VISTAS && itemsVistas().isEmpty()) espacioModo = EspacioModo.FAVORITOS
         renderFavoriteFilters()
         applyFavoriteFilter()
     }
 
-    /** Chips de tipo dentro de Favoritos: Todos / Canales / Radios / Películas / Series. */
+    /**
+     * Chips de "Mi Espacio". Primero, solo si hay algo, Continuar viendo y
+     * Vistas; después los de toda la vida -- Todos / Canales / Radios /
+     * Películas / Series -- que se comportan exactamente igual que antes de
+     * sumar las otras dos pestañas.
+     */
     private fun renderFavoriteFilters() {
         binding.favFilterContainer.removeAllViews()
 
-        data class Filtro(val etiqueta: String, val tipo: ContentType?, val radio: Boolean)
-        val filtros = listOf(
-            Filtro(getString(R.string.fav_all), null, false),
-            Filtro(getString(R.string.tab_live), ContentType.LIVE, false),
-            Filtro(getString(R.string.fav_radios), ContentType.LIVE, true),
-            Filtro(getString(R.string.tab_movies), ContentType.MOVIE, false),
-            Filtro(getString(R.string.tab_series), ContentType.SERIES, false)
-        )
+        data class Filtro(val etiqueta: String, val modo: EspacioModo, val tipo: ContentType?, val radio: Boolean)
+        val filtros = mutableListOf<Filtro>()
+        if (itemsContinuarTodo().isNotEmpty()) {
+            filtros += Filtro(getString(R.string.continue_chip), EspacioModo.CONTINUAR, null, false)
+        }
+        if (itemsVistas().isNotEmpty()) {
+            filtros += Filtro(getString(R.string.my_space_watched_chip), EspacioModo.VISTAS, null, false)
+        }
+        filtros += Filtro(getString(R.string.fav_all), EspacioModo.FAVORITOS, null, false)
+        filtros += Filtro(getString(R.string.tab_live), EspacioModo.FAVORITOS, ContentType.LIVE, false)
+        filtros += Filtro(getString(R.string.fav_radios), EspacioModo.FAVORITOS, ContentType.LIVE, true)
+        filtros += Filtro(getString(R.string.tab_movies), EspacioModo.FAVORITOS, ContentType.MOVIE, false)
+        filtros += Filtro(getString(R.string.tab_series), EspacioModo.FAVORITOS, ContentType.SERIES, false)
 
         filtros.forEach { f ->
             val chip: TextView =
                 ItemCategoryBinding.inflate(layoutInflater, binding.favFilterContainer, false).root
             chip.text = f.etiqueta
-            val activo = f.tipo == favFilter && f.radio == favIsRadio
+            val activo = f.modo == espacioModo &&
+                (f.modo != EspacioModo.FAVORITOS || (f.tipo == favFilter && f.radio == favIsRadio))
             Appearance.applyChipState(chip, activo)
             chip.setOnClickListener {
+                espacioModo = f.modo
                 favFilter = f.tipo
                 favIsRadio = f.radio
                 renderFavoriteFilters()
@@ -2135,22 +2179,53 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyFavoriteFilter() {
-        val todos = Favorites.getAll(this)
-        // Las radios son LIVE pero traen su propia URL: así se separan de los canales
-        val favs = when {
-            favFilter == null -> todos
-            favIsRadio -> todos.filter { it.type == ContentType.LIVE && it.streamUrl != null }
-            favFilter == ContentType.LIVE -> todos.filter { it.type == ContentType.LIVE && it.streamUrl == null }
-            else -> todos.filter { it.type == favFilter }
+        // Igual que el chip "Continuar viendo" de Películas/Series: marcar
+        // esto es lo que hace que abrir una serie desde acá la retome en el
+        // episodio pendiente en vez de en el primero (ver reallyOpen).
+        currentCategoryId = if (espacioModo == EspacioModo.CONTINUAR) CONTINUAR_ID else null
+
+        val items = when (espacioModo) {
+            EspacioModo.CONTINUAR -> itemsContinuarTodo()
+            EspacioModo.VISTAS -> itemsVistas()
+            EspacioModo.FAVORITOS -> {
+                val todos = Favorites.getAll(this)
+                // Las radios son LIVE pero traen su propia URL: así se separan de los canales
+                when {
+                    favFilter == null -> todos
+                    favIsRadio -> todos.filter { it.type == ContentType.LIVE && it.streamUrl != null }
+                    favFilter == ContentType.LIVE -> todos.filter { it.type == ContentType.LIVE && it.streamUrl == null }
+                    else -> todos.filter { it.type == favFilter }
+                }
+            }
         }
-        adapter.submitList(favs)
-        binding.tvEmpty.setText(R.string.empty_favorites)
-        binding.tvEmpty.visibility = if (favs.isEmpty()) View.VISIBLE else View.GONE
+
+        adapter.submitList(items)
+
+        // Título de contexto: Favoritos ya se entiende por los chips solos
+        // (como siempre), pero Continuar viendo y Vistas ganan claridad con
+        // uno arriba de la lista.
+        binding.tvSectionTitle.setText(
+            when (espacioModo) {
+                EspacioModo.CONTINUAR -> R.string.title_continue_watching
+                EspacioModo.VISTAS -> R.string.title_watched
+                EspacioModo.FAVORITOS -> R.string.tab_favorites
+            }
+        )
+        binding.tvSectionTitle.visibility = if (espacioModo == EspacioModo.FAVORITOS) View.GONE else View.VISIBLE
+
+        binding.tvEmpty.setText(
+            when (espacioModo) {
+                EspacioModo.CONTINUAR -> R.string.empty_continue_watching
+                EspacioModo.VISTAS -> R.string.empty_watched
+                EspacioModo.FAVORITOS -> R.string.empty_favorites
+            }
+        )
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
         // El panel de previsualización depende del filtro (ver showPreviewFor),
         // así que hay que recalcularlo acá: cambiar de pestaña dentro de
-        // Favoritos no pasa por selectSection, que es donde se hace siempre.
+        // Mi Espacio no pasa por selectSection, que es donde se hace siempre.
         updatePreviewVisibility(Section.FAVORITES)
-        refreshPreviewCard(favs)
+        refreshPreviewCard(items)
     }
 
     // ---------------- Abrir contenido ----------------
@@ -2386,13 +2461,19 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // 2. Favoritos: quitar el filtro de tipo antes de abandonar la sección.
-        if (section == Section.FAVORITES && favFilter != null) {
+        // 2. Mi Espacio: volver a la pestaña Favoritos (Todos) antes de
+        // abandonar la sección, sea cual sea la pestaña en la que estaba.
+        if (section == Section.FAVORITES && (espacioModo != EspacioModo.FAVORITOS || favFilter != null)) {
+            espacioModo = EspacioModo.FAVORITOS
             favFilter = null
             favIsRadio = false
             renderFavoriteFilters()
             applyFavoriteFilter()
-            enfocarSiTV(binding.favFilterContainer.getChildAt(0))
+            // "Todos" no siempre es el primer chip: Continuar viendo y/o
+            // Vistas, si hay algo en ellas, se dibujan antes.
+            val indiceTodos = (if (itemsContinuarTodo().isNotEmpty()) 1 else 0) +
+                (if (itemsVistas().isNotEmpty()) 1 else 0)
+            enfocarSiTV(binding.favFilterContainer.getChildAt(indiceTodos))
             return
         }
 
