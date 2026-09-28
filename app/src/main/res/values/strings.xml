@@ -21,7 +21,7 @@
     <string name="tab_movies">Películas</string>
     <string name="tab_series">Series</string>
     <string name="tab_favorites">Favoritos</string>
-    <!-- Botón del menú principal: ya no dice solo "Favoritos" -- ahora reúne
+    <!-- Botón del menú principal: ya no dice solo "Favoritos", ahora reúne
          favoritos, vistas y continuar viendo en un solo lugar (ver Mi Espacio
          más abajo). El ícono de corazón se mantiene igual. -->
     <string name="nav_my_space">Mi Espacio</string>
