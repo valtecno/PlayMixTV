@@ -322,6 +322,8 @@ class SearchActivity : AppCompatActivity() {
                 Intent(this, SeriesDetailActivity::class.java)
                     .putExtra(SeriesDetailActivity.EXTRA_SERIES_ID, item.id)
                     .putExtra(SeriesDetailActivity.EXTRA_SERIES_NAME, item.name)
+                    .putExtra(SeriesDetailActivity.EXTRA_SERIES_ICON, item.icon)
+                    .putExtra(SeriesDetailActivity.EXTRA_SERIES_CATEGORY, item.categoryId)
             )
         }
     }

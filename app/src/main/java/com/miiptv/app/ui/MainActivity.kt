@@ -37,6 +37,7 @@ import com.miiptv.app.databinding.ItemAgeTierBinding
 import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.ContinueWatching
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.History
@@ -1328,7 +1329,7 @@ class MainActivity : AppCompatActivity() {
                 categories = response.body().orEmpty().let { list ->
                     if (filter != null) list.filter(filter) else list
                 }.let { list -> reorderPreferredFirst(list) }
-                renderCategoryChips(categories)
+                renderCategoryChips(chipsConContinuar(type))
                 if (categories.isEmpty()) {
                     setLoading(false)
                     adapter.submitList(emptyList())
@@ -1455,6 +1456,55 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    // ---------------- Continuar viendo ----------------
+
+    /** Id del chip "Continuar viendo" (no existe en el panel: no choca con uno real). */
+    private val CONTINUAR_ID = "__continuar_viendo__"
+
+    /**
+     * Películas o series a medio ver, lo más reciente primero. En el perfil de
+     * niños solo las de categorías que ese perfil deja ver (las demás podrían
+     * haberse visto fuera del perfil).
+     */
+    private fun itemsContinuar(type: ContentType): List<ContentItem> {
+        if (type == ContentType.LIVE) return emptyList()
+        val permitidas = if (kidsMode) categories.map { it.categoryId }.toSet() else null
+        return ContinueWatching.list(this, type)
+            .filter { permitidas == null || it.categoryId in permitidas }
+            .map { it.toContentItem() }
+    }
+
+    /**
+     * Las categorías a mostrar como chips: las del panel, con "Continuar
+     * viendo" adelante si hay algo pendiente. No se mete en [categories] a
+     * propósito: esa lista se usa como "las categorías reales" (la que se abre
+     * por defecto, el nombre bajo la vista previa, el paso de Atrás).
+     */
+    private fun chipsConContinuar(type: ContentType): List<Category> =
+        if (itemsContinuar(type).isNotEmpty()) {
+            listOf(Category(CONTINUAR_ID, getString(R.string.continue_chip))) + categories
+        } else categories
+
+    /**
+     * Al volver del reproductor: la lista de pendientes pudo cambiar (algo
+     * nuevo, algo terminado). Se agrega o quita el chip, y si se estaba
+     * mirando esa lista se refresca; si quedó vacía, se vuelve a la primera
+     * categoría.
+     */
+    private fun refrescarContinuar() {
+        if (section !in listOf(Section.MOVIES, Section.SERIES) || categories.isEmpty()) return
+        val tipo = currentType()
+        val pendientes = itemsContinuar(tipo)
+        val tieneChip = binding.categoryContainer.getChildAt(0)?.tag == CONTINUAR_ID
+        // Solo se rearman los chips si cambia si está o no el de Continuar:
+        // rearmarlos siempre le sacaba el foco al chip donde estaba el mando.
+        if (tieneChip != pendientes.isNotEmpty()) renderCategoryChips(chipsConContinuar(tipo))
+        if (currentCategoryId == CONTINUAR_ID) {
+            if (pendientes.isEmpty()) loadContent(tipo, categories.first().categoryId)
+            else mostrarContenido(pendientes)
+        }
+    }
+
     /** Pedido de contenido en curso: se cancela si se elige otra categoría antes de que llegue. */
     private var contenidoEnCurso: Call<*>? = null
 
@@ -1485,6 +1535,14 @@ class MainActivity : AppCompatActivity() {
         // llegaba después, pisaba la lista de la categoría recién elegida.
         contenidoEnCurso?.cancel()
         contenidoEnCurso = null
+
+        // "Continuar viendo" no es una categoría del panel: sale de lo que
+        // la app guardó en el aparato.
+        if (categoryId == CONTINUAR_ID) {
+            setLoading(false)
+            mostrarContenido(itemsContinuar(type))
+            return
+        }
 
         contenidoDesdeCatalogo(type, categoryId)?.let { items ->
             setLoading(false)
@@ -2159,11 +2217,21 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
-            ContentType.SERIES -> startActivity(
-                Intent(this, SeriesDetailActivity::class.java)
-                    .putExtra(SeriesDetailActivity.EXTRA_SERIES_ID, item.id)
-                    .putExtra(SeriesDetailActivity.EXTRA_SERIES_NAME, item.name)
-            )
+            ContentType.SERIES -> {
+                // Desde el chip "Continuar viendo" la serie abre directo en el
+                // episodio pendiente; desde cualquier otro lado, su ficha.
+                val pendiente = if (currentCategoryId == CONTINUAR_ID) {
+                    ContinueWatching.get(this, ContentType.SERIES, item.id)?.episodeId
+                } else null
+                startActivity(
+                    Intent(this, SeriesDetailActivity::class.java)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_ID, item.id)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_NAME, item.name)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_ICON, item.icon)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_CATEGORY, item.categoryId)
+                        .apply { if (pendiente != null) putExtra(SeriesDetailActivity.EXTRA_RESUME_EPISODE_ID, pendiente) }
+                )
+            }
         }
     }
 
@@ -2464,6 +2532,7 @@ class MainActivity : AppCompatActivity() {
                 applyPreviewLayout(conPreview = true)
                 previewItem?.let { showPreview(it) }
             }
+            refrescarContinuar()
             restaurarFocoTrasReproductor()
             if (section == Section.HOME) showHome()   // re-dibuja con la paleta vigente
         }

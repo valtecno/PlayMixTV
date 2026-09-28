@@ -361,4 +361,7 @@
     <string name="pin_recover_back">Volver al PIN</string>
     <string name="pin_recover_whatsapp_message">Hola, necesito ayuda para recuperar el PIN de seguridad de mi aplicación PlayMix TV. Lo olvidé y necesito restablecerlo.</string>
     <string name="pin_reset_done">PIN anterior borrado. Crea tu nuevo PIN</string>
+    <!-- Continuar viendo (películas y series a medio ver) -->
+    <string name="continue_chip">▶ Continuar viendo</string>
+    <string name="continue_resuming">Continuando desde %1$s</string>
 </resources>

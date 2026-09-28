@@ -49,6 +49,7 @@ import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.CastHelper
+import com.miiptv.app.util.ContinueWatching
 import com.miiptv.app.util.EpisodeProgress
 import com.miiptv.app.util.Epg
 import com.miiptv.app.util.RemoteControl
@@ -96,6 +97,10 @@ class PlayerActivity : AppCompatActivity() {
         const val EXTRA_IS_RADIO = "extra_is_radio"
         /** Posición inicial en milisegundos, para continuar un episodio donde se dejó. */
         const val EXTRA_RESUME_MS = "extra_resume_ms"
+        /** Series: nombre de la serie (EXTRA_TITLE trae el del episodio). */
+        const val EXTRA_SERIES_NAME = "extra_series_name"
+        /** Series: id de cada episodio de la lista, en el mismo orden que EXTRA_PLAYLIST_URLS. */
+        const val EXTRA_EPISODE_IDS = "extra_episode_ids"
         const val EXTRA_PLAYLIST_ICONS = "extra_playlist_icons"
         const val EXTRA_PLAYLIST_IDS = "extra_playlist_ids"
         /** De dónde salió la lista: "🇪🇸  España", "🎧  Loca FM", etc. */
@@ -155,6 +160,9 @@ class PlayerActivity : AppCompatActivity() {
 
     /** Episodios encadenados (vacío si no viene de una serie). */
     private var playlistUrls: List<String> = emptyList()
+    /** Id de cada episodio de playlistUrls (para "Continuar viendo"). */
+    private var episodeIds: List<String> = emptyList()
+    private var seriesName: String? = null
     private var playlistTitles: List<String> = emptyList()
 
     /** En modo radio, la misma lista trae además el logo y el id de cada emisora. */
@@ -310,10 +318,9 @@ class PlayerActivity : AppCompatActivity() {
             }
         } else {
             PlaybackHolder.release()
-            // Para episodios de series, arrancar desde donde se dejó la última vez
-            val resumeMs = if (itemType == ContentType.SERIES)
-                intent.getLongExtra(EXTRA_RESUME_MS, 0L)
-            else 0L
+            val resumeMs = intent.getLongExtra(EXTRA_RESUME_MS, 0L).takeIf { it > 0 }
+                ?: posicionParaRetomar()
+            avisarRetomando(resumeMs)
             startPlayback(streamUrl, resumeAtMs = resumeMs)
         }
     }
@@ -327,11 +334,10 @@ class PlayerActivity : AppCompatActivity() {
         // Guarda la posición del episodio para poder continuar donde se dejó.
         // Solo aplica a series: los canales en vivo siempre arrancan desde el
         // principio, y las películas también tienen su propio historial de posición.
-        if (itemType == ContentType.SERIES) {
-            val pos = player?.currentPosition ?: 0L
-            val dur = player?.duration?.takeIf { it > 0 } ?: 0L
-            if (pos > 0) EpisodeProgress.save(this, streamUrl, pos, dur)
-        }
+        guardarAvance(
+            player?.currentPosition ?: 0L,
+            player?.duration?.takeIf { it > 0 } ?: 0L
+        )
 
         val seguirSonando = PlayerPrefs.getBackground(this) && !isFinishing && player?.playWhenReady == true
         if (seguirSonando) {
@@ -374,10 +380,15 @@ class PlayerActivity : AppCompatActivity() {
                     updateRadioPlaybackState(vivo.isPlaying)
                 }
             }
-            // Se detuvo desde la notificación: hay que rearmarlo, el anterior ya no sirve
+            // Se detuvo desde la notificación, o se salió con el botón de
+            // inicio sin "seguir sonando": hay que rearmarlo. Antes arrancaba
+            // desde 0, y si se volvía a salir antes del minuto se borraba lo
+            // guardado en "Continuar viendo". Ahora sigue donde quedó.
             vivo == null && !isFinishing -> {
                 player = null
-                startPlayback(streamUrl, resumeAtMs = 0L)
+                val resumeMs = posicionParaRetomar()
+                avisarRetomando(resumeMs)
+                startPlayback(streamUrl, resumeAtMs = resumeMs)
             }
         }
     }
@@ -519,6 +530,8 @@ class PlayerActivity : AppCompatActivity() {
         playlistIcons = intent.getStringArrayListExtra(EXTRA_PLAYLIST_ICONS).orEmpty()
         playlistIds = intent.getIntegerArrayListExtra(EXTRA_PLAYLIST_IDS).orEmpty()
         playlistIndex = intent.getIntExtra(EXTRA_PLAYLIST_INDEX, 0)
+        episodeIds = intent.getStringArrayListExtra(EXTRA_EPISODE_IDS).orEmpty()
+        seriesName = intent.getStringExtra(EXTRA_SERIES_NAME)?.takeIf { it.isNotBlank() }
         itemType = runCatching {
             ContentType.valueOf(intent.getStringExtra(EXTRA_ITEM_TYPE) ?: ContentType.LIVE.name)
         }.getOrDefault(ContentType.LIVE)
@@ -559,7 +572,9 @@ class PlayerActivity : AppCompatActivity() {
 
         favoriteItem = ContentItem(
             id = id,
-            name = contentTitle,
+            // En una serie contentTitle es el episodio ("E3 — ..."); el
+            // favorito y "Continuar viendo" son de la serie entera.
+            name = if (type == ContentType.SERIES) seriesName ?: contentTitle else contentTitle,
             icon = intent.getStringExtra(EXTRA_ITEM_ICON),
             categoryId = intent.getStringExtra(EXTRA_ITEM_CATEGORY),
             type = type,
@@ -1361,6 +1376,54 @@ class PlayerActivity : AppCompatActivity() {
      */
     private fun hasNextEpisode() = !isRadio && playlistIndex + 1 < playlistUrls.size
 
+    /**
+     * Dónde retomar lo que se está por reproducir ("Continuar viendo"): un
+     * episodio, por su propia posición guardada; una película, por su id, así
+     * retoma igual venga del Inicio, de la búsqueda o de su ficha. Canales y
+     * radios siempre en vivo.
+     */
+    private fun posicionParaRetomar(): Long = when (itemType) {
+        ContentType.SERIES -> EpisodeProgress.get(this, streamUrl)
+        ContentType.MOVIE ->
+            favoriteItem?.let { ContinueWatching.get(this, ContentType.MOVIE, it.id)?.posMs } ?: 0L
+        else -> 0L
+    }
+
+    private fun avisarRetomando(resumeMs: Long) {
+        if (resumeMs <= 0) return
+        Toast.makeText(
+            this, getString(R.string.continue_resuming, ContinueWatching.formato(resumeMs)),
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    /**
+     * Anota dónde quedó lo que se está viendo, para "Continuar viendo".
+     * Películas: su minuto. Series: el minuto del episodio (EpisodeProgress,
+     * para retomarlo desde la ficha) y en qué episodio va la serie
+     * (ContinueWatching). Canales y radios no guardan nada.
+     */
+    private fun guardarAvance(posMs: Long, durMs: Long) {
+        if (posMs <= 0 || isRadio) return
+        val item = favoriteItem ?: return
+        when (itemType) {
+            ContentType.MOVIE -> ContinueWatching.saveMovie(this, item, posMs, durMs)
+            ContentType.SERIES -> {
+                EpisodeProgress.save(this, streamUrl, posMs, durMs)
+                val episodio = episodeIds.getOrNull(playlistIndex) ?: return
+                ContinueWatching.saveEpisode(
+                    this, item,
+                    episodeId = episodio,
+                    episodeTitle = contentTitle,
+                    posMs = posMs, durMs = durMs,
+                    siguienteId = episodeIds.getOrNull(playlistIndex + 1),
+                    siguienteTitulo = playlistTitles.getOrNull(playlistIndex + 1)
+                )
+            }
+            else -> Unit
+        }
+    }
+
     private fun showNextBar() {
         if (!hasNextEpisode()) return
         countdown = NEXT_COUNTDOWN_SECONDS
@@ -1376,6 +1439,9 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun playNextEpisode() {
         if (!hasNextEpisode()) return
+        // El episodio que termina queda como visto: "Continuar viendo" pasa
+        // al siguiente, desde el principio.
+        player?.duration?.takeIf { it > 0 }?.let { dur -> guardarAvance(dur, dur) }
         playlistIndex++
         streamUrl = playlistUrls[playlistIndex]
         contentTitle = playlistTitles.getOrElse(playlistIndex) { contentTitle }

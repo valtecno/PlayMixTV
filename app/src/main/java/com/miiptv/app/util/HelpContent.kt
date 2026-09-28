@@ -151,6 +151,16 @@ object HelpContent {
         ),
         Pregunta(
             Tema.PELICULAS,
+            "¿Cómo sigo viendo una película o serie donde la dejé?",
+            "La app recuerda dónde quedaste. En Películas o en Series, el primer botón de arriba es " +
+                "\"Continuar viendo\": ahí están las que dejaste a medias, la más reciente primero. Al " +
+                "abrir una sigue desde el minuto donde quedó y, en las series, desde el episodio que " +
+                "ibas. Cuando la terminas, sale sola de la lista.",
+            listOf("continuar", "continuar viendo", "seguir viendo", "donde lo deje", "donde quede",
+                "retomar", "retomar capitulo", "reanudar", "a medias", "pendiente")
+        ),
+        Pregunta(
+            Tema.PELICULAS,
             "¿Cómo cambio el idioma del audio o pongo subtítulos?",
             "Mientras miras, usa los botones de pista de audio y de subtítulos del reproductor. Para " +
                 "dejar un idioma preferido fijo, ve a Cuenta → Audio: ahí eliges el idioma de audio y los " +

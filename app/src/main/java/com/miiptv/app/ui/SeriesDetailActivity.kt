@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.miiptv.app.R
+import com.miiptv.app.api.ContentType
 import com.miiptv.app.api.Episode
 import com.miiptv.app.api.Session
 import com.miiptv.app.api.SeriesInfoResponse
@@ -29,6 +30,13 @@ class SeriesDetailActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_SERIES_ID = "extra_series_id"
         const val EXTRA_SERIES_NAME = "extra_series_name"
+        const val EXTRA_SERIES_ICON = "extra_series_icon"
+        const val EXTRA_SERIES_CATEGORY = "extra_series_category"
+        /**
+         * Desde "Continuar viendo": al cargar la serie se abre directo este
+         * episodio (en el minuto donde quedó), en vez de solo mostrar la lista.
+         */
+        const val EXTRA_RESUME_EPISODE_ID = "extra_resume_episode_id"
     }
 
     private lateinit var binding: ActivitySeriesDetailBinding
@@ -36,6 +44,10 @@ class SeriesDetailActivity : AppCompatActivity() {
     private var currentSeason: List<Episode> = emptyList()
     private var currentSeasonKey: String? = null
     private lateinit var adapter: EpisodeAdapter
+
+    private var seriesId: Int = -1
+    /** Episodio a abrir solo apenas carga la serie (ver EXTRA_RESUME_EPISODE_ID); se usa una vez. */
+    private var episodioAReanudar: String? = null
 
     /** Id del episodio elegido justo antes de abrir el reproductor (ver onResume). */
     private var idAlAbrirReproductor: String? = null
@@ -49,8 +61,13 @@ class SeriesDetailActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
 
-        val seriesId = intent.getIntExtra(EXTRA_SERIES_ID, -1)
+        seriesId = intent.getIntExtra(EXTRA_SERIES_ID, -1)
         binding.toolbar.title = intent.getStringExtra(EXTRA_SERIES_NAME)
+        // Solo la primera vez: si la pantalla se recrea (rotación), no se
+        // vuelve a abrir el reproductor por su cuenta.
+        if (savedInstanceState == null) {
+            episodioAReanudar = intent.getStringExtra(EXTRA_RESUME_EPISODE_ID)
+        }
 
         adapter = EpisodeAdapter { episode -> playEpisode(episode) }
         binding.recyclerEpisodes.layoutManager = LinearLayoutManager(this)
@@ -68,7 +85,19 @@ class SeriesDetailActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     episodesBySeason = response.body()?.episodes ?: emptyMap()
                     renderSeasonChips()
-                    episodesBySeason.keys.firstOrNull()?.let { showSeason(it) }
+                    // Desde "Continuar viendo": se abre la temporada del
+                    // episodio pendiente y se lo reproduce directo.
+                    val pendiente = episodioAReanudar
+                    episodioAReanudar = null
+                    val temporada = pendiente?.let { id ->
+                        episodesBySeason.entries.firstOrNull { (_, eps) -> eps.any { it.id == id } }?.key
+                    }
+                    if (temporada != null) {
+                        showSeason(temporada)
+                        currentSeason.firstOrNull { it.id == pendiente }?.let { playEpisode(it) }
+                    } else {
+                        episodesBySeason.keys.firstOrNull()?.let { showSeason(it) }
+                    }
                 }
 
                 override fun onFailure(call: Call<SeriesInfoResponse>, t: Throwable) {
@@ -150,6 +179,16 @@ class SeriesDetailActivity : AppCompatActivity() {
                 .putStringArrayListExtra(PlayerActivity.EXTRA_PLAYLIST_TITLES, titles)
                 .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, index)
                 .putExtra(PlayerActivity.EXTRA_RESUME_MS, resumeMs)
+                // Sin el tipo, el reproductor trataba el episodio como un canal
+                // en vivo: no guardaba ni retomaba la posición (ese código
+                // existía pero nunca se ejecutaba) y no aplicaba el idioma
+                // preferido de audio y subtítulos.
+                .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, ContentType.SERIES.name)
+                .putExtra(PlayerActivity.EXTRA_ITEM_ID, seriesId)
+                .putExtra(PlayerActivity.EXTRA_ITEM_ICON, intent.getStringExtra(EXTRA_SERIES_ICON))
+                .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, intent.getStringExtra(EXTRA_SERIES_CATEGORY))
+                .putExtra(PlayerActivity.EXTRA_SERIES_NAME, intent.getStringExtra(EXTRA_SERIES_NAME))
+                .putStringArrayListExtra(PlayerActivity.EXTRA_EPISODE_IDS, ArrayList(currentSeason.map { it.id }))
         )
     }
 }

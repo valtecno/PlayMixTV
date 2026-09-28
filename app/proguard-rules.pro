@@ -61,6 +61,9 @@
 # el costo en tamaño es despreciable frente a perder datos del usuario.
 # ---------------------------------------------------------------------------
 -keep class com.miiptv.app.api.** { *; }
+# "Continuar viendo" se guarda con Gson: sin esto R8 renombra los campos y,
+# tras una actualización, la lista guardada se leería vacía.
+-keep class com.miiptv.app.util.ContinueWatching$Entry { *; }
 
 # Igual para el modelo de las radios, que también viaja por Gson.
 -keep class com.miiptv.app.api.RadioStation { *; }
