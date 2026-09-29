@@ -86,6 +86,17 @@ class MainActivity : AppCompatActivity() {
      */
     private enum class EspacioModo { FAVORITOS, CONTINUAR, VISTAS }
     private var espacioModo: EspacioModo = EspacioModo.FAVORITOS
+
+    /**
+     * "Mi Espacio" tiene dos subcategorías, cada una con sus propios chips
+     * debajo (ver [renderEspacioGroups] y [renderFavoriteFilters]): Actividad
+     * reciente (Continuar viendo + Vistas) y Favoritos (Todos/Canales/Radios/
+     * Películas/Series). No hace falta guardarlo aparte: se deduce de
+     * [espacioModo], que ya distingue las tres pestañas de contenido.
+     */
+    private enum class EspacioGrupo { RECIENTE, FAVORITOS }
+    private fun grupoDe(modo: EspacioModo) =
+        if (modo == EspacioModo.FAVORITOS) EspacioGrupo.FAVORITOS else EspacioGrupo.RECIENTE
     /**
      * Deportes - PPV ya no navega por las categorías tal como vienen del
      * panel: se reparten en dos carpetas fijas según si el nombre (de la
@@ -399,6 +410,8 @@ class MainActivity : AppCompatActivity() {
         // La segunda fila es exclusiva de Radios; showRadio() la vuelve a
         // encender si la carpeta abierta tiene algo que elegir.
         if (newSection != Section.RADIO) binding.radioSubScroll.visibility = View.GONE
+        binding.favGroupScroll.visibility =
+            if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
         binding.favFilterScroll.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
         if (newSection != Section.PPV) {
@@ -471,16 +484,14 @@ class MainActivity : AppCompatActivity() {
      * Panel de previsualización: foto grande + botón "Ampliar" al lado de la
      * lista, en vez de abrir el reproductor de una.
      *
-     * Corre en Canales y PPV siempre. En Favoritos corre SOLO cuando el
-     * filtro activo es "Canales" (favFilter == LIVE y no radio): en
-     * Todos/Radios/Películas/Series, aunque haya algún canal mezclado en la
-     * lista (pestaña "Todos"), se abre directo como antes. Es una decisión
-     * de la pestaña, no del tipo de cada fila.
+     * Corre en Canales y PPV siempre. Antes también corría en Mi Espacio
+     * cuando el filtro activo era "Canales" (esa pestaña era una lista, igual
+     * que Canales de verdad). Ahora esa pestaña -- como el resto de Favoritos
+     * salvo "Todos" -- se muestra en grilla de carátulas chicas (ver
+     * MainActivity.applyEspacioLayoutMode), igual que Películas/Series, así
+     * que se abre directo al tocarla y ya no necesita este panel.
      */
-    private fun showPreviewFor(s: Section): Boolean =
-        s == Section.LIVE || s == Section.PPV ||
-            (s == Section.FAVORITES && espacioModo == EspacioModo.FAVORITOS &&
-                favFilter == ContentType.LIVE && !favIsRadio)
+    private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
@@ -2143,32 +2154,83 @@ class MainActivity : AppCompatActivity() {
         // Favoritos en vez de quedar mostrando un chip que ya no está.
         if (espacioModo == EspacioModo.CONTINUAR && itemsContinuarTodo().isEmpty()) espacioModo = EspacioModo.FAVORITOS
         if (espacioModo == EspacioModo.VISTAS && itemsVistas().isEmpty()) espacioModo = EspacioModo.FAVORITOS
+        renderEspacioGroups()
         renderFavoriteFilters()
         applyFavoriteFilter()
     }
 
     /**
-     * Chips de "Mi Espacio". Primero, solo si hay algo, Continuar viendo y
-     * Vistas; después los de toda la vida -- Todos / Canales / Radios /
-     * Películas / Series -- que se comportan exactamente igual que antes de
-     * sumar las otras dos pestañas.
+     * Subcategorías de "Mi Espacio": Actividad reciente (Continuar viendo +
+     * Vistas) y Favoritos (Todos/Canales/Radios/Películas/Series). Van en su
+     * propia fila, separada de los chips de [renderFavoriteFilters]: cada
+     * grupo tiene un conjunto de chips completamente distinto debajo.
+     *
+     * "Actividad reciente" ni se dibuja si no hay nada que mostrar en
+     * ninguna de las dos (nunca se vio nada, o se borró el historial).
+     */
+    private fun renderEspacioGroups() {
+        binding.favGroupContainer.removeAllViews()
+
+        data class Grupo(val etiqueta: String, val grupo: EspacioGrupo)
+        val grupos = mutableListOf<Grupo>()
+        if (itemsContinuarTodo().isNotEmpty() || itemsVistas().isNotEmpty()) {
+            grupos += Grupo(getString(R.string.espacio_group_recent), EspacioGrupo.RECIENTE)
+        }
+        grupos += Grupo(getString(R.string.espacio_group_favorites), EspacioGrupo.FAVORITOS)
+
+        val grupoActivo = grupoDe(espacioModo)
+        grupos.forEach { g ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.favGroupContainer, false).root
+            chip.text = g.etiqueta
+            Appearance.applyChipState(chip, g.grupo == grupoActivo)
+            chip.setOnClickListener {
+                if (grupoDe(espacioModo) != g.grupo) {
+                    espacioModo = when (g.grupo) {
+                        EspacioGrupo.FAVORITOS -> EspacioModo.FAVORITOS
+                        // Se entra por la que tenga algo; si las dos tienen,
+                        // Continuar viendo primero (es la más "activa").
+                        EspacioGrupo.RECIENTE ->
+                            if (itemsContinuarTodo().isNotEmpty()) EspacioModo.CONTINUAR else EspacioModo.VISTAS
+                    }
+                    if (g.grupo == EspacioGrupo.FAVORITOS) {
+                        favFilter = null
+                        favIsRadio = false
+                    }
+                    renderEspacioGroups()
+                    renderFavoriteFilters()
+                    applyFavoriteFilter()
+                }
+            }
+            binding.favGroupContainer.addView(chip)
+        }
+    }
+
+    /**
+     * Chips de segundo nivel, según el grupo activo (ver [renderEspacioGroups]):
+     * en Actividad reciente son Continuar viendo / Vistas; en Favoritos son
+     * Todos / Canales / Radios / Películas / Series, que se comportan
+     * exactamente igual que antes de agrupar todo esto en dos pestañas.
      */
     private fun renderFavoriteFilters() {
         binding.favFilterContainer.removeAllViews()
 
         data class Filtro(val etiqueta: String, val modo: EspacioModo, val tipo: ContentType?, val radio: Boolean)
         val filtros = mutableListOf<Filtro>()
-        if (itemsContinuarTodo().isNotEmpty()) {
-            filtros += Filtro(getString(R.string.continue_chip), EspacioModo.CONTINUAR, null, false)
+        if (grupoDe(espacioModo) == EspacioGrupo.RECIENTE) {
+            if (itemsContinuarTodo().isNotEmpty()) {
+                filtros += Filtro(getString(R.string.continue_chip), EspacioModo.CONTINUAR, null, false)
+            }
+            if (itemsVistas().isNotEmpty()) {
+                filtros += Filtro(getString(R.string.my_space_watched_chip), EspacioModo.VISTAS, null, false)
+            }
+        } else {
+            filtros += Filtro(getString(R.string.fav_all), EspacioModo.FAVORITOS, null, false)
+            filtros += Filtro(getString(R.string.tab_live), EspacioModo.FAVORITOS, ContentType.LIVE, false)
+            filtros += Filtro(getString(R.string.fav_radios), EspacioModo.FAVORITOS, ContentType.LIVE, true)
+            filtros += Filtro(getString(R.string.tab_movies), EspacioModo.FAVORITOS, ContentType.MOVIE, false)
+            filtros += Filtro(getString(R.string.tab_series), EspacioModo.FAVORITOS, ContentType.SERIES, false)
         }
-        if (itemsVistas().isNotEmpty()) {
-            filtros += Filtro(getString(R.string.my_space_watched_chip), EspacioModo.VISTAS, null, false)
-        }
-        filtros += Filtro(getString(R.string.fav_all), EspacioModo.FAVORITOS, null, false)
-        filtros += Filtro(getString(R.string.tab_live), EspacioModo.FAVORITOS, ContentType.LIVE, false)
-        filtros += Filtro(getString(R.string.fav_radios), EspacioModo.FAVORITOS, ContentType.LIVE, true)
-        filtros += Filtro(getString(R.string.tab_movies), EspacioModo.FAVORITOS, ContentType.MOVIE, false)
-        filtros += Filtro(getString(R.string.tab_series), EspacioModo.FAVORITOS, ContentType.SERIES, false)
 
         filtros.forEach { f ->
             val chip: TextView =
@@ -2210,6 +2272,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         adapter.submitList(items)
+        applyEspacioLayoutMode()
 
         // Título de contexto: Favoritos ya se entiende por los chips solos
         // (como siempre), pero Continuar viendo y Vistas ganan claridad con
@@ -2231,11 +2294,31 @@ class MainActivity : AppCompatActivity() {
             }
         )
         binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-        // El panel de previsualización depende del filtro (ver showPreviewFor),
-        // así que hay que recalcularlo acá: cambiar de pestaña dentro de
-        // Mi Espacio no pasa por selectSection, que es donde se hace siempre.
+        // Mi Espacio nunca usa el panel de previsualización (ver
+        // showPreviewFor), pero updatePreviewVisibility también se encarga de
+        // acomodar bodyContainer/listColumn -- y cambiar de pestaña acá no
+        // pasa por selectSection, que es donde se llama siempre.
         updatePreviewVisibility(Section.FAVORITES)
         refreshPreviewCard(items)
+    }
+
+    /**
+     * Densidad de "Mi Espacio": "Todos" (dentro de Favoritos) sigue en lista,
+     * igual que siempre. El resto -- Continuar viendo, Vistas, y las demás
+     * pestañas de Favoritos (Canales/Radios/Películas/Series) -- se muestra
+     * en grilla de carátulas chicas, con la misma densidad por defecto que
+     * usa el resto de la app según el aparato (ver Appearance.getEspacioColumns).
+     */
+    private fun applyEspacioLayoutMode() {
+        val esLista = espacioModo == EspacioModo.FAVORITOS && favFilter == null
+        val columns = if (esLista) 1 else Appearance.getEspacioColumns(this)
+        adapter.posterMode = columns > 1
+        // Igual que en applyLayoutMode(): no se pisa el LayoutManager si las
+        // columnas no cambiaron, para no perder la posición del scroll.
+        val actual = binding.recyclerChannels.layoutManager as? GridLayoutManager
+        if (actual == null || actual.spanCount != columns) {
+            binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
+        }
     }
 
     // ---------------- Abrir contenido ----------------
@@ -2471,19 +2554,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // 2. Mi Espacio: volver a la pestaña Favoritos (Todos) antes de
-        // abandonar la sección, sea cual sea la pestaña en la que estaba.
+        // 2. Mi Espacio: volver al grupo Favoritos → Todos antes de abandonar
+        // la sección, sea cual sea el grupo o la pestaña en la que estaba.
         if (section == Section.FAVORITES && (espacioModo != EspacioModo.FAVORITOS || favFilter != null)) {
             espacioModo = EspacioModo.FAVORITOS
             favFilter = null
             favIsRadio = false
+            renderEspacioGroups()
             renderFavoriteFilters()
             applyFavoriteFilter()
-            // "Todos" no siempre es el primer chip: Continuar viendo y/o
-            // Vistas, si hay algo en ellas, se dibujan antes.
-            val indiceTodos = (if (itemsContinuarTodo().isNotEmpty()) 1 else 0) +
-                (if (itemsVistas().isNotEmpty()) 1 else 0)
-            enfocarSiTV(binding.favFilterContainer.getChildAt(indiceTodos))
+            // "Todos" ahora es siempre el primer chip de su fila: Continuar
+            // viendo y Vistas viven en la fila de grupos, no acá.
+            enfocarSiTV(binding.favFilterContainer.getChildAt(0))
             return
         }
 

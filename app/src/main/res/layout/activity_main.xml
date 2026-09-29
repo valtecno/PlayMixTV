@@ -336,7 +336,24 @@
         android:imeOptions="actionSearch"
         android:visibility="gone" />
 
-    <!-- ===== Filtros por tipo dentro de Favoritos ===== -->
+    <!-- ===== Subcategorías de "Mi Espacio": Actividad reciente / Favoritos ===== -->
+    <HorizontalScrollView
+        android:id="@+id/favGroupScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+        <LinearLayout
+            android:id="@+id/favGroupContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+    </HorizontalScrollView>
+
+    <!-- ===== Filtros por tipo dentro de la subcategoría activa ===== -->
     <HorizontalScrollView
         android:id="@+id/favFilterScroll"
         android:layout_width="match_parent"

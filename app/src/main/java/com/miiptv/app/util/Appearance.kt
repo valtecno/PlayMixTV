@@ -459,6 +459,14 @@ object Appearance {
         clampColumns(c, prefs(c).getInt("series_cols", defaultColumns(c)))
 
     /**
+     * Columnas de las grillas de "Mi Espacio" (Actividad reciente, y Favoritos
+     * en cualquier pestaña salvo "Todos"). A diferencia de Películas/Series,
+     * acá no hay control propio en Personalizar: siempre es la densidad por
+     * defecto del aparato (2 en móvil, 6 en TV -- ver [defaultColumns]).
+     */
+    fun getEspacioColumns(c: Context): Int = defaultColumns(c)
+
+    /**
      * Si el usuario había elegido 6 columnas en TV y después pasa a móvil, ese
      * valor ya no existe entre las opciones: se ajusta a la más cercana válida.
      */

@@ -374,8 +374,11 @@
     <string name="continue_chip">▶ Continuar viendo</string>
     <string name="continue_resuming">Continuando desde %1$s</string>
 
-    <!-- Mi Espacio: mismos chips de Favoritos de siempre + estas dos, que
-         solo aparecen cuando hay algo que mostrar en ellas. -->
+    <!-- Mi Espacio: dos subcategorías. Actividad reciente (estos chips,
+         que solo aparecen cuando hay algo que mostrar) y Favoritos (los
+         chips de Favoritos de siempre). -->
+    <string name="espacio_group_recent">Actividad reciente</string>
+    <string name="espacio_group_favorites">Favoritos</string>
     <string name="my_space_watched_chip">✓ Vistas</string>
     <string name="title_continue_watching">Continuar viendo</string>
     <string name="title_watched">Vistas recientemente</string>

@@ -25,10 +25,12 @@ import com.squareup.picasso.Picasso
  * Adapter unificado para canales, películas y series.
  *
  * Tiene tres presentaciones:
- *  - fila (por defecto): logo + nombre, para canales, PPV, radios, historial y
- *    favoritos.
- *  - póster (grilla): carátula grande, para Películas y Series, con la densidad
- *    de columnas que el usuario elija en "Personalizar".
+ *  - fila (por defecto): logo + nombre, para canales, PPV, radios e historial,
+ *    y para "Todos" dentro de Favoritos.
+ *  - póster (grilla): carátula chica, para Películas y Series (con la densidad
+ *    de columnas que el usuario elija en "Personalizar"), y para el resto de
+ *    "Mi Espacio" -- Actividad reciente y las demás pestañas de Favoritos --
+ *    con la densidad por defecto del aparato (ver Appearance.getEspacioColumns).
  *  - búsqueda: fila con miniatura vertical y etiqueta de tipo, porque ahí se
  *    mezclan los tres tipos de contenido en una misma lista.
  *
@@ -190,7 +192,19 @@ class ContentAdapter(
 
             is PosterHolder -> with(holder.binding) {
                 tvName.text = item.name
-                loadImage(item.icon, ivPoster, esCaratula = true)
+                // Películas y series: carátula vertical, se recorta para
+                // llenar la tarjeta (como siempre). Canales y radios --
+                // ahora la grilla de "Mi Espacio" también los muestra así,
+                // ver MainActivity.applyEspacioLayoutMode -- entran
+                // completos, sin recortar: no son un póster vertical y
+                // cortarlos dejaría el logo irreconocible.
+                val esCaratula = item.type == ContentType.MOVIE || item.type == ContentType.SERIES
+                ivPoster.scaleType = if (esCaratula) {
+                    android.widget.ImageView.ScaleType.CENTER_CROP
+                } else {
+                    android.widget.ImageView.ScaleType.FIT_CENTER
+                }
+                loadImage(item.icon, ivPoster, esCaratula = esCaratula)
                 ivLock.visibility = if (locked) View.VISIBLE else View.GONE
                 ivFavorite.setImageResource(starRes)
                 ivFavorite.imageTintList = starTint
