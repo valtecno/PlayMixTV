@@ -154,7 +154,25 @@ data class ContentItem(
     /** Fecha de alta en el servidor (unix, segundos). 0 = desconocida. */
     val added: Long = 0L,
     /** URL de reproducción directa. Solo la usan las radios; el resto se arma con Session. */
-    val streamUrl: String? = null
+    val streamUrl: String? = null,
+    /**
+     * Avance de reproducción (0f..1f), solo para armar la grilla de
+     * "Continuar viendo". Es un dato transitorio, calculado al vuelo desde
+     * ContinueWatching.Entry -no se guarda en disco ni se sube al sync-, así
+     * que hay que despojarlo (copy(progress = null)) apenas el ítem se copia
+     * a Favoritos o Historial: si no, la barrita queda pegada mostrando el
+     * avance de "Continuar viendo" en grillas donde no corresponde.
+     */
+    val progress: Float? = null,
+    /**
+     * Cuándo se marcó/guardó este registro por última vez (epoch ms). Solo
+     * tiene sentido DENTRO de Favoritos o Historial (ver Favorites.kt/
+     * History.kt) -para poder resolver conflictos de sincronización entre
+     * equipos comparando fechas ("gana el cambio más nuevo", igual que ya
+     * hace ContinueWatching.Entry.updatedAt)-, no se usa para nada al
+     * navegar el catálogo normal.
+     */
+    val syncUpdatedAt: Long = 0L
 )
 
 /** Convierte el "added"/"last_modified" de Xtream (texto) a unix seconds. */

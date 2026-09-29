@@ -133,6 +133,19 @@ class MainActivity : AppCompatActivity() {
     /** Última lista cargada, sin filtrar: base del buscador del perfil de niños. */
     private var currentItems: List<ContentItem> = emptyList()
     private var categories: List<Category> = emptyList()
+    /**
+     * Copias SIN filtrar de las categorías de Películas/Series, guardadas
+     * cada vez que se cargan (se entre o no al perfil de niños por ahí). A
+     * diferencia de [categories] -que se pisa con lo último que se haya
+     * abierto, sea Canales, Películas o Series- estas dos existen para que
+     * "Continuar viendo" (que mezcla película y serie sin importar qué
+     * sección se visitó última) pueda filtrar por perfil de niños sin
+     * depender de qué se navegó antes. Ver [categoriasPermitidasContinuar].
+     */
+    private var allMovieCategories: List<Category> = emptyList()
+    private var allSeriesCategories: List<Category> = emptyList()
+    private var fetchingMovieCategoriesForContinuar = false
+    private var fetchingSeriesCategoriesForContinuar = false
     /** Ítem que se está mostrando ahora en el panel de previsualización de Canales (TV). */
     private var previewItem: ContentItem? = null
 
@@ -1372,7 +1385,13 @@ class MainActivity : AppCompatActivity() {
         call.enqueue(object : Callback<List<Category>> {
             override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
                 if (isFinishing || isDestroyed) return
-                categories = response.body().orEmpty().let { list ->
+                val crudo = response.body().orEmpty()
+                when (type) {
+                    ContentType.MOVIE -> allMovieCategories = crudo
+                    ContentType.SERIES -> allSeriesCategories = crudo
+                    ContentType.LIVE -> {}
+                }
+                categories = crudo.let { list ->
                     if (filter != null) list.filter(filter) else list
                 }.let { list -> reorderPreferredFirst(list) }
                 renderCategoryChips(chipsConContinuar(type))
@@ -2150,11 +2169,67 @@ class MainActivity : AppCompatActivity() {
      * pero mezcladas hay que reordenar de nuevo).
      */
     private fun itemsContinuarTodo(): List<ContentItem> {
-        val permitidas = if (kidsMode) categories.map { it.categoryId }.toSet() else null
+        val permitidas = categoriasPermitidasContinuar()
         return (ContinueWatching.list(this, ContentType.MOVIE) + ContinueWatching.list(this, ContentType.SERIES))
             .filter { permitidas == null || it.categoryId in permitidas }
             .sortedByDescending { it.updatedAt }
             .map { it.toContentItem() }
+    }
+
+    /**
+     * Categorías de Película/Serie permitidas para "Continuar viendo" bajo
+     * perfil de niños, o null si no hay perfil de niños activo (sin filtro).
+     *
+     * ANTES esto usaba directamente [categories], pero ese campo se pisa con
+     * lo último que se haya cargado -Canales, Películas o Series- así que si
+     * el perfil de niños entra directo a Mi Espacio sin haber visitado antes
+     * Películas o Series (la sección de entrada en modo niños es Canales),
+     * [categories] tenía categorías de CANALES y el filtro no calzaba con
+     * ningún id de película/serie: "Continuar viendo" se veía vacío siempre,
+     * aunque hubiera contenido a medio ver.
+     *
+     * Ahora se usan las copias sin filtrar guardadas en [allMovieCategories]/
+     * [allSeriesCategories] cada vez que se cargan (ver [loadCategories]), y
+     * si todavía no se cargaron nunca, se piden en segundo plano una vez acá
+     * mismo y se repinta Mi Espacio cuando lleguen.
+     */
+    private fun categoriasPermitidasContinuar(): Set<String>? {
+        if (!kidsMode) return null
+        if (allMovieCategories.isEmpty() && !fetchingMovieCategoriesForContinuar) {
+            fetchingMovieCategoriesForContinuar = true
+            Session.api(this).getVodCategories(Session.username(this), Session.password(this))
+                .enqueue(object : Callback<List<Category>> {
+                    override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
+                        fetchingMovieCategoriesForContinuar = false
+                        if (isFinishing || isDestroyed) return
+                        allMovieCategories = response.body().orEmpty()
+                        refrescarEspacioSiEstaVisible()
+                    }
+                    override fun onFailure(call: Call<List<Category>>, t: Throwable) {
+                        fetchingMovieCategoriesForContinuar = false
+                    }
+                })
+        }
+        if (allSeriesCategories.isEmpty() && !fetchingSeriesCategoriesForContinuar) {
+            fetchingSeriesCategoriesForContinuar = true
+            Session.api(this).getSeriesCategories(Session.username(this), Session.password(this))
+                .enqueue(object : Callback<List<Category>> {
+                    override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
+                        fetchingSeriesCategoriesForContinuar = false
+                        if (isFinishing || isDestroyed) return
+                        allSeriesCategories = response.body().orEmpty()
+                        refrescarEspacioSiEstaVisible()
+                    }
+                    override fun onFailure(call: Call<List<Category>>, t: Throwable) {
+                        fetchingSeriesCategoriesForContinuar = false
+                    }
+                })
+        }
+        val tramo = KidsMode.getAgeTier(this)
+        return (allMovieCategories + allSeriesCategories)
+            .filter { KidsFilter.isKidsCategory(it.categoryName, tramo) }
+            .map { it.categoryId }
+            .toSet()
     }
 
     /** Películas y series ya reproducidas (el Historial completo también trae canales). */
@@ -2316,6 +2391,13 @@ class MainActivity : AppCompatActivity() {
 
         adapter.submitList(items)
         applyEspacioLayoutMode()
+        // A diferencia de applyLayoutMode() (Canales/Películas/Series), acá
+        // SIEMPRE hay que volver arriba: cada pestaña de Mi Espacio es una
+        // lista distinta, así que mantener el scroll de la pestaña anterior
+        // (p. ej. venir de Vistas con scroll al final y abrir Continuar
+        // viendo, más corta) dejaba la vista mostrando la cola de la lista
+        // nueva, o en blanco.
+        binding.recyclerChannels.scrollToPosition(0)
 
         // Título de contexto: Favoritos ya se entiende por los chips solos
         // (como siempre), pero Continuar viendo y Vistas ganan claridad con
