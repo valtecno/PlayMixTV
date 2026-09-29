@@ -301,6 +301,8 @@
     <string name="diag_running">Probando el panel endpoint por endpoint…</string>
     <string name="diag_copy">Copiar</string>
     <string name="diag_copied">Informe copiado</string>
+    <string name="crash_log_title">Último error registrado</string>
+    <string name="crash_log_none">No hay ningún error registrado todavía.</string>
     <!-- ===== Multi-pantalla ===== -->
     <string name="multiscreen_slot_empty">Sin canal</string>
     

@@ -1,6 +1,7 @@
 package com.miiptv.app
 
 import android.app.Application
+import com.miiptv.app.util.CrashLogger
 import com.miiptv.app.util.ImageLoader
 
 /**
@@ -12,6 +13,9 @@ import com.miiptv.app.util.ImageLoader
 class PlayMixApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Primero que nada: si algo más abajo en este mismo onCreate llegara
+        // a romper, igual queda registrado (ver CrashLogger).
+        CrashLogger.install(this)
         ImageLoader.init(this)
     }
 }

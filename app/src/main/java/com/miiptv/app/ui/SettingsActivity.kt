@@ -124,6 +124,10 @@ class SettingsActivity : AppCompatActivity() {
         RemoteControl.applyFocusToTree(binding.root, RemoteControl.isEnabled(this))
 
         binding.tvVersion.text = getString(R.string.settings_version, appVersion())
+        // Mantener presionado el número de versión: muestra el texto exacto
+        // del último cierre inesperado, para equipos donde no hay forma
+        // práctica de sacar un logcat (ver CrashLogger).
+        binding.tvVersion.setOnLongClickListener { showCrashLog(); true }
 
         refreshLabels()
     }
@@ -453,4 +457,23 @@ class SettingsActivity : AppCompatActivity() {
     private fun appVersion(): String = runCatching {
         packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
     }.getOrDefault("1.0")
+
+    /** Ver (y poder copiar) el texto del último cierre inesperado, si hay uno guardado. */
+    private fun showCrashLog() {
+        val texto = com.miiptv.app.util.CrashLogger.lastCrash(this)
+        if (texto.isNullOrBlank()) {
+            Toast.makeText(this, R.string.crash_log_none, Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.crash_log_title)
+            .setMessage(texto)
+            .setPositiveButton(R.string.diag_copy) { _, _ ->
+                val cb = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cb.setPrimaryClip(android.content.ClipData.newPlainText("PlayMix crash", texto))
+                Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.ok, null)
+            .show()
+    }
 }
