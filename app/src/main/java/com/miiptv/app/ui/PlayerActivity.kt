@@ -917,7 +917,7 @@ class PlayerActivity : AppCompatActivity() {
 
         if (grupos.isEmpty()) {
             if (trackType == C.TRACK_TYPE_AUDIO && puedeProbarAudioAlternativo()) {
-                offerAlternateAudioSource()
+                probarAudioAlternativo()
                 return
             }
             val msg = if (trackType == C.TRACK_TYPE_TEXT) R.string.player_no_subtitles
@@ -945,9 +945,11 @@ class PlayerActivity : AppCompatActivity() {
         // Muchos paneles Xtream exponen más idiomas por .ts que por .m3u8 (o
         // viceversa) porque el repaquetado HLS del panel a veces se queda con
         // uno solo; el multiplex .ts crudo trae el original completo. Antes
-        // de resignarse, ofrecer probar la otra vía (ver swapLiveExtension).
+        // de resignarse (y antes de mostrar este diálogo a medias), probar
+        // la otra vía sola -- ver swapLiveExtension y probarAudioAlternativo.
         if (trackType == C.TRACK_TYPE_AUDIO && opciones.size <= 2 && puedeProbarAudioAlternativo()) {
-            opciones.add(Opcion(getString(R.string.track_try_alt_audio), null, -3))
+            probarAudioAlternativo()
+            return
         }
 
         val seleccionado = opciones.indexOfFirst {
@@ -961,11 +963,6 @@ class PlayerActivity : AppCompatActivity() {
                 seleccionado
             ) { dialog, which ->
                 val opcion = opciones[which]
-                if (opcion.indice == -3) {
-                    dialog.dismiss()
-                    offerAlternateAudioSource()
-                    return@setSingleChoiceItems
-                }
                 exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
                     .clearOverridesOfType(trackType)
                     .setTrackTypeDisabled(trackType, opcion.indice == -2)
@@ -1003,29 +1000,26 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /**
-     * Reconecta el mismo canal por la vía alternativa. Una sola vez por
-     * canal (usingAltAudioSource): si tampoco trae más idiomas, no insiste.
-     * Al reconectar deja pendiente reabrir el diálogo de audio en cuanto
-     * lleguen las pistas nuevas (ver onTracksChanged en startPlayback).
+     * Reconecta el mismo canal por la vía alternativa para ver si trae más
+     * idiomas de audio. Antes esto pedía confirmación ("Buscar más idiomas")
+     * porque implica reconectar el canal; ahora se hace directo apenas se
+     * detecta que la vía actual solo trae uno, así el menú de audio termina
+     * mostrando de una vez todo lo disponible, sin un paso extra que tocar.
+     *
+     * Una sola vez por canal (usingAltAudioSource): si tampoco trae más
+     * idiomas, no insiste. Deja pendiente reabrir el diálogo de audio en
+     * cuanto lleguen las pistas nuevas (ver onTracksChanged en startPlayback).
      */
-    private fun offerAlternateAudioSource() {
+    private fun probarAudioAlternativo() {
         val nuevaUrl = swapLiveExtension(streamUrl) ?: return
-        val etiquetaVia = if (nuevaUrl.endsWith(".ts")) "TS" else "HLS"
-        AlertDialog.Builder(this)
-            .setTitle(R.string.audio_try_alt_source_title)
-            .setMessage(getString(R.string.audio_try_alt_source_confirm, etiquetaVia))
-            .setPositiveButton(R.string.audio_try_alt_source_positive) { dialog, _ ->
-                dialog.dismiss()
-                usingAltAudioSource = true
-                reopenAudioDialogOnTracks = true
-                streamUrl = nuevaUrl
-                retries = 0
-                audioAvisado = false
-                PlaybackHolder.release()
-                startPlayback(streamUrl, resumeAtMs = 0L)
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        usingAltAudioSource = true
+        reopenAudioDialogOnTracks = true
+        streamUrl = nuevaUrl
+        retries = 0
+        audioAvisado = false
+        Toast.makeText(this, R.string.audio_alt_source_searching, Toast.LENGTH_SHORT).show()
+        PlaybackHolder.release()
+        startPlayback(streamUrl, resumeAtMs = 0L)
     }
 
     private fun titleFor(trackType: Int) = when (trackType) {
@@ -1492,9 +1486,11 @@ class PlayerActivity : AppCompatActivity() {
                  * (por ejemplo una AAC), se cambia sola.
                  */
                 override fun onTracksChanged(tracks: Tracks) {
-                    // Se pidió la vía alternativa buscando más idiomas de audio:
-                    // en cuanto lleguen pistas de audio reales, reabrir el
-                    // diálogo solo, para no obligar a un segundo tap manual.
+                    // Se probó sola la vía alternativa buscando más idiomas de
+                    // audio (ver probarAudioAlternativo): en cuanto lleguen
+                    // pistas de audio reales, reabrir el diálogo con lo que
+                    // haya -- el usuario tocó "Pista de audio" una sola vez y
+                    // eso es lo que tiene que ver, encuentre algo nuevo o no.
                     if (reopenAudioDialogOnTracks) {
                         val gruposAudio = tracks.groups.filter {
                             it.type == C.TRACK_TYPE_AUDIO && it.isSupported
@@ -1508,9 +1504,8 @@ class PlayerActivity : AppCompatActivity() {
                                     R.string.audio_alt_source_no_more,
                                     Toast.LENGTH_SHORT
                                 ).show()
-                            } else {
-                                showTrackDialog(C.TRACK_TYPE_AUDIO)
                             }
+                            showTrackDialog(C.TRACK_TYPE_AUDIO)
                             return
                         }
                     }

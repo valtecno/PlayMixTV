@@ -262,10 +262,11 @@
     <string name="player_no_subtitles">Este contenido no trae subtítulos</string>
     <string name="track_disabled">Desactivado</string>
     <string name="track_auto">Automática</string>
-    <string name="track_try_alt_audio">Buscar más idiomas (probar otra señal)…</string>
-    <string name="audio_try_alt_source_title">Buscar más idiomas de audio</string>
-    <string name="audio_try_alt_source_confirm">Esta señal solo trae un idioma de audio. Algunos canales traen más idiomas por la vía alternativa (%1$s). ¿Probarla? El canal se va a reconectar.</string>
-    <string name="audio_try_alt_source_positive">Probar</string>
+    <!-- Antes había que tocar "Buscar más idiomas" y confirmar un segundo
+         diálogo; ahora, si la señal actual solo trae un idioma, se prueba
+         sola la vía alternativa (ver puedeProbarAudioAlternativo en
+         PlayerActivity) y el menú de audio directamente lista lo que haya. -->
+    <string name="audio_alt_source_searching">Buscando más idiomas de audio…</string>
     <string name="audio_alt_source_no_more">La vía alternativa tampoco trae más idiomas de audio en este canal.</string>
     <!-- Boton de favorito del reproductor de radio (al lado de Inicio) -->
     <string name="radio_fav_add">Favorito</string>

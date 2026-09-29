@@ -38,7 +38,7 @@ object PlayerFactory {
      *        (multi-pantalla), porque si todos piden el foco se pausan entre ellos.
      * @param applyLanguagePrefs aplica el idioma de audio y subtítulos elegidos en
      *        Ajustes → Cuenta → Audio. Se deja en false para Canales/PPV (donde ya
-     *        existe su propia detección de audio en vivo, ver offerAlternateAudioSource
+     *        existe su propia detección de audio en vivo, ver probarAudioAlternativo
      *        en PlayerActivity) y en true solo para Películas/Series.
      */
     fun build(
