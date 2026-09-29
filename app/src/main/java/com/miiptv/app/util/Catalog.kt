@@ -9,6 +9,12 @@ import com.miiptv.app.api.*
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileReader
+import java.io.FileWriter
+import java.util.concurrent.Executors
 
 /**
  * Caché en memoria del catálogo completo del servidor (canales, películas y series).
@@ -111,22 +117,93 @@ object Catalog {
     // Cuando el catálogo carga correctamente se guarda en disco.
     // Si la próxima vez no hay conexión, se muestra el guardado para que la app
     // no quede con la pantalla vacía sin explicación.
+    //
+    // ---------------------------------------------------------------------------
+    // POR QUÉ SON ARCHIVOS Y NO SharedPreferences (y por qué se escribe en un
+    // hilo aparte)
+    //
+    // Antes esto guardaba cada lista como un String gigante en SharedPreferences
+    // (gson.toJson(lista) sin más). El Sistema XL tiene decenas de miles de
+    // películas/series: gson.toJson() arma el JSON en un StringWriter interno y
+    // al final llama a StringWriter.toString(), que copia TODO el buffer a un
+    // String nuevo de un solo golpe -- para un catálogo grande eso es un pedido
+    // de una sola vez de decenas de MB contiguos.
+    //
+    // En un equipo con harta RAM libre eso pasa desapercibido. En un Android TV
+    // box con poca memoria (algunos genéricos limitan el heap de cada app a
+    // apenas 256 MB, sin importar cuánta RAM tenga el equipo) esa sola
+    // asignación alcanzaba para un OutOfMemoryError -- y como esto se llamaba
+    // synchronamente desde el callback de Retrofit (que en Android corre en el
+    // hilo principal), el crash tumbaba toda la app justo al terminar de cargar
+    // el Inicio: exactamente el síntoma reportado ("se queda la pantalla en
+    // negro... se cierra"), confirmado con el código de errores real que mandó
+    // el usuario (CrashLogger).
+    //
+    // La solución real son dos cambios juntos:
+    //   1. Escribir cada lista con la variante de Gson que recibe un Writer
+    //      (`gson.toJson(lista, type, writer)`), que escribe directo al archivo
+    //      de a pedazos, sin armar nunca un String intermedio con el JSON
+    //      completo. Leer usa el mismo truco al revés (JsonReader sobre el
+    //      archivo, no String + parseo).
+    //   2. Que esto pase en un hilo aparte, no en el callback de Retrofit. El
+    //      catálogo ya está en memoria (en las listas [live]/[movies]/[series])
+    //      apenas termina la descarga; guardarlo en disco es solo para la
+    //      próxima vez que se abra sin conexión, así que no hay apuro ni
+    //      necesidad de bloquear nada.
+    // ---------------------------------------------------------------------------
     private val gson = Gson()
+    private val ioExecutor = Executors.newSingleThreadExecutor()
     private const val CACHE_PREFS = "miiptv_catalog_cache"
-    private const val CACHE_KEY_LIVE    = "live"
-    private const val CACHE_KEY_MOVIES  = "movies"
-    private const val CACHE_KEY_SERIES  = "series"
-    private const val CACHE_KEY_SERVER  = "server"
+    private const val CACHE_KEY_SERVER = "server"
 
-    private fun saveToDisk(context: Context) {
-        val prefs = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
-        val type = object : TypeToken<List<ContentItem>>() {}.type
-        prefs.edit()
-            .putString(CACHE_KEY_LIVE,   gson.toJson(live,   type))
-            .putString(CACHE_KEY_MOVIES, gson.toJson(movies, type))
-            .putString(CACHE_KEY_SERIES, gson.toJson(series, type))
-            .putString(CACHE_KEY_SERVER, "${Session.server(context)}|${Session.username(context)}")
-            .apply()
+    private fun archivoCache(context: Context, bloque: String): File =
+        File(context.filesDir, "catalog_cache_$bloque.json")
+
+    private fun escribirBloque(context: Context, bloque: String, lista: List<ContentItem>, type: java.lang.reflect.Type) {
+        val destino = archivoCache(context, bloque)
+        // Se escribe primero a un ".tmp" y se renombra al final: si la app se
+        // cierra a mitad de la escritura (batería, memoria, lo que sea), el
+        // archivo bueno de la vez anterior queda intacto en vez de quedar con
+        // JSON cortado a la mitad e ilegible la próxima vez.
+        val tmp = File(destino.parentFile, destino.name + ".tmp")
+        BufferedWriter(FileWriter(tmp)).use { writer -> gson.toJson(lista, type, writer) }
+        tmp.renameTo(destino)
+    }
+
+    private fun leerBloque(context: Context, bloque: String, type: java.lang.reflect.Type): List<ContentItem>? {
+        val archivo = archivoCache(context, bloque)
+        if (!archivo.isFile) return null
+        return try {
+            BufferedReader(FileReader(archivo)).use { reader -> gson.fromJson(reader, type) }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Se llama en segundo plano (ver [ioExecutor] en el llamador); nunca en el
+     * hilo principal. [liveSnap]/[moviesSnap]/[seriesSnap] son copias tomadas
+     * ANTES de mandar esto al otro hilo: [live]/[movies]/[series] son las
+     * listas mutables de verdad, y una recarga (o un cierre de sesión) puede
+     * vaciarlas o llenarlas de nuevo mientras este hilo todavía las está
+     * recorriendo para escribirlas. Sin la copia, esa carrera terminaba en
+     * una ConcurrentModificationException o un archivo con datos mezclados.
+     */
+    private fun saveToDisk(
+        context: Context,
+        liveSnap: List<ContentItem>,
+        moviesSnap: List<ContentItem>,
+        seriesSnap: List<ContentItem>
+    ) {
+        runCatching {
+            val type = object : TypeToken<List<ContentItem>>() {}.type
+            escribirBloque(context, "live", liveSnap, type)
+            escribirBloque(context, "movies", moviesSnap, type)
+            escribirBloque(context, "series", seriesSnap, type)
+            context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(CACHE_KEY_SERVER, "${Session.server(context)}|${Session.username(context)}")
+                .apply()
+        }
     }
 
     /**
@@ -141,12 +218,9 @@ object Catalog {
 
         val type = object : TypeToken<List<ContentItem>>() {}.type
         return try {
-            val liveJson   = prefs.getString(CACHE_KEY_LIVE,   null) ?: return false
-            val moviesJson = prefs.getString(CACHE_KEY_MOVIES, null) ?: return false
-            val seriesJson = prefs.getString(CACHE_KEY_SERIES, null) ?: return false
-            val liveList:   List<ContentItem> = gson.fromJson(liveJson,   type)
-            val moviesList: List<ContentItem> = gson.fromJson(moviesJson, type)
-            val seriesList: List<ContentItem> = gson.fromJson(seriesJson, type)
+            val liveList   = leerBloque(context, "live", type) ?: return false
+            val moviesList = leerBloque(context, "movies", type) ?: return false
+            val seriesList = leerBloque(context, "series", type) ?: return false
             if (liveList.isEmpty() && moviesList.isEmpty() && seriesList.isEmpty()) return false
             live.addAll(liveList); movies.addAll(moviesList); series.addAll(seriesList)
             liveVersion++
@@ -313,8 +387,21 @@ object Catalog {
             current.clear()
             noCache = null
             loadedAt = System.currentTimeMillis()
-            // Guardar en disco para tener datos offline la próxima vez
-            if (!isEmpty) saveToDisk(context)
+            // Guardar en disco para tener datos offline la próxima vez. En un
+            // hilo aparte a propósito: esto se llama desde el callback de
+            // Retrofit, que en Android corre en el hilo principal, y
+            // serializar un catálogo grande ahí mismo es justo lo que
+            // provocaba el OutOfMemoryError (ver la nota grande junto a
+            // saveToDisk). El catálogo en memoria ([live]/[movies]/[series])
+            // ya está listo y usable de inmediato para quien esté escuchando
+            // (broadcast se manda ya, sin esperar a que termine de guardarse).
+            if (!isEmpty) {
+                val app = context.applicationContext
+                val liveSnap = live.toList()
+                val moviesSnap = movies.toList()
+                val seriesSnap = series.toList()
+                ioExecutor.execute { saveToDisk(app, liveSnap, moviesSnap, seriesSnap) }
+            }
             broadcast(false)
         }
     }
