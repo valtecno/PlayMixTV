@@ -38,6 +38,7 @@ import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.ContinueWatching
+import com.miiptv.app.util.CrashLogger
 import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
@@ -199,6 +200,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Lo primero de todo, antes de inflar nada: si la app se cerró sola
+        // la vez anterior, mostrar ese diagnóstico ACÁ mismo, sin que el
+        // usuario tenga que llegar a Ajustes -ver CrashLogger.pendingCrash.
+        // En equipos donde el cierre pasa tan rápido que ni siquiera dan
+        // tiempo de tocar el ícono de Ajustes, esta es la única forma real
+        // de que el texto del error se alcance a leer.
+        mostrarCierreAnteriorSiHay()
         DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -288,6 +296,28 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+    }
+
+    /**
+     * Si la app se cerró sola la vez anterior, lo muestra acá mismo (ver
+     * CrashLogger.pendingCrash: solo una vez por cierre). Deliberadamente
+     * ANTES de cualquier otra cosa en onCreate -ver la llamada- para que
+     * alcance a mostrarse incluso si lo que sigue vuelve a fallar.
+     */
+    private fun mostrarCierreAnteriorSiHay() {
+        val texto = CrashLogger.pendingCrash(this) ?: return
+        CrashLogger.marcarMostrado(this)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.crash_log_title)
+            .setMessage(texto)
+            .setPositiveButton(R.string.diag_copy) { _, _ ->
+                val cb = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cb.setPrimaryClip(android.content.ClipData.newPlainText("PlayMix crash", texto))
+                Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.ok, null)
+            .setCancelable(false)
+            .show()
     }
 
     // ---------------- Barra de navegación ----------------

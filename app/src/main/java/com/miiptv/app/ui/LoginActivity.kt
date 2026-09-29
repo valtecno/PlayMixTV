@@ -1,5 +1,6 @@
 package com.miiptv.app.ui
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -17,6 +18,7 @@ import com.miiptv.app.databinding.ItemServerChipBinding
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.CrashLogger
 import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.RemoteControl
@@ -40,6 +42,10 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Ver el mismo bloque en MainActivity.onCreate: si la app se cerró
+        // sola la vez anterior y esta pantalla es la que abre ahora (sin
+        // sesión activa), el diagnóstico también tiene que poder verse acá.
+        mostrarCierreAnteriorSiHay()
         DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -258,5 +264,22 @@ class LoginActivity : AppCompatActivity() {
     private fun setLoading(loading: Boolean) {
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
         binding.btnLogin.isEnabled = !loading && selectedServer != null
+    }
+
+    /** Ver el comentario en MainActivity.mostrarCierreAnteriorSiHay: mismo mecanismo. */
+    private fun mostrarCierreAnteriorSiHay() {
+        val texto = CrashLogger.pendingCrash(this) ?: return
+        CrashLogger.marcarMostrado(this)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.crash_log_title)
+            .setMessage(texto)
+            .setPositiveButton(R.string.diag_copy) { _, _ ->
+                val cb = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                cb.setPrimaryClip(android.content.ClipData.newPlainText("PlayMix crash", texto))
+                Toast.makeText(this, R.string.diag_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.ok, null)
+            .setCancelable(false)
+            .show()
     }
 }
