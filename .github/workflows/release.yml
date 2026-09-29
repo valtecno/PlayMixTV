@@ -59,11 +59,17 @@ jobs:
           PLAYMIX_STORE_PASSWORD: ${{ secrets.PLAYMIX_STORE_PASSWORD }}
           PLAYMIX_KEY_ALIAS: ${{ secrets.PLAYMIX_KEY_ALIAS }}
           PLAYMIX_KEY_PASSWORD: ${{ secrets.PLAYMIX_KEY_PASSWORD }}
+          # Las direcciones reales de los paneles ya no viven en
+          # gradle.properties (ver el comentario ahí): quedan en este
+          # secret para que no se puedan leer desde el repositorio, que
+          # es público.
+          PLAYMIX_SERVERS: ${{ secrets.PLAYMIX_SERVERS }}
         run: |
           ./gradlew assembleRelease \
             -PversionName=$VERSION \
             -PversionCode=$VERSION_CODE \
             -Pplaymix.repo=${{ github.repository }} \
+            -Pplaymix.servers="$PLAYMIX_SERVERS" \
             --no-daemon
 
       - name: Preparar APK
