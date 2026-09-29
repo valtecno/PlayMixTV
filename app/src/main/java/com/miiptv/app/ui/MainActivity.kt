@@ -38,6 +38,7 @@ import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.ContinueWatching
+import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.History
@@ -228,6 +229,7 @@ class MainActivity : AppCompatActivity() {
             // usuario: que se vea igual de claro que en el menú superior.
             binding.previewPlayRow.background =
                 Appearance.iconFocusBackground(this, binding.previewPlayRow.background, circular = false, cornerRadiusDp = 18f)
+            RemoteControl.applyIconFocus(binding.btnEspacioSync, true, circular = true)
         }
 
         binding.tvToolbarTitle.applyBrandGradient()
@@ -244,6 +246,16 @@ class MainActivity : AppCompatActivity() {
         applyKidsVisibility()
 
         selectSection(if (kidsMode) Section.LIVE else Section.HOME)
+
+        // Sincronización con la nube (ver DataSync): antes esto solo pasaba
+        // al iniciar sesión o cambiar de cuenta. Dos equipos que ya tenían la
+        // sesión abierta de antes (lo normal: no se vuelve a loguear todos
+        // los días) seguían subiendo sus propios cambios pero nunca bajaban
+        // los del otro, y Mi Espacio terminaba mostrando cosas distintas en
+        // cada uno. Ahora también se pide acá, cada vez que se abre la app:
+        // en segundo plano, sin demorar nada en pantalla. Si Mi Espacio ya
+        // está abierto cuando termina, se refresca solo.
+        DataSync.restore(applicationContext) { refrescarEspacioSiEstaVisible() }
 
         /*
          * Foco inicial en el menú superior.
@@ -275,6 +287,7 @@ class MainActivity : AppCompatActivity() {
         binding.navMovies.setOnClickListener { selectSection(Section.MOVIES) }
         binding.navSeries.setOnClickListener { selectSection(Section.SERIES) }
         binding.navFavorites.setOnClickListener { selectSection(Section.FAVORITES) }
+        binding.btnEspacioSync.setOnClickListener { sincronizarEspacioAhora() }
 
         binding.navKids.setOnClickListener { toggleKidsMode() }
 
@@ -411,6 +424,8 @@ class MainActivity : AppCompatActivity() {
         // encender si la carpeta abierta tiene algo que elegir.
         if (newSection != Section.RADIO) binding.radioSubScroll.visibility = View.GONE
         binding.favGroupScroll.visibility =
+            if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
+        binding.btnEspacioSync.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
         binding.favFilterScroll.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
@@ -2145,6 +2160,34 @@ class MainActivity : AppCompatActivity() {
     /** Películas y series ya reproducidas (el Historial completo también trae canales). */
     private fun itemsVistas(): List<ContentItem> =
         History.getAll(this).filter { it.type == ContentType.MOVIE || it.type == ContentType.SERIES }
+
+    /**
+     * Si Mi Espacio se restauró solo (ver la llamada a DataSync.restore en
+     * onCreate) y la pantalla sigue mostrando esa sección, hay que repintarla
+     * para que se vea lo nuevo sin que el usuario tenga que salir y volver a
+     * entrar. Si está en otra sección no hace falta nada: Favorites/
+     * ContinueWatching/History ya quedaron al día en disco, así que la
+     * próxima vez que se abra Mi Espacio va a mostrar lo correcto solo.
+     */
+    private fun refrescarEspacioSiEstaVisible() {
+        if (isFinishing || isDestroyed) return
+        if (section == Section.FAVORITES) showFavorites()
+    }
+
+    /** Botón "Actualizar" de Mi Espacio: lo mismo que al abrir la app, pero al toque y con feedback. */
+    private fun sincronizarEspacioAhora() {
+        binding.btnEspacioSync.isEnabled = false
+        DataSync.restore(applicationContext) { ok ->
+            if (isFinishing || isDestroyed) return@restore
+            binding.btnEspacioSync.isEnabled = true
+            showFavorites()
+            Toast.makeText(
+                this,
+                if (ok) R.string.espacio_sync_done else R.string.espacio_sync_failed,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     private fun showFavorites() {
         setLoading(false)

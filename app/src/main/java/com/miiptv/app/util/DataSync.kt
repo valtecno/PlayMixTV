@@ -142,19 +142,29 @@ object DataSync {
      *
      * [onDone] se llama siempre —haya ido bien, mal, o no haya sesión— para
      * que quien llame (típicamente LoginActivity, antes de abrir el Inicio)
-     * pueda seguir sin quedarse esperando para siempre.
+     * pueda seguir sin quedarse esperando para siempre. Su parámetro dice si
+     * el viaje a la nube salió bien (true) o no (false, típicamente sin
+     * internet); "sin sesión" no cuenta como falla, porque no había nada que
+     * hacer. Nadie está obligado a mirar ese valor —LoginActivity y
+     * SettingsActivity lo ignoran, porque para ellas restaurar es mejor
+     * esfuerzo y navegan igual— pero el botón manual de Mi Espacio lo usa
+     * para avisar si realmente no se pudo actualizar.
      */
-    fun restore(context: Context, onDone: () -> Unit) {
+    fun restore(context: Context, onDone: (ok: Boolean) -> Unit) {
         if (!haySesion(context)) {
-            onDone()
+            onDone(true)
             return
         }
         val cuenta = accountKey(context)
         SyncApi.instance.obtener(cuenta = cuenta).enqueue(object : Callback<SyncGetResponse> {
             override fun onResponse(call: Call<SyncGetResponse>, response: Response<SyncGetResponse>) {
                 val json = response.body()?.datos
-                if (!response.isSuccessful || json.isNullOrBlank()) {
-                    onDone()
+                if (!response.isSuccessful) {
+                    onDone(false)
+                    return
+                }
+                if (json.isNullOrBlank()) {
+                    onDone(true)
                     return
                 }
                 worker.execute {
@@ -165,12 +175,12 @@ object DataSync {
                         History.mergeFromRemote(context, remoto.historial)
                         backupNow(context)
                     }
-                    ui.post { onDone() }
+                    ui.post { onDone(remoto != null) }
                 }
             }
 
             override fun onFailure(call: Call<SyncGetResponse>, t: Throwable) {
-                onDone()
+                onDone(false)
             }
         })
     }

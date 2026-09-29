@@ -309,6 +309,10 @@
     <string name="crash_log_state_available">Disponible</string>
     <string name="crash_log_state_empty">Sin errores</string>
 
+    <string name="espacio_sync_now">Buscar cambios de otros equipos</string>
+    <string name="espacio_sync_done">Actualizado</string>
+    <string name="espacio_sync_failed">No se pudo actualizar (revisa la conexión)</string>
+
     <string name="setting_data_sync">Copia de seguridad</string>
     <string name="data_sync_never">Nunca • Toca para sincronizar</string>
     <string name="data_sync_syncing">Sincronizando…</string>
