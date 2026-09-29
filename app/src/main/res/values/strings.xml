@@ -303,6 +303,9 @@
     <string name="diag_copied">Informe copiado</string>
     <string name="crash_log_title">Último error registrado</string>
     <string name="crash_log_none">No hay ningún error registrado todavía.</string>
+    <string name="setting_crash_log">Código de errores</string>
+    <string name="crash_log_state_available">Disponible</string>
+    <string name="crash_log_state_empty">Sin errores</string>
     <!-- ===== Multi-pantalla ===== -->
     <string name="multiscreen_slot_empty">Sin canal</string>
     

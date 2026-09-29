@@ -349,6 +349,16 @@ object HelpContent {
             "No se ven las imágenes o se ven raras",
             "Ve a Cuenta → Vaciar caché de imágenes. Se vuelven a bajar la próxima vez que las veas.",
             listOf("imagenes", "caratulas", "logos", "fotos", "cache", "no cargan imagenes")
+        ),
+        Pregunta(
+            Tema.PROBLEMAS,
+            "La app se cierra sola o se queda en pantalla negra al abrirla",
+            "En Cuenta → Ajustes hay una fila llamada \"Código de errores\": si la app se cerró sola, ahí " +
+                "queda guardado el detalle exacto de ese cierre, con un botón para copiarlo. Cópialo y " +
+                "mándanoslo por WhatsApp junto con el modelo del aparato: con eso encontramos la causa " +
+                "mucho más rápido que solo con la descripción del problema.",
+            listOf("se cierra", "se cierra sola", "pantalla negra", "se cierra la app", "crash",
+                "codigo de errores", "error", "se sale", "se apaga")
         )
     )
 

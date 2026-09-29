@@ -106,6 +106,11 @@ class SettingsActivity : AppCompatActivity() {
         binding.rowSwitchAccount.setOnClickListener { switchAccount() }
         binding.rowAudio.setOnClickListener { showAudioDialog() }
         binding.btnLogout.setOnClickListener { confirmLogout() }
+        // Código de errores: para equipos (sobre todo TV box) donde no hay
+        // forma práctica de sacar un logcat. Ver CrashLogger. Tiene que ir
+        // ANTES de applyFocusToTree (ver el comentario de más abajo): es una
+        // fila normal, alcanzable con el control remoto igual que el resto.
+        binding.rowCrashLog.setOnClickListener { showCrashLog() }
 
         /*
          * Resalte del foco con control remoto.
@@ -124,10 +129,6 @@ class SettingsActivity : AppCompatActivity() {
         RemoteControl.applyFocusToTree(binding.root, RemoteControl.isEnabled(this))
 
         binding.tvVersion.text = getString(R.string.settings_version, appVersion())
-        // Mantener presionado el número de versión: muestra el texto exacto
-        // del último cierre inesperado, para equipos donde no hay forma
-        // práctica de sacar un logcat (ver CrashLogger).
-        binding.tvVersion.setOnLongClickListener { showCrashLog(); true }
 
         refreshLabels()
     }
@@ -181,6 +182,13 @@ class SettingsActivity : AppCompatActivity() {
             .takeIf { it.isNotBlank() }
             ?.let { Servers.labelFor(it) } ?: "—"
         binding.tvServer.text = getString(R.string.settings_on_server, sistemaActual)
+
+        binding.tvCrashLogState.text = getString(
+            if (com.miiptv.app.util.CrashLogger.lastCrash(this).isNullOrBlank())
+                R.string.crash_log_state_empty
+            else
+                R.string.crash_log_state_available
+        )
     }
 
     /**

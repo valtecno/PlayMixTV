@@ -298,6 +298,13 @@
                 <TextView android:id="@+id/tvUpdateState" style="@style/SettingsValue" />
             </LinearLayout>
 
+            <!-- Código de errores: para equipos (sobre todo TV box) donde no hay
+                 forma práctica de sacar un logcat. Ver CrashLogger. -->
+            <LinearLayout android:id="@+id/rowCrashLog" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_crash_log" />
+                <TextView android:id="@+id/tvCrashLogState" style="@style/SettingsValue" />
+            </LinearLayout>
+
             <Button
                 android:id="@+id/btnLogout"
                 android:layout_width="match_parent"
