@@ -211,6 +211,14 @@ class ContentAdapter(
                 ivFavorite.setOnClickListener { toggleFavorite(holder, item) }
                 root.setOnClickListener { onClick(item) }
                 setupFocus(holder, item, root)
+
+                val avance = item.progress
+                if (avance != null) {
+                    progressContinuar.visibility = View.VISIBLE
+                    progressContinuar.progress = (avance * 1000).toInt().coerceIn(0, 1000)
+                } else {
+                    progressContinuar.visibility = View.GONE
+                }
             }
 
             is SearchHolder -> with(holder.binding) {

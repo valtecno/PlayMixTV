@@ -912,6 +912,16 @@ class PlayerActivity : AppCompatActivity() {
      * además la opción de desactivarlos.
      */
     private fun showTrackDialog(trackType: Int) {
+        // probarAudioAlternativo() ahora se dispara solo, sin que el usuario
+        // confirme nada, y este diálogo se puede reabrir solo cuando llegan
+        // las pistas de la vía alternativa (ver onTracksChanged). Ese viaje a
+        // la red es asíncrono: si el usuario ya salió de la pantalla (Home,
+        // back, apagó pantalla) para cuando responde, mostrar un AlertDialog
+        // sobre una Activity ya detenida revienta con
+        // WindowManager.BadTokenException. Con "seguir sonando" activado la
+        // Activity queda con el player vivo pero la ventana ya no existe, así
+        // que hace falta este chequeo explícito.
+        if (isFinishing || isDestroyed) return
         val exo = player ?: return
         val grupos = exo.currentTracks.groups.filter { it.type == trackType && it.isSupported }
 

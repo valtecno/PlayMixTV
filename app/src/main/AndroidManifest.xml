@@ -21,6 +21,17 @@
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation" />
 
+    <!-- Desde Android 11 (API 30), resolveActivity()/queryIntentActivities()
+         devuelve null para cualquier intent cuyo destino no esté declarado
+         aca, aunque el usuario SI tenga una app instalada que lo resuelva
+         (ej: Google app para el reconocimiento de voz). Sin esto, el boton
+         de busqueda por voz se ocultaria siempre en Android 11+. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <!-- Permite que la app se instale y se vea en el launcher de Android TV -->
     <uses-feature
         android:name="android.software.leanback"

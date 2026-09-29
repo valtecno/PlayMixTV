@@ -62,6 +62,9 @@ object Favorites {
     private const val LEGACY_PREFS = "miiptv_favorites"
     private const val LEGACY_MIGRATED_KEY = "legacy_migrated"
     private const val KEY = "items"
+    private const val KEY_TOMBSTONES = "borrados"
+    /** Una marca de borrado más vieja que esto ya no aporta nada: se descarta. */
+    private const val TOMBSTONE_MAX_AGE_MS = 180L * 24 * 60 * 60 * 1000
     private val gson = Gson()
 
     /**
@@ -129,11 +132,24 @@ object Favorites {
         val key = uniqueKey(item)
         val current = load(context)
         val yaEstaba = cachedKeys.contains(key)
+        val ahora = System.currentTimeMillis()
 
         val updated = if (yaEstaba) {
+            // Se registra CUÁNDO se sacó: es lo que permite que este borrado
+            // se propague a otros equipos en vez de que el sync lo resucite
+            // (ver mergeFromRemote). Sin este registro, "combinar sin pisar
+            // nada" significa literalmente que un favorito sacado acá volvía
+            // a aparecer en cuanto se sincronizaba con un equipo que todavía
+            // lo tenía.
+            marcarBorrado(context, key, ahora)
             current.filterNot { uniqueKey(it) == key }
         } else {
-            current + item
+            quitarMarcaBorrado(context, key)
+            // progress es un dato transitorio de "Continuar viendo" (ver
+            // ContentItem.progress); si no se despoja acá, la barrita de
+            // avance queda pegada en la grilla de Favoritos con el % de
+            // cuando se marcó, aunque después se siga viendo o se reinicie.
+            current + item.copy(progress = null, syncUpdatedAt = ahora)
         }
 
         save(context, updated)
@@ -172,19 +188,101 @@ object Favorites {
         }
     }
 
+    // ---------------- Marcas de borrado (para que el sync propague quitar) ----------------
+
+    /**
+     * Cuándo se sacó de favoritos por última vez cada "TIPO:ID" que ya no
+     * está en la lista actual. Se sube junto con los favoritos (ver
+     * DataSync.Payload.favoritosBorrados) para que un equipo que todavía
+     * tenga ese ítem sepa que hay que sacarlo, en vez de mantenerlo para
+     * siempre por el simple hecho de no haber estado ahí cuando se lo sacó
+     * en otro lado.
+     */
+    fun tombstones(context: Context): Map<String, Long> {
+        val json = prefs(context).getString(KEY_TOMBSTONES, null) ?: return emptyMap()
+        val type = object : TypeToken<Map<String, Long>>() {}.type
+        return runCatching { gson.fromJson<Map<String, Long>>(json, type) }.getOrNull().orEmpty()
+    }
+
+    private fun guardarTombstones(context: Context, mapa: Map<String, Long>) {
+        val corte = System.currentTimeMillis() - TOMBSTONE_MAX_AGE_MS
+        val podado = mapa.filterValues { it >= corte }
+        prefs(context).edit().putString(KEY_TOMBSTONES, gson.toJson(podado)).apply()
+    }
+
+    private fun marcarBorrado(context: Context, key: String, cuando: Long) {
+        guardarTombstones(context, tombstones(context) + (key to cuando))
+    }
+
+    private fun quitarMarcaBorrado(context: Context, key: String) {
+        val actuales = tombstones(context)
+        if (key in actuales) guardarTombstones(context, actuales - key)
+    }
+
     /**
      * Combina lo que bajó de la nube (ver DataSync) con lo que ya hay en este
-     * equipo, sin pisar nada: un favorito marcado acá mientras la descarga
-     * estaba en curso no se pierde. Solo se agregan los que faltan.
+     * equipo, resolviendo cada "TIPO:ID" por separado: gana el evento más
+     * nuevo entre "está marcado como favorito desde [syncUpdatedAt]" (local o
+     * remoto) y "se sacó de favoritos en [remoteTombstones]" (local o
+     * remoto). Así un favorito sacado en otro equipo se saca acá también (y
+     * viceversa), en vez de que "combinar" signifique "nunca borrar".
      */
-    fun mergeFromRemote(context: Context, remoto: List<ContentItem>): List<ContentItem> {
+    fun mergeFromRemote(
+        context: Context,
+        remoto: List<ContentItem>,
+        remoteTombstones: Map<String, Long> = emptyMap()
+    ): List<ContentItem> {
         val local = load(context)
-        val clavesLocales = cachedKeys
-        val nuevos = remoto.filter { uniqueKey(it) !in clavesLocales }
-        if (nuevos.isEmpty()) return local
-        val combinado = local + nuevos
-        save(context, combinado)
-        return combinado
+        val localTombstones = tombstones(context)
+
+        val claves = HashSet<String>(local.size + remoto.size)
+        local.forEach { claves += uniqueKey(it) }
+        remoto.forEach { claves += uniqueKey(it) }
+        claves += localTombstones.keys
+        claves += remoteTombstones.keys
+
+        val localPorClave = local.associateBy { uniqueKey(it) }
+        val remotoPorClave = remoto.associateBy { uniqueKey(it) }
+
+        val resultado = mutableListOf<ContentItem>()
+        val tombstonesFinal = HashMap<String, Long>()
+
+        for (key in claves) {
+            val itemLocal = localPorClave[key]
+            val itemRemoto = remotoPorClave[key]
+            val borradoLocal = localTombstones[key]
+            val borradoRemoto = remoteTombstones[key]
+
+            // Evento más reciente de cada lado: "presente desde X" o "borrado en X".
+            val eventoLocal = when {
+                itemLocal != null -> itemLocal.syncUpdatedAt to itemLocal
+                borradoLocal != null -> borradoLocal to null
+                else -> null
+            }
+            val eventoRemoto = when {
+                itemRemoto != null -> itemRemoto.syncUpdatedAt to itemRemoto
+                borradoRemoto != null -> borradoRemoto to null
+                else -> null
+            }
+
+            val ganador = when {
+                eventoLocal == null -> eventoRemoto
+                eventoRemoto == null -> eventoLocal
+                eventoRemoto.first > eventoLocal.first -> eventoRemoto
+                else -> eventoLocal
+            } ?: continue
+
+            val (cuando, item) = ganador
+            if (item != null) {
+                resultado += item
+            } else {
+                tombstonesFinal[key] = cuando
+            }
+        }
+
+        save(context, resultado)
+        guardarTombstones(context, tombstonesFinal)
+        return resultado
     }
 
     /**

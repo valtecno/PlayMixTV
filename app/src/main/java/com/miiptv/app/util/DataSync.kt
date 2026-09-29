@@ -58,7 +58,18 @@ object DataSync {
         val favoritos: List<ContentItem> = emptyList(),
         val continuar: List<ContinueWatching.Entry> = emptyList(),
         val historial: List<ContentItem> = emptyList(),
-        val actualizado: Long = System.currentTimeMillis()
+        val actualizado: Long = System.currentTimeMillis(),
+        /**
+         * Marcas de borrado ("TIPO:ID" -> cuándo se sacó), para que un
+         * favorito o una entrada de Continuar viendo sacados en ESTE equipo
+         * se saquen también en cualquier otro al sincronizar, en vez de que
+         * "combinar" signifique "nunca borrar" (ver Favorites/
+         * ContinueWatching.mergeFromRemote).
+         */
+        val favoritosBorrados: Map<String, Long> = emptyMap(),
+        val continuarBorrados: Map<String, Long> = emptyMap(),
+        /** Última vez que se vació el historial en este equipo (ver History.clear), o 0. */
+        val historialBorradoEn: Long = 0L
     )
 
     private fun accountKey(context: Context): String {
@@ -97,28 +108,53 @@ object DataSync {
      * varias subidas). Se llama desde Favorites/ContinueWatching/History
      * después de cada escritura; no hace falta llamarla a mano.
      */
+    @Synchronized
     fun scheduleBackup(context: Context) {
         if (!haySesion(context)) return
         val app = context.applicationContext
+        val cuenta = accountKey(context)
         pendingPush?.let { ui.removeCallbacks(it) }
-        val task = Runnable { backupNow(app) }
+        // Se guarda la cuenta activa al momento de programar. Si para cuando
+        // se cumplen los 8s la cuenta activa cambió (el usuario cambió de
+        // cuenta/cerró sesión mientras tanto), Favorites/ContinueWatching/
+        // History.getAll(context) ya estarían leyendo la cuenta NUEVA, así
+        // que subir en ese momento mandaría datos de la cuenta nueva bajo la
+        // cuenta vieja. Mejor no subir nada en ese caso (ver backupNow) que
+        // mezclar cuentas; el próximo cambio en la cuenta vieja programará
+        // otra subida correcta.
+        val task = Runnable { backupNow(app, cuentaEsperada = cuenta) }
         pendingPush = task
         ui.postDelayed(task, DEBOUNCE_MS)
     }
 
-    /** Sube ya mismo, sin esperar el debounce. Mejor esfuerzo: un fallo acá no interrumpe nada. */
-    fun backupNow(context: Context, onDone: (Boolean) -> Unit = {}) {
+    /**
+     * Sube ya mismo, sin esperar el debounce. Mejor esfuerzo: un fallo acá no
+     * interrumpe nada.
+     *
+     * [cuentaEsperada] lo usa [scheduleBackup] para pasar la cuenta que
+     * estaba activa cuando se programó esta subida: si para cuando se
+     * ejecuta la cuenta activa ya es otra, se cancela en vez de subir datos
+     * de la cuenta nueva contra la clave de la vieja.
+     */
+    fun backupNow(context: Context, cuentaEsperada: String? = null, onDone: (Boolean) -> Unit = {}) {
         if (!haySesion(context)) {
             onDone(false)
             return
         }
         val cuenta = accountKey(context)
+        if (cuentaEsperada != null && cuentaEsperada != cuenta) {
+            onDone(false)
+            return
+        }
         worker.execute {
             val payload = Payload(
                 favoritos = Favorites.getAll(context),
                 continuar = ContinueWatching.list(context, ContentType.MOVIE) +
                     ContinueWatching.list(context, ContentType.SERIES),
-                historial = History.getAll(context)
+                historial = History.getAll(context),
+                favoritosBorrados = Favorites.tombstones(context),
+                continuarBorrados = ContinueWatching.tombstones(context),
+                historialBorradoEn = History.clearedAt(context)
             )
             val json = gson.toJson(payload)
             SyncApi.instance.guardar(cuenta = cuenta, datos = json).enqueue(object : Callback<SyncPostResponse> {
@@ -164,15 +200,36 @@ object DataSync {
                     return
                 }
                 if (json.isNullOrBlank()) {
-                    onDone(true)
+                    // Nada en la nube todavía (cuenta nueva, o recién
+                    // subiendo este código por primera vez a un usuario que
+                    // ya tenía favoritos/historial locales). Sin esto, esos
+                    // datos locales quedaban solo en el equipo hasta el
+                    // próximo cambio manual: exactamente lo que esta función
+                    // existe para evitar.
+                    backupNow(context) { ok -> ui.post { onDone(ok) } }
                     return
                 }
                 worker.execute {
                     val remoto = runCatching { gson.fromJson(json, Payload::class.java) }.getOrNull()
                     if (remoto != null) {
-                        Favorites.mergeFromRemote(context, remoto.favoritos)
-                        ContinueWatching.mergeFromRemote(context, remoto.continuar)
-                        History.mergeFromRemote(context, remoto.historial)
+                        // Gson arma esto con reflection (Unsafe.allocateInstance),
+                        // sin pasar por el constructor de Kotlin: un blob viejo en
+                        // la nube -guardado por una versión de la app anterior a
+                        // este cambio, que no tenía estos tres campos- deja acá
+                        // NULL en tiempo de ejecución pese a que el tipo declarado
+                        // es no-nulable (List/Map "no nulos" de Kotlin no protegen
+                        // de esto). Sin el orEmpty()/?: acá, el primer sync de
+                        // cualquier cuenta que ya sincronizaba antes de este
+                        // cambio reventaba con NullPointerException.
+                        Favorites.mergeFromRemote(
+                            context, remoto.favoritos.orEmpty(), remoto.favoritosBorrados.orEmpty()
+                        )
+                        ContinueWatching.mergeFromRemote(
+                            context, remoto.continuar.orEmpty(), remoto.continuarBorrados.orEmpty()
+                        )
+                        History.mergeFromRemote(
+                            context, remoto.historial.orEmpty(), remoto.historialBorradoEn ?: 0L
+                        )
                         backupNow(context)
                     }
                     ui.post { onDone(remoto != null) }

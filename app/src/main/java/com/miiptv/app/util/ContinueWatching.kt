@@ -23,7 +23,10 @@ import com.miiptv.app.api.ContentType
 object ContinueWatching {
 
     private const val KEY = "entries"
+    private const val KEY_TOMBSTONES = "borrados"
     private const val MAX = 40
+    /** Una marca de borrado más vieja que esto ya no aporta nada: se descarta. */
+    private const val TOMBSTONE_MAX_AGE_MS = 180L * 24 * 60 * 60 * 1000
 
     /** Antes de esto no vale la pena guardar: se abrió y se cerró enseguida. */
     private const val MINIMO_MS = 60 * 1000L
@@ -49,7 +52,8 @@ object ContinueWatching {
     ) {
         fun toContentItem() = ContentItem(
             id = id, name = name, icon = icon, categoryId = categoryId,
-            type = type, containerExtension = containerExtension
+            type = type, containerExtension = containerExtension,
+            progress = if (durMs > 0) (posMs.toFloat() / durMs.toFloat()).coerceIn(0f, 1f) else null
         )
     }
 
@@ -80,22 +84,99 @@ object ContinueWatching {
         DataSync.scheduleBackup(context)
     }
 
+    // ---------------- Marcas de borrado (para que el sync propague sacar una entrada) ----------------
+
+    /**
+     * Cuándo se sacó de "Continuar viendo" por última vez cada "TIPO:ID" que
+     * ya no está en la lista actual (se terminó de ver, o se sacó a mano). Se
+     * sube junto con las entradas (ver DataSync.Payload.continuarBorrados)
+     * para que un equipo que todavía la tenga a medias sepa que hay que
+     * sacarla, en vez de que la combinación la mantenga viva para siempre.
+     */
+    fun tombstones(context: Context): Map<String, Long> {
+        val json = prefs(context).getString(KEY_TOMBSTONES, null) ?: return emptyMap()
+        val tipo = object : TypeToken<Map<String, Long>>() {}.type
+        return runCatching { gson.fromJson<Map<String, Long>>(json, tipo) }.getOrNull().orEmpty()
+    }
+
+    private fun guardarTombstones(context: Context, mapa: Map<String, Long>) {
+        val corte = System.currentTimeMillis() - TOMBSTONE_MAX_AGE_MS
+        val podado = mapa.filterValues { it >= corte }
+        prefs(context).edit().putString(KEY_TOMBSTONES, gson.toJson(podado)).apply()
+    }
+
+    private fun clave(type: ContentType, id: Int) = "$type:$id"
+
+    private fun marcarBorrado(context: Context, type: ContentType, id: Int, cuando: Long) {
+        guardarTombstones(context, tombstones(context) + (clave(type, id) to cuando))
+    }
+
+    private fun quitarMarcaBorrado(context: Context, type: ContentType, id: Int) {
+        val key = clave(type, id)
+        val actuales = tombstones(context)
+        if (key in actuales) guardarTombstones(context, actuales - key)
+    }
+
     /**
      * Combina lo que bajó de la nube (ver DataSync) con lo que ya hay en este
-     * equipo: por cada película o serie se queda con la entrada más nueva
-     * ([Entry.updatedAt]), sin importar de qué lado vino.
+     * equipo, resolviendo cada "TIPO:ID" por separado: gana el evento más
+     * nuevo entre "a medias desde [Entry.updatedAt]" (local o remoto) y "se
+     * sacó en [remoteTombstones]" (local o remoto) -igual que ya hace
+     * Favorites.mergeFromRemote, ver ahí el porqué.
      */
-    fun mergeFromRemote(context: Context, remoto: List<Entry>): List<Entry> {
-        fun clave(e: Entry) = "${e.type}:${e.id}"
-        val combinado = LinkedHashMap<String, Entry>()
-        leer(context).forEach { combinado[clave(it)] = it }
-        remoto.forEach { r ->
-            val actual = combinado[clave(r)]
-            if (actual == null || r.updatedAt > actual.updatedAt) combinado[clave(r)] = r
+    fun mergeFromRemote(
+        context: Context,
+        remoto: List<Entry>,
+        remoteTombstones: Map<String, Long> = emptyMap()
+    ): List<Entry> {
+        fun clave(e: Entry) = clave(e.type, e.id)
+
+        val local = leer(context)
+        val localTombstones = tombstones(context)
+
+        val claves = HashSet<String>(local.size + remoto.size)
+        local.forEach { claves += clave(it) }
+        remoto.forEach { claves += clave(it) }
+        claves += localTombstones.keys
+        claves += remoteTombstones.keys
+
+        val localPorClave = local.associateBy(::clave)
+        val remotoPorClave = remoto.associateBy(::clave)
+
+        val resultado = mutableListOf<Entry>()
+        val tombstonesFinal = HashMap<String, Long>()
+
+        for (key in claves) {
+            val entryLocal = localPorClave[key]
+            val entryRemoto = remotoPorClave[key]
+            val borradoLocal = localTombstones[key]
+            val borradoRemoto = remoteTombstones[key]
+
+            val eventoLocal = when {
+                entryLocal != null -> entryLocal.updatedAt to entryLocal
+                borradoLocal != null -> borradoLocal to null
+                else -> null
+            }
+            val eventoRemoto = when {
+                entryRemoto != null -> entryRemoto.updatedAt to entryRemoto
+                borradoRemoto != null -> borradoRemoto to null
+                else -> null
+            }
+
+            val ganador = when {
+                eventoLocal == null -> eventoRemoto
+                eventoRemoto == null -> eventoLocal
+                eventoRemoto.first > eventoLocal.first -> eventoRemoto
+                else -> eventoLocal
+            } ?: continue
+
+            val (cuando, entry) = ganador
+            if (entry != null) resultado += entry else tombstonesFinal[key] = cuando
         }
-        val lista = combinado.values.toList()
-        escribir(context, lista)
-        return lista
+
+        escribir(context, resultado)
+        guardarTombstones(context, tombstonesFinal)
+        return resultado
     }
 
     private fun sin(lista: List<Entry>, type: ContentType, id: Int) =
@@ -112,16 +193,26 @@ object ContinueWatching {
         leer(context).firstOrNull { it.type == type && it.id == id }
 
     fun remove(context: Context, type: ContentType, id: Int) {
+        marcarBorrado(context, type, id, System.currentTimeMillis())
         escribir(context, sin(leer(context), type, id))
     }
 
     /** Guarda dónde quedó una película; la saca de la lista si se terminó. */
     fun saveMovie(context: Context, movie: ContentItem, posMs: Long, durMs: Long) {
-        val resto = sin(leer(context), ContentType.MOVIE, movie.id)
+        val lista = leer(context)
+        val existia = lista.any { it.type == ContentType.MOVIE && it.id == movie.id }
+        val resto = sin(lista, ContentType.MOVIE, movie.id)
         if (posMs < MINIMO_MS || terminado(posMs, durMs)) {
+            // Solo vale la pena marcar el borrado (para que se propague a
+            // otros equipos) si de verdad había algo que sacar: una
+            // reproducción cortísima de una película que nunca estuvo en
+            // "Continuar viendo" no debería poder borrar, vía sync, el
+            // avance real que otro equipo sí tenga guardado.
+            if (existia) marcarBorrado(context, ContentType.MOVIE, movie.id, System.currentTimeMillis())
             escribir(context, resto)
             return
         }
+        quitarMarcaBorrado(context, ContentType.MOVIE, movie.id)
         escribir(context, resto + Entry(
             type = ContentType.MOVIE, id = movie.id, name = movie.name, icon = movie.icon,
             categoryId = movie.categoryId, containerExtension = movie.containerExtension,
@@ -147,7 +238,9 @@ object ContinueWatching {
         siguienteId: String?,
         siguienteTitulo: String?
     ) {
-        val resto = sin(leer(context), ContentType.SERIES, serie.id)
+        val listaSerie = leer(context)
+        val existia = listaSerie.any { it.type == ContentType.SERIES && it.id == serie.id }
+        val resto = sin(listaSerie, ContentType.SERIES, serie.id)
         val ahora = System.currentTimeMillis()
         val base = Entry(
             type = ContentType.SERIES, id = serie.id, name = serie.name, icon = serie.icon,
@@ -155,16 +248,26 @@ object ContinueWatching {
             episodeId = episodeId, episodeTitle = episodeTitle
         )
         when {
-            terminado(posMs, durMs) && siguienteId != null ->
+            terminado(posMs, durMs) && siguienteId != null -> {
+                quitarMarcaBorrado(context, ContentType.SERIES, serie.id)
                 escribir(context, resto + base.copy(
                     posMs = 0L, durMs = 0L, episodeId = siguienteId, episodeTitle = siguienteTitulo
                 ))
-            terminado(posMs, durMs) -> escribir(context, resto)
+            }
+            terminado(posMs, durMs) -> {
+                // Ver el comentario equivalente en saveMovie: sin entrada
+                // previa, no hay nada que propagar como borrado.
+                if (existia) marcarBorrado(context, ContentType.SERIES, serie.id, ahora)
+                escribir(context, resto)
+            }
             // Recién empezado: si ya había una entrada de esta serie se deja
             // como estaba (no se pierde el avance por abrir otro capítulo un
             // segundo); si no había, tampoco vale la pena crearla.
             posMs < MINIMO_MS -> Unit
-            else -> escribir(context, resto + base)
+            else -> {
+                quitarMarcaBorrado(context, ContentType.SERIES, serie.id)
+                escribir(context, resto + base)
+            }
         }
     }
 
