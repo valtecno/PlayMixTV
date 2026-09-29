@@ -1,0 +1,13 @@
+# Normaliza finales de línea: en el repo siempre LF, en el checkout el nativo del SO.
+* text=auto eol=lf
+
+# Binarios: nunca tocar finales de línea
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.jar binary
+*.gradle-wrapper binary
+gradle-wrapper.jar binary
+*.keystore binary
+*.jks binary

@@ -1,0 +1,31 @@
+<resources>
+    <!-- Paleta "Streaming vibrante" — tomada de tu logo PlayMix TV -->
+    <color name="brand_primary">#FF3CAC</color>        <!-- rosa eléctrico -->
+    <color name="brand_primary_dark">#1A0B2E</color>   <!-- violeta profundo -->
+    <color name="brand_accent">#FF6A00</color>         <!-- naranja -->
+    <color name="brand_purple">#7B2FF7</color>         <!-- violeta acento -->
+
+    <color name="background_dark">#0A0A0F</color>      <!-- negro con base violeta -->
+    <color name="background_gradient_start">#241242</color>
+    <color name="background_gradient_end">#0A0A0F</color>
+
+    <color name="text_light">#FFFFFF</color>
+    <color name="text_muted">#B8AED1</color>           <!-- lavanda apagado -->
+
+    <!-- Tarjetas "vidrio" translúcidas -->
+    <color name="glass_card">#20FFFFFF</color>          <!-- blanco 12.5% -->
+    <color name="glass_border">#3DFFFFFF</color>         <!-- blanco 24% -->
+
+    <!-- Estrella de favoritos -->
+    <color name="star_active">#FFD24D</color>            <!-- dorado cálido -->
+
+    <!-- Fondo de los ítems del menú superior cuando NO están seleccionados -->
+    <color name="nav_inactive_bg">#59140626</color>      <!-- violeta muy oscuro, translúcido -->
+    <color name="dialog_bg">#1B1230</color>
+    <!-- Perfil de niños: verde, para distinguirlo del resto del menú -->
+    <color name="kids_green">#4BD97F</color>
+    <color name="kids_green_dim">#8A4BD97F</color>
+    <!-- Corazón de "Mi Espacio": rojo tenue fijo, para que se note más que
+         el resto de los íconos del menú (que se tiñen del color del texto). -->
+    <color name="heart_red_dim">#C9575D</color>
+</resources>

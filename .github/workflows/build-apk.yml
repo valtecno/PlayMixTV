@@ -1,0 +1,43 @@
+name: Build APK
+
+on:
+  workflow_dispatch:   # Se ejecutará únicamente cuando lo lances a mano desde Actions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      # Antes se llamaba a "gradle" a secas, o sea la versión que viniera
+      # instalada en el runner. Con el wrapper en el repositorio, acá y en
+      # cualquier máquina se compila con Gradle 8.7 exacto.
+      - name: Correr los tests
+        run: ./gradlew test --no-daemon
+
+      - name: Publicar el informe de tests
+        if: always()   # también cuando fallan, que es justo cuando hace falta
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-tests
+          path: app/build/reports/tests/
+          retention-days: 7
+
+      - name: Compilar APK (debug, listo para instalar)
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Subir el APK como resultado
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlayMixTV-apk
+          path: app/build/outputs/apk/debug/*.apk

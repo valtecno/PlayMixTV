@@ -1,0 +1,2831 @@
+package com.miiptv.app.ui
+
+import android.app.AlertDialog
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import com.miiptv.app.util.DailyRefresh
+import com.miiptv.app.util.Epg
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.Gravity
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.TooltipCompat
+import androidx.core.content.ContextCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.recyclerview.widget.GridLayoutManager
+import com.miiptv.app.R
+import com.miiptv.app.api.*
+import com.miiptv.app.databinding.ActivityMainBinding
+import com.miiptv.app.databinding.DialogAgeTierBinding
+import com.miiptv.app.databinding.ItemAgeTierBinding
+import com.miiptv.app.databinding.ItemCategoryBinding
+import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.ContinueWatching
+import com.miiptv.app.util.DataSync
+import com.miiptv.app.util.DeviceMode
+import com.miiptv.app.util.Favorites
+import com.miiptv.app.util.History
+import com.miiptv.app.util.ImageLoader
+import com.miiptv.app.util.KidsFilter
+import com.miiptv.app.util.KidsMode
+import com.miiptv.app.util.Parental
+import com.miiptv.app.util.PlaybackHolder
+import com.miiptv.app.util.RemoteControl
+import com.miiptv.app.util.PlayerFactory
+import com.miiptv.app.util.PpvFilter
+import com.miiptv.app.util.EpgReminder
+import com.miiptv.app.util.RadioCatalog
+import com.miiptv.app.util.Servers
+import com.miiptv.app.util.PinDialog
+import com.miiptv.app.util.UpdateDialog
+import com.miiptv.app.util.applyBrandGradient
+import com.squareup.picasso.Picasso
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
+class MainActivity : AppCompatActivity() {
+
+    /** Secciones de la barra de navegación superior. */
+    private enum class Section { HOME, LIVE, PPV, RADIO, MOVIES, SERIES, HISTORY, FAVORITES }
+
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var adapter: ContentAdapter
+    private lateinit var carouselAdapter: CarouselAdapter
+    private lateinit var recentAdapter: CarouselAdapter
+    private lateinit var novedades: AutoCarousel
+    private lateinit var recientes: AutoCarousel
+
+    private var section: Section = Section.HOME
+    private var currentCategoryId: String? = null
+    /** Tipo elegido dentro de Favoritos: null = todos. */
+    private var favFilter: ContentType? = null
+    private var favIsRadio = false
+    /**
+     * Pestaña activa dentro de "Mi Espacio" (antes "Favoritos"): además de
+     * los favoritos de siempre, ahora reúne "Continuar viendo" y "Vistas"
+     * (películas/series ya reproducidas). CONTINUAR y VISTAS ignoran
+     * favFilter/favIsRadio por completo; esos dos solo tienen sentido dentro
+     * de FAVORITOS, tal como funcionaban antes de agregar las otras pestañas.
+     */
+    private enum class EspacioModo { FAVORITOS, CONTINUAR, VISTAS }
+    private var espacioModo: EspacioModo = EspacioModo.FAVORITOS
+
+    /**
+     * "Mi Espacio" tiene dos subcategorías, cada una con sus propios chips
+     * debajo (ver [renderEspacioGroups] y [renderFavoriteFilters]): Actividad
+     * reciente (Continuar viendo + Vistas) y Favoritos (Todos/Canales/Radios/
+     * Películas/Series). No hace falta guardarlo aparte: se deduce de
+     * [espacioModo], que ya distingue las tres pestañas de contenido.
+     */
+    private enum class EspacioGrupo { RECIENTE, FAVORITOS }
+    private fun grupoDe(modo: EspacioModo) =
+        if (modo == EspacioModo.FAVORITOS) EspacioGrupo.FAVORITOS else EspacioGrupo.RECIENTE
+    /**
+     * Deportes - PPV ya no navega por las categorías tal como vienen del
+     * panel: se reparten en dos carpetas fijas según si el nombre (de la
+     * categoría o del canal) menciona "PPV". Estas listas son la base del
+     * buscador propio de la sección.
+     */
+    private var ppvCanales: List<ContentItem> = emptyList()
+    private var ppvEventos: List<ContentItem> = emptyList()
+    /**
+     * Filtro rápido por tipo de deporte dentro de "Canales" (ver
+     * renderPpvSportFilters). null = "Todos", sin acotar.
+     */
+    private var ppvSportTag: PpvFilter.SportTag? = null
+    /** Canales de "Canales" agrupados por deporte, calculado una vez en procesarPpv. */
+    private var ppvCanalesPorDeporte: Map<PpvFilter.SportTag, List<ContentItem>> = emptyMap()
+    /**
+     * Caché del reparto de Deportes - PPV: mientras Catalog.liveVersion y el
+     * servidor sean los mismos, volver a la sección no recalcula nada.
+     */
+    private var ppvCacheVersion: Int = -1
+    private var ppvCacheServer: String? = null
+    private var ppvCategorias: List<Category> = emptyList()
+    /** Sube en cada entrada a la sección: descarta resultados de una carga vieja. */
+    private var ppvGeneracion: Int = 0
+    /** Chip de radios abierto ahora mismo (país o marca). */
+    private var currentRadioSource: RadioCatalog.Source? = null
+    private var currentRadioFolder: RadioCatalog.Folder? = null
+    /**
+     * Emisoras que se están mostrando. Se le pasan enteras al reproductor para
+     * poder saltar de una a otra sin volver a esta pantalla.
+     */
+    private var radioPlaylist: List<ContentItem> = emptyList()
+    /** Última lista cargada, sin filtrar: base del buscador del perfil de niños. */
+    private var currentItems: List<ContentItem> = emptyList()
+    private var categories: List<Category> = emptyList()
+    /** Ítem que se está mostrando ahora en el panel de previsualización de Canales (TV). */
+    private var previewItem: ContentItem? = null
+
+    /**
+     * Id del canal que estaba enfocado en la lista justo antes de abrir la
+     * pantalla completa (modo TV). Sin esto, al volver del reproductor
+     * Android no sabía a qué vista devolverle el foco -- la fila seguía ahí,
+     * pero ninguna se veía marcada y la primera flecha del control remoto se
+     * perdía "recuperando" el foco en vez de moverse.
+     */
+    private var idAlAbrirPantallaCompleta: Int? = null
+    /**
+     * Id de la vista del toolbar que tenía el foco al abrir el reproductor.
+     * Null si el foco venía de la lista de canales (cubierto por
+     * [idAlAbrirPantallaCompleta]) o de otro lugar.
+     */
+    private var idToolbarEnfoqueAntes: Int? = null
+
+    /**
+     * Reproductor de la previsualización. Vive con la pantalla (onStart/onStop)
+     * y NUNCA suena a la vez que el reproductor a pantalla completa: al abrir
+     * PlayerActivity esta activity pasa a onStop y acá se libera. Importa
+     * porque las cuentas Xtream limitan las conexiones simultáneas, y dejar la
+     * previsualización viva haría que el canal en pantalla completa fallara.
+     */
+    private var previewPlayer: ExoPlayer? = null
+    private var previewMuted = false
+
+    /**
+     * Al recorrer la lista con el control remoto se pasa por muchos canales en
+     * un segundo. Sin esta espera se abriría una conexión por cada uno.
+     */
+    private val previewDelay = Handler(Looper.getMainLooper())
+
+    /** Temporizador del refresco diario de las 3 AM (ver programarRefrescoDiario). */
+    private val refrescoDiario = Handler(Looper.getMainLooper())
+    private var pendingPreview: Runnable? = null
+
+    /** Perfil de niños: filtra a solo contenido infantil y oculta las secciones no aptas. */
+    private var kidsMode: Boolean = false
+
+    /**
+     * Diálogo de "¿cerrar la app?" mientras está en pantalla.
+     *
+     * Se guarda por dos motivos: para no apilar dos si el mando repite la
+     * pulsación de Atrás, y para poder cerrarlo en onDestroy — un diálogo vivo
+     * cuando la activity se destruye es una ventana filtrada.
+     */
+    private var exitDialog: AlertDialog? = null
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        DeviceMode.lockPortraitIfMobile(this)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        setSupportActionBar(binding.toolbar)
+        // El Toolbar dibujaba su título nativo (negro, ilegible) detrás del logo + texto
+        supportActionBar?.setDisplayShowTitleEnabled(false)
+
+        if (!Session.isLoggedIn(this)) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
+        adapter = ContentAdapter(
+            onClick = { item -> handleItemClick(item) },
+            onPreview = { item -> previewRadio(item) }
+        )
+        // Con el remoto la tarjeta enfocada se pinta y se agranda un poco; con
+        // el dedo, todo queda como siempre.
+        adapter.remoteMode = RemoteControl.isEnabled(this)
+        binding.recyclerChannels.layoutManager = GridLayoutManager(this, 1)
+        binding.recyclerChannels.adapter = adapter
+        configurarListaRapida()
+
+        binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
+        binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
+        binding.previewPlayRow.background = Appearance.withFocusState(
+            this, binding.previewPlayRow.background!!, 12f
+        )
+        binding.previewThumbFrame.setOnClickListener { previewItem?.let { openItem(it) } }
+        binding.btnPreviewMute.setOnClickListener { togglePreviewMute() }
+        // Los botones amarillos del minireproductor (mute y Ampliar) flotan sobre
+        // el video igual que los botones del reproductor a pantalla completa, así
+        // que merecen el mismo tratamiento: relleno opaco del color de acento más
+        // anillo blanco, que se ve sobre cualquier fondo claro u oscuro.
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.applyIconFocus(binding.btnPreviewMute, true, circular = true)
+            // previewPlayRow ya ganó withFocusState (línea de arriba), pero ese
+            // mecanismo es más suave que applyIconFocus. Para el botón "Ampliar"
+            // se reemplaza por el más marcado, que coincide con lo que pide el
+            // usuario: que se vea igual de claro que en el menú superior.
+            binding.previewPlayRow.background =
+                Appearance.iconFocusBackground(this, binding.previewPlayRow.background, circular = false, cornerRadiusDp = 18f)
+            RemoteControl.applyIconFocus(binding.btnEspacioSync, true, circular = true)
+        }
+
+        binding.tvToolbarTitle.applyBrandGradient()
+
+        kidsMode = KidsMode.isActive(this)
+
+        setupNav()
+        setupPpvSearch()
+        setupKidsSearch()
+        setupChannelFilter()
+        EpgReminder.crearCanal(this)
+        setupCarousel()
+        setupBackNavigation()
+        applyKidsVisibility()
+
+        selectSection(if (kidsMode) Section.LIVE else Section.HOME)
+
+        // Sincronización con la nube (ver DataSync): antes esto solo pasaba
+        // al iniciar sesión o cambiar de cuenta. Dos equipos que ya tenían la
+        // sesión abierta de antes (lo normal: no se vuelve a loguear todos
+        // los días) seguían subiendo sus propios cambios pero nunca bajaban
+        // los del otro, y Mi Espacio terminaba mostrando cosas distintas en
+        // cada uno. Ahora también se pide acá, cada vez que se abre la app:
+        // en segundo plano, sin demorar nada en pantalla. Si Mi Espacio ya
+        // está abierto cuando termina, se refresca solo.
+        DataSync.restore(applicationContext) { refrescarEspacioSiEstaVisible() }
+
+        /*
+         * Foco inicial en el menú superior.
+         *
+         * Sin esto, al abrir la app con un control remoto no hay nada enfocado:
+         * la primera flecha que se pulsa se "pierde" (Android la usa para elegir
+         * un primer destino) y parece que el remoto no responde. Dejando el
+         * menú enfocado de entrada, la app arranca mostrando dónde está parado.
+         */
+        enfocarSiTV(if (kidsMode) binding.navLive else binding.navHome)
+        // Si la app abre directo en el perfil de niños (venía activo de antes),
+        // hay que avisar la regla igual que cuando se activa con el botón.
+        if (kidsMode) {
+            Toast.makeText(
+                this,
+                getString(R.string.kids_mode_on, KidsMode.getAgeTier(this).etiqueta),
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // ---------------- Barra de navegación ----------------
+
+    private fun setupNav() {
+        binding.navHome.setOnClickListener { selectSection(Section.HOME) }
+        binding.navLive.setOnClickListener { selectSection(Section.LIVE) }
+        binding.navPpv.setOnClickListener { selectSection(Section.PPV) }
+        binding.navRadio.setOnClickListener { selectSection(Section.RADIO) }
+        binding.navMovies.setOnClickListener { selectSection(Section.MOVIES) }
+        binding.navSeries.setOnClickListener { selectSection(Section.SERIES) }
+        binding.navFavorites.setOnClickListener { selectSection(Section.FAVORITES) }
+        binding.btnEspacioSync.setOnClickListener { sincronizarEspacioAhora() }
+
+        binding.navKids.setOnClickListener { toggleKidsMode() }
+
+        binding.btnSendContact.setOnClickListener { enviarContacto() }
+        // Solo tiene sentido compartir por WhatsApp desde el celular, donde la
+        // persona tiene la app instalada y sus contactos a mano. En TV, con
+        // control remoto, no hay forma práctica de elegir un contacto.
+        binding.btnSendContact.visibility = if (DeviceMode.isTv(this)) View.GONE else View.VISIBLE
+        // Ya no hace falta resaltado de foco a mano: ahora es un botón de
+        // texto con el mismo estilo NavItem que el resto del menú (antes
+        // era un ícono suelto con fondo propio, que sí lo necesitaba).
+    }
+
+    /**
+     * Comparte PlayMix por WhatsApp con un mensaje ya escrito. Solo tiene
+     * sentido en móvil: es donde la gente tiene WhatsApp a mano para abrir el
+     * selector de contactos, a diferencia de un TV/TV box con control remoto.
+     * Por eso el botón mismo ya viene oculto en modo TV (ver applyDeviceMode).
+     */
+    private fun enviarContacto() {
+        // El mensaje que el usuario verá antes de elegir a quién mandarlo.
+        // Al final incluye el enlace directo al chat con el número de contacto
+        // de PlayMix, para que quien lo reciba pueda escribir con un solo toque.
+        val enlaceContacto = "https://wa.me/56948714030"
+        val mensaje = "Mira esta aplicación que uso para ver TV. Pide una prueba gratis a ver " +
+            "si te gusta y te unes a la comunidad que vemos más por menos dinero. " +
+            "Escríbele aquí: $enlaceContacto"
+        val url = "https://wa.me/?text=" + Uri.encode(mensaje)
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.contact_no_whatsapp, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun highlightNav() {
+        val map = mapOf<TextView, Section?>(
+            binding.navHome to Section.HOME,
+            binding.navLive to Section.LIVE,
+            binding.navPpv to Section.PPV,
+            binding.navRadio to Section.RADIO,
+            binding.navMovies to Section.MOVIES,
+            binding.navSeries to Section.SERIES
+        )
+        map.forEach { (view, sec) ->
+            val active = sec != null && sec == section
+            paintNavItem(view, active)
+        }
+        // No representa ninguna Section (no hay "estar parado en YouTube"),
+        // así que siempre va en nivel inactivo -- pero por acá es donde cada
+        // botón del menú gana el anillo de foco del control remoto (ver
+        // Appearance.applyLevel). Sin esta línea se queda con el fondo
+        // transparente de siempre y no muestra nada al enfocarlo.
+        // tintIcon = false: el logo de YouTube tiene sus propios colores
+        // (rojo + blanco) y no se tiñe de un solo color como el resto de
+        // los íconos del menú -- si no, se pierde el rojo y queda todo blanco.
+        // El ícono de WhatsApp también tiene su color propio (verde de marca);
+        // igual que antes con YouTube, no se tiñe de un solo color.
+        paintNavItem(binding.btnSendContact, active = false, tintIcon = false)
+        // "Mi Espacio": el corazón se queda siempre en rojo tenue (en vez de
+        // seguir el color del texto como el resto de los íconos) para que se
+        // note más entre los demás botones del menú. tintIcon = false: si no,
+        // el listener de foco de applyLevel lo volvería a pintar del color
+        // del texto apenas el control remoto lo enfocara.
+        val favoritesActive = section == Section.FAVORITES
+        paintNavItem(binding.navFavorites, favoritesActive, tintIcon = false)
+        binding.navFavorites.compoundDrawablesRelative.forEach {
+            it?.mutate()?.setTint(ContextCompat.getColor(this, R.color.heart_red_dim))
+        }
+        // El de Niños no representa una Section: se resalta según kidsMode y cambia
+        // de texto/ícono para indicar que, tocándolo de nuevo, se pide el PIN de salida.
+        binding.navKids.text = getString(if (kidsMode) R.string.nav_kids_exit else R.string.nav_kids)
+        // tintIcon = false por lo mismo que arriba: el ícono de Niños es
+        // siempre verde, nunca sigue al color del texto.
+        paintNavItem(binding.navKids, kidsMode, tintIcon = false)
+        // Ícono en verde (activo o no) y texto en blanco, igual que el resto
+        // de los botones del menú -- antes el texto también se ponía verde
+        // cuando el perfil no estaba activo, y ahí no hacía falta.
+        val verdeNinos = ContextCompat.getColor(
+            this, if (kidsMode) R.color.kids_green else R.color.kids_green_dim
+        )
+        binding.navKids.setTextColor(ContextCompat.getColor(this, R.color.text_light))
+        binding.navKids.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(verdeNinos) }
+    }
+
+    /** Pinta un ítem de la barra: degradado de marca si está activo, fondo oscuro si no. */
+    private fun paintNavItem(view: TextView, active: Boolean, tintIcon: Boolean = true) {
+        // Nivel 1: la sección abierta del menú principal, con degradado pleno
+        Appearance.applyLevel(
+            view,
+            if (active) Appearance.Level.PRIMARY else Appearance.Level.INACTIVE,
+            22f,
+            tintIcon = tintIcon
+        )
+        if (!tintIcon) return
+        val color = view.currentTextColor
+        // mutate() evita teñir la copia compartida del drawable en otras vistas
+        view.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(color) }
+    }
+
+    private fun selectSection(newSection: Section) {
+        // Un contenido que venía en camino para la sección anterior ya no
+        // sirve: si llegaba después, pisaba la lista de la sección nueva.
+        contenidoEnCurso?.cancel()
+        contenidoEnCurso = null
+        // Cambiar de sección deja atrás la lista de radios: si había una
+        // sonando en preview, no tiene sentido que siga (además, en otra
+        // sección ese id ya no corresponde a ninguna fila visible).
+        if (section == Section.RADIO && newSection != Section.RADIO) stopRadioPreview()
+        section = newSection
+        // El EPG (ahora + próximo) corre en Canales, PPV y Favoritos; en el
+        // resto de secciones el adapter ni siquiera lo pide. Dentro de
+        // Favoritos, bindEpgNow() igual lo filtra por ContentType.LIVE, así
+        // que una película o serie favorita nunca dispara la consulta.
+        adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV || newSection == Section.FAVORITES
+        highlightNav()
+        binding.tvEmpty.visibility = View.GONE
+        binding.tvSectionTitle.visibility = View.GONE
+
+        val isHome = newSection == Section.HOME
+        val isBrowse = newSection in listOf(
+            Section.LIVE, Section.PPV, Section.RADIO, Section.MOVIES, Section.SERIES
+        )
+
+        binding.homeArea.visibility = if (isHome) View.VISIBLE else View.GONE
+        // Ocultar el cuerpo entero, no solo la lista de adentro: los dos son
+        // "0dp + weight 1" en el LinearLayout raíz, así que si bodyContainer
+        // seguía visible se quedaba con la mitad del alto y el Inicio solo
+        // llegaba hasta la mitad de la pantalla.
+        binding.bodyContainer.visibility = if (isHome) View.GONE else View.VISIBLE
+        binding.recyclerChannels.visibility = if (isHome) View.GONE else View.VISIBLE
+        binding.categoryScroll.visibility = if (isBrowse) View.VISIBLE else View.GONE
+        // La segunda fila es exclusiva de Radios; showRadio() la vuelve a
+        // encender si la carpeta abierta tiene algo que elegir.
+        if (newSection != Section.RADIO) binding.radioSubScroll.visibility = View.GONE
+        binding.favGroupScroll.visibility =
+            if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
+        binding.btnEspacioSync.visibility =
+            if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
+        binding.favFilterScroll.visibility =
+            if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
+        if (newSection != Section.PPV) {
+            binding.etPpvSearch.visibility = View.GONE
+            binding.ppvSportFilterScroll.visibility = View.GONE
+        }
+        binding.etKidsSearch.visibility =
+            if (kidsMode && newSection in listOf(Section.LIVE, Section.MOVIES, Section.SERIES))
+                View.VISIBLE else View.GONE
+        // El filtro rápido de canales aparece solo en Canales (no en niños,
+        // que tiene su propio buscador). En PPV este cuadro no se usa: ahí el
+        // buscador propio de la sección (etPpvSearch) hace ese trabajo.
+        if (newSection != Section.LIVE) {
+            binding.etChannelFilter.visibility = View.GONE
+            binding.etChannelFilter.setText("")
+        } else if (!kidsMode) {
+            binding.etChannelFilter.visibility = View.VISIBLE
+        }
+
+        applyLayoutMode(newSection)
+        updatePreviewVisibility(newSection)
+        // En móvil el Inicio es una imagen fija, así que no hay nada que rotar.
+        // showHome() también lo frena, pero mejor no arrancarlo de entrada: el
+        // temporizador quedaba andando un instante al entrar a Inicio.
+        if (isHome && !DeviceMode.isMobile(this)) startCarousel() else stopCarousel()
+
+        when (newSection) {
+            Section.HOME -> showHome()
+            Section.LIVE -> loadCategories(ContentType.LIVE, kidsFilterOrNull())
+            Section.PPV -> showPpv()
+            Section.RADIO -> showRadio()
+            Section.MOVIES -> loadCategories(ContentType.MOVIE, kidsFilterOrNull())
+            Section.SERIES -> loadCategories(ContentType.SERIES, kidsFilterOrNull())
+            Section.HISTORY -> showHistory()
+            Section.FAVORITES -> showFavorites()
+        }
+    }
+
+    /** Filtro adicional de categorías cuando el Perfil de niños está activo. */
+    private fun kidsFilterOrNull(): ((Category) -> Boolean)? {
+        if (!kidsMode) return null
+        val tramo = KidsMode.getAgeTier(this)
+        return { c -> KidsFilter.isKidsCategory(c.categoryName, tramo) }
+    }
+
+    /**
+     * Películas y Series se muestran como grilla de pósters, con las columnas
+     * configuradas en Personalizar. El resto va como lista de filas.
+     */
+    private fun applyLayoutMode(newSection: Section) {
+        val columns = when (newSection) {
+            Section.MOVIES -> Appearance.getMoviesColumns(this)
+            Section.SERIES -> Appearance.getSeriesColumns(this)
+            else -> 1
+        }
+        adapter.posterMode = columns > 1
+        // Antes acá se creaba un GridLayoutManager nuevo sin importar si las
+        // columnas habían cambiado, y esto se llama también desde onResume.
+        // Un LayoutManager nuevo no sabe en qué posición estaba el anterior,
+        // así que cada vez que se volvía de la ficha de una película la grilla
+        // arrancaba de nuevo desde arriba, y con el control remoto se perdía
+        // la tarjeta donde uno había quedado navegando.
+        val actual = binding.recyclerChannels.layoutManager as? GridLayoutManager
+        if (actual == null || actual.spanCount != columns) {
+            binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
+        }
+    }
+
+    /**
+     * Panel de previsualización: foto grande + botón "Ampliar" al lado de la
+     * lista, en vez de abrir el reproductor de una.
+     *
+     * Corre en Canales y PPV siempre. Antes también corría en Mi Espacio
+     * cuando el filtro activo era "Canales" (esa pestaña era una lista, igual
+     * que Canales de verdad). Ahora esa pestaña -- como el resto de Favoritos
+     * salvo "Todos" -- se muestra en grilla de carátulas chicas (ver
+     * MainActivity.applyEspacioLayoutMode), igual que Películas/Series, así
+     * que se abre directo al tocarla y ya no necesita este panel.
+     */
+    private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV
+
+    /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
+    private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
+
+    /**
+     * Preview de radio: al tocar una fila en la lista de Radios, suena antes
+     * de agrandar la pantalla (a diferencia del preview de canales, esto no
+     * usa un reproductor propio de esta pantalla: engancha directo a
+     * [PlaybackHolder], el mismo que usa PlayerActivity. Así, si después se
+     * toca "Abrir", el reproductor de pantalla completa retoma el audio que
+     * ya estaba sonando sin reiniciar el stream (ver PlaybackHolder.canResume).
+     *
+     * Un segundo toque sobre la fila que ya está sonando abre directo, igual
+     * que el atajo del preview de canales.
+     */
+    private fun previewRadio(item: ContentItem) {
+        val url = item.streamUrl ?: return
+        if (adapter.previewingId == item.id && PlaybackHolder.canResume(url)) {
+            openItem(item)
+            return
+        }
+        if (!PlaybackHolder.canResume(url)) {
+            PlaybackHolder.release()
+            val exo = PlayerFactory.build(this)
+            exo.setMediaItem(MediaItem.fromUri(url))
+            exo.prepare()
+            exo.playWhenReady = true
+            PlaybackHolder.attach(exo, url, item.name)
+        }
+        adapter.setPreviewing(item.id)
+    }
+
+    /**
+     * Corta el preview de radio. Se puede llamar sin condiciones (onStop,
+     * onDestroy, cambio de sección o de fuente): si ya no había nada en
+     * preview, o si el id se limpió antes de pasarle el reproductor a
+     * PlayerActivity (ver reallyOpen), no hace nada.
+     */
+    private fun stopRadioPreview() {
+        if (!::adapter.isInitialized || adapter.previewingId == null) return
+        adapter.setPreviewing(null)
+        PlaybackHolder.release()
+    }
+
+    /** Ficha del primer canal de [items] en el panel de previsualización, o lo limpia si no hay ninguno. */
+    private fun refreshPreviewCard(items: List<ContentItem>) {
+        if (!showPreviewFor(section)) return
+        val canal = items.firstOrNull { esCanalTv(it) }
+        if (canal != null) showPreviewCard(canal) else {
+            previewItem = null
+            stopPreview()
+        }
+    }
+
+    private fun updatePreviewVisibility(newSection: Section) {
+        val conPreview = showPreviewFor(newSection)
+        binding.previewPanel.visibility = if (conPreview) View.VISIBLE else View.GONE
+        if (!conPreview) {
+            previewItem = null
+            stopPreview()
+        }
+        // Siempre se recalcula, con y sin previsualización. Antes la rama "sin
+        // previsualización" solo devolvía el contenedor a horizontal y dejaba
+        // listColumn con los parámetros del modo apilado (height=0). En un
+        // LinearLayout horizontal el peso reparte solo a lo ancho, así que ese
+        // height=0 se quedaba en cero de verdad: la columna colapsaba y en móvil
+        // desaparecían Películas, Series y Radios (y sus chips de categoría).
+        applyPreviewLayout(conPreview)
+    }
+
+    /**
+     * Coloca la lista y el panel de previsualización.
+     *
+     * Solo hay un caso apilado: móvil CON previsualización, donde el video va
+     * arriba en 16:9 y la lista debajo. En todos los demás (TV, o cualquier
+     * sección sin previsualización) el cuerpo va en horizontal y la lista ocupa
+     * el alto completo.
+     */
+    private fun applyPreviewLayout(conPreview: Boolean) {
+        val apilado = conPreview && DeviceMode.isMobile(this)
+
+        binding.bodyContainer.orientation =
+            if (apilado) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+
+        val lista = binding.listColumn.layoutParams as LinearLayout.LayoutParams
+        val panel = binding.previewPanel.layoutParams as LinearLayout.LayoutParams
+        val marco = binding.previewThumbFrame.layoutParams as LinearLayout.LayoutParams
+
+        if (apilado) {
+            lista.width = LinearLayout.LayoutParams.MATCH_PARENT
+            lista.height = 0
+            lista.weight = 1f
+
+            panel.width = LinearLayout.LayoutParams.MATCH_PARENT
+            panel.height = LinearLayout.LayoutParams.WRAP_CONTENT
+            panel.weight = 0f
+
+            // Marco de video en 16:9, sin pasarse de un tercio de la pantalla
+            val metrics = resources.displayMetrics
+            marco.width = LinearLayout.LayoutParams.MATCH_PARENT
+            marco.height = (metrics.widthPixels * 9 / 16)
+                .coerceAtMost((metrics.heightPixels * 0.34f).toInt())
+            marco.weight = 0f
+        } else {
+            lista.width = 0
+            lista.height = LinearLayout.LayoutParams.MATCH_PARENT
+            lista.weight = 1f
+
+            panel.width = 0
+            panel.height = LinearLayout.LayoutParams.MATCH_PARENT
+            panel.weight = 1.4f
+
+            // Antes: height=0 + weight=1, la única vista con peso en una
+            // columna vertical junto al título, la categoría y las dos
+            // líneas de EPG (todas wrap_content). El LinearLayout mide
+            // primero esas cuatro a su alto natural y recién ahí reparte
+            // TODO lo que sobra en el marco: un canal sin EPG lo dejaba
+            // grande, uno con EPG largo (como los "evento programado" de
+            // Deportes - PPV) lo dejaba mucho más chico. El tamaño del
+            // video terminaba dependiendo del canal elegido, no de la
+            // sección. Ahora se fija en 16:9 según el ancho ya medido
+            // (fijarAltoVideo16x9), igual que en el modo apilado de arriba.
+            marco.width = LinearLayout.LayoutParams.MATCH_PARENT
+            marco.height = LinearLayout.LayoutParams.WRAP_CONTENT
+            marco.weight = 0f
+        }
+
+        binding.listColumn.layoutParams = lista
+        binding.previewPanel.layoutParams = panel
+        binding.previewThumbFrame.layoutParams = marco
+        if (!apilado && conPreview) fijarAltoVideo16x9()
+    }
+
+    /**
+     * Modo TV/tablet (no apilado): el marco de video pasó a WRAP_CONTENT
+     * para no competir por altura con el texto de al lado, así que ahora
+     * mide 0 hasta que haya un layout. En cuanto tiene un ancho real, se le
+     * pone una altura fija en proporción 16:9 — la misma cuenta que ya usa
+     * el modo apilado de arriba, solo que acá el ancho no es el de la
+     * pantalla completa sino el de la columna de previsualización.
+     */
+    private fun fijarAltoVideo16x9() {
+        binding.previewThumbFrame.post {
+            if (!::binding.isInitialized) return@post
+            val ancho = binding.previewThumbFrame.width
+            if (ancho <= 0) return@post
+            val lp = binding.previewThumbFrame.layoutParams
+            val alto = ancho * 9 / 16
+            if (lp.height != alto) {
+                lp.height = alto
+                binding.previewThumbFrame.layoutParams = lp
+            }
+        }
+    }
+
+    private fun handleItemClick(item: ContentItem) {
+        if (!showPreviewFor(section) || !esCanalTv(item)) {
+            openItem(item)
+            return
+        }
+        // Segundo toque sobre el canal que ya se está previsualizando: pantalla completa.
+        if (previewItem?.id == item.id && previewPlayer?.isPlaying == true) {
+            openItem(item)
+        } else {
+            showPreview(item)
+        }
+    }
+
+    /** Solo la ficha: nombre, categoría, logo y EPG. No conecta nada. */
+    private fun showPreviewCard(item: ContentItem) {
+        previewItem = item
+        stopPreview()
+        binding.tvPreviewTitle.text = item.name
+        binding.tvPreviewCategory.text =
+            categories.firstOrNull { it.categoryId == item.categoryId }?.categoryName.orEmpty()
+        if (!item.icon.isNullOrBlank()) {
+            // fit(): esta ficha cambia con cada canal que se recorre con el
+            // control remoto; decodificar el logo a resolución completa en
+            // cada paso trababa el desplazamiento por la lista.
+            Picasso.get().load(item.icon).fit().centerInside().into(binding.ivPreviewLogo)
+        } else {
+            binding.ivPreviewLogo.setImageDrawable(null)
+        }
+
+        // EPG debajo del minireproductor: misma info que en la fila de la lista
+        binding.tvPreviewEpgNow.visibility = View.GONE
+        binding.tvPreviewEpgNext.visibility = View.GONE
+        binding.tvPreviewEpgNow.tag = item.id
+        Epg.nowPlaying(this, item.id) { titulo ->
+            if (binding.tvPreviewEpgNow.tag == item.id && !titulo.isNullOrBlank()) {
+                binding.tvPreviewEpgNow.text = titulo
+                binding.tvPreviewEpgNow.visibility = View.VISIBLE
+            }
+        }
+        Epg.nextPlaying(this, item.id) { titulo ->
+            if (binding.tvPreviewEpgNow.tag == item.id && !titulo.isNullOrBlank()) {
+                binding.tvPreviewEpgNext.text = "▶ ${getString(R.string.preview_epg_next)}: $titulo"
+                binding.tvPreviewEpgNext.visibility = View.VISIBLE
+            }
+        }
+        // Toque largo en "A continuación" para crear un recordatorio
+        binding.tvPreviewEpgNext.setOnLongClickListener {
+            val titulo = binding.tvPreviewEpgNext.text?.toString()
+                ?.removePrefix("▶ ${getString(R.string.preview_epg_next)}: ")
+                ?.trim()
+            if (!titulo.isNullOrBlank()) {
+                // Inicio aproximado: ahora + duración del programa actual (estimado en 60 min)
+                val inicioEstimado = System.currentTimeMillis() + 60 * 60 * 1000L
+                val ok = EpgReminder.programar(this, item.name, titulo, inicioEstimado)
+                val msg = if (ok) getString(R.string.epg_reminder_set)
+                          else getString(R.string.epg_reminder_past)
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            }
+            true
+        }
+    }
+
+    /** Ficha + arranque de la previsualización en video. */
+    private fun showPreview(item: ContentItem) {
+        showPreviewCard(item)
+
+        // Categoría bloqueada: se muestra la ficha pero no se reproduce nada
+        // hasta que se ingrese el PIN desde el botón de pantalla completa.
+        if (Parental.isCategoryLocked(this, item.categoryId)) {
+            showPreviewMessage(getString(R.string.preview_locked))
+            return
+        }
+
+        schedulePreview(item)
+    }
+
+    /** Espera un momento antes de conectar: evita abrir una conexión por canal recorrido. */
+    private fun schedulePreview(item: ContentItem) {
+        pendingPreview?.let { previewDelay.removeCallbacks(it) }
+        showPreviewIdle(loading = true)
+
+        val tarea = Runnable {
+            if (isFinishing || isDestroyed) return@Runnable
+            if (previewItem?.id != item.id) return@Runnable
+            playPreview(item)
+        }
+        pendingPreview = tarea
+        previewDelay.postDelayed(tarea, PREVIEW_DELAY_MS)
+    }
+
+    private fun playPreview(item: ContentItem) {
+        val exo = previewPlayer ?: buildPreviewPlayer().also { previewPlayer = it }
+        binding.tvPreviewError.visibility = View.GONE
+        exo.setMediaItem(MediaItem.fromUri(Session.liveStreamUrl(this, item.id)))
+        exo.prepare()
+        exo.playWhenReady = true
+    }
+
+    private fun buildPreviewPlayer(): ExoPlayer {
+        val exo = PlayerFactory.build(this)
+        exo.volume = if (previewMuted) 0f else 1f
+        exo.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (isFinishing || isDestroyed) return
+                binding.previewProgress.visibility =
+                    if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+                if (state == Player.STATE_READY) {
+                    // Recién con imagen se tapa el logo
+                    binding.previewPlayer.visibility = View.VISIBLE
+                    binding.ivPreviewLogo.visibility = View.GONE
+                    binding.tvPreviewError.visibility = View.GONE
+                }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                if (isFinishing || isDestroyed) return
+                showPreviewMessage(getString(R.string.preview_error))
+            }
+        })
+        binding.previewPlayer.player = exo
+        return exo
+    }
+
+    /** Vuelve al estado "solo logo", opcionalmente con el indicador de carga. */
+    private fun showPreviewIdle(loading: Boolean) {
+        binding.previewPlayer.visibility = View.GONE
+        binding.ivPreviewLogo.visibility = View.VISIBLE
+        binding.tvPreviewError.visibility = View.GONE
+        binding.previewProgress.visibility = if (loading) View.VISIBLE else View.GONE
+    }
+
+    private fun showPreviewMessage(texto: String) {
+        binding.previewProgress.visibility = View.GONE
+        binding.previewPlayer.visibility = View.GONE
+        binding.ivPreviewLogo.visibility = View.VISIBLE
+        binding.tvPreviewError.text = texto
+        binding.tvPreviewError.visibility = View.VISIBLE
+    }
+
+    private fun togglePreviewMute() {
+        previewMuted = !previewMuted
+        previewPlayer?.volume = if (previewMuted) 0f else 1f
+        binding.btnPreviewMute.setImageResource(
+            if (previewMuted) R.drawable.ic_volume_off else R.drawable.ic_volume_up
+        )
+    }
+
+    /** Corta la previsualización y suelta la conexión con el panel. */
+    private fun stopPreview() {
+        pendingPreview?.let { previewDelay.removeCallbacks(it) }
+        pendingPreview = null
+        previewPlayer?.let {
+            it.stop()
+            it.clearMediaItems()
+        }
+        if (::binding.isInitialized) showPreviewIdle(loading = false)
+    }
+
+    private fun releasePreview() {
+        pendingPreview?.let { previewDelay.removeCallbacks(it) }
+        pendingPreview = null
+        binding.previewPlayer.player = null
+        previewPlayer?.release()
+        previewPlayer = null
+    }
+
+    /** Tipo de contenido de la sección actual (para las pantallas de catálogo). */
+    private fun currentType(): ContentType = when (section) {
+        Section.MOVIES -> ContentType.MOVIE
+        Section.SERIES -> ContentType.SERIES
+        else -> ContentType.LIVE
+    }
+
+    // ---------------- Inicio ----------------
+
+    private fun showHome() {
+        binding.categoryContainer.removeAllViews()
+        setLoading(false)
+        adapter.submitList(emptyList())
+
+        /*
+         * En móvil el Inicio es la imagen de marca, no los carruseles.
+         *
+         * Los carruseles se pensaron para el televisor: dos columnas lado a lado
+         * que van rotando solas. Apiladas en una pantalla de teléfono quedaban
+         * dos franjas cortas, cada una con un póster a la vez.
+         *
+         * La imagen va con poca opacidad y con un velo que la funde por los
+         * bordes, para que no compita con el menú ni con la barra de título.
+         *
+         * Dónde NO hace falta controlar nada: la imagen vive dentro de homeArea,
+         * que empieza debajo del menú y se oculta entero al salir del Inicio. O
+         * sea que no puede taparle nada al menú ni asomarse en otra sección
+         * aunque este método cambie. Ver el comentario en activity_main.xml.
+         */
+        val fondoDeMarca = DeviceMode.isMobile(this)
+        binding.ivHomeBackdrop.visibility = if (fondoDeMarca) View.VISIBLE else View.GONE
+        binding.homeBackdropScrim.visibility = if (fondoDeMarca) View.VISIBLE else View.GONE
+        binding.homeSections.visibility = if (fondoDeMarca) View.GONE else View.VISIBLE
+
+        if (fondoDeMarca) {
+            // Sin carruseles no hay nada que cargar ni que rotar, y tampoco
+            // tiene sentido el cartel de "cargando" o "no hay nada".
+            binding.tvHomeEmpty.visibility = View.GONE
+            stopCarousel()
+            return
+        }
+
+        // Fila 1: lo más nuevo. Fila 2: lo que sigue, sin repetir nada de la primera.
+        val todo = Catalog.newest(this, limit = 40)
+        val fila1 = todo.take(20)
+        val fila2 = todo.drop(20)
+
+        novedades.submit(fila1)
+        recientes.submit(fila2)
+
+        binding.colNovedades.visibility = if (novedades.itemCount == 0) View.GONE else View.VISIBLE
+        binding.colRecientes.visibility = if (recientes.itemCount == 0) View.GONE else View.VISIBLE
+        // El separador solo tiene sentido si hay algo a los dos lados
+        binding.homeDivider.visibility =
+            if (novedades.itemCount > 0 && recientes.itemCount > 0) View.VISIBLE else View.GONE
+
+        // Antes, si el catálogo venía vacío el cartel se ocultaba y quedaba una
+        // pantalla en blanco sin explicación. Ahora se distingue entre "todavía
+        // cargando", "no hay nada" y "falló, y este fue el motivo".
+        val vacio = novedades.itemCount == 0 && recientes.itemCount == 0
+        val motivo = Catalog.lastError
+        when {
+            !vacio -> binding.tvHomeEmpty.visibility = View.GONE
+            // Mientras baja el catálogo se avisa, en vez de dejar el Inicio en
+            // blanco sin explicación: en el Sistema XL puede tardar bastante.
+            Catalog.isLoading -> {
+                binding.tvHomeEmpty.setText(R.string.home_loading)
+                binding.tvHomeEmpty.visibility = View.VISIBLE
+            }
+            motivo != null -> {
+                binding.tvHomeEmpty.text = getString(R.string.catalog_error, motivo)
+                binding.tvHomeEmpty.visibility = View.VISIBLE
+            }
+            else -> {
+                binding.tvHomeEmpty.setText(R.string.empty_list)
+                binding.tvHomeEmpty.visibility = View.VISIBLE
+            }
+        }
+
+        startCarousel()
+    }
+
+    // ---------------- Carrusel de novedades ----------------
+
+    private val catalogListener: (Boolean) -> Unit = { _ ->
+        if (!isFinishing && !isDestroyed && section == Section.HOME) {
+            showHome()
+        }
+    }
+
+    /**
+     * En móvil las dos secciones del inicio van apiladas (Novedades arriba,
+     * Agregados debajo); en TV van lado a lado, aprovechando el ancho.
+     */
+    private fun applyHomeOrientation() {
+        val movil = DeviceMode.isMobile(this)
+        binding.homeSections.orientation =
+            if (movil) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+
+        listOf(binding.colNovedades, binding.colRecientes).forEach { columna ->
+            val lp = columna.layoutParams as LinearLayout.LayoutParams
+            if (movil) {
+                lp.width = LinearLayout.LayoutParams.MATCH_PARENT
+                lp.height = 0
+            } else {
+                lp.width = 0
+                lp.height = LinearLayout.LayoutParams.MATCH_PARENT
+            }
+            lp.weight = 1f
+            columna.layoutParams = lp
+        }
+
+        // Separador: línea vertical entre columnas en TV, horizontal entre
+        // secciones apiladas en móvil.
+        val grosor = (resources.displayMetrics.density).toInt().coerceAtLeast(1)
+        val sep = binding.homeDivider.layoutParams as LinearLayout.LayoutParams
+        val margen = (10 * resources.displayMetrics.density).toInt()
+        if (movil) {
+            sep.width = LinearLayout.LayoutParams.MATCH_PARENT
+            sep.height = grosor
+            sep.setMargins(margen, 0, margen, 0)
+            binding.homeDivider.setBackgroundResource(R.drawable.bg_divider_horizontal)
+        } else {
+            sep.width = grosor
+            sep.height = LinearLayout.LayoutParams.MATCH_PARENT
+            sep.setMargins(0, margen, 0, margen)
+            binding.homeDivider.setBackgroundResource(R.drawable.bg_divider_vertical)
+        }
+        binding.homeDivider.layoutParams = sep
+    }
+
+    private fun setupCarousel() {
+        applyHomeOrientation()
+        carouselAdapter = CarouselAdapter(onClick = { item -> openItem(item) })
+        recentAdapter = CarouselAdapter(onClick = { item -> openItem(item) })
+
+        // Una carátula por columna, cambiando de a una. El carrusel se encarga
+        // de darle forma de carátula y centrarla en el espacio disponible.
+        novedades = AutoCarousel(binding.recyclerCarousel, carouselAdapter, delayMs = 5000L)
+        recientes = AutoCarousel(binding.recyclerRecent, recentAdapter, delayMs = 5000L)
+        novedades.attach()
+        recientes.attach()
+
+        /*
+         * El catálogo se carga una sola vez y lo reutiliza también el buscador.
+         *
+         * Si es la primera apertura después de las 3 AM de Chile, se pide con
+         * `force`: eso manda "no-cache" y va al panel de verdad, saltándose la
+         * caché de disco de OkHttp. Sin el force, abrir la app a las 8 AM podía
+         * devolver la copia guardada de anoche y el usuario no vería lo que el
+         * panel agregó de madrugada, que es justo cuando los paneles cargan las
+         * novedades del día.
+         */
+        val tocaRefrescoDelDia = DailyRefresh.toca(this)
+        if (tocaRefrescoDelDia) DailyRefresh.marcarHecho(this)
+
+        // Si el catálogo está vacío y hay datos guardados en disco, los cargamos
+        // de inmediato para que la pantalla no quede en blanco mientras baja el
+        // nuevo. El usuario ve contenido al instante aunque no haya conexión.
+        if (Catalog.isEmpty && Catalog.loadFromDisk(this)) {
+            Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
+        }
+
+        Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
+
+        // Y se deja programado el corte de esta noche por si la app queda abierta.
+        programarRefrescoDiario()
+
+        // Búsqueda de actualizaciones en segundo plano. Con manual = false solo
+        // avisa si hay algo nuevo, y como mucho una vez cada 12 horas.
+        UpdateDialog.check(this, manual = false)
+    }
+
+    private fun startCarousel() {
+        if (!::novedades.isInitialized) return
+        novedades.start()
+        // Medio ciclo de desfase: así las dos columnas no cambian a la vez
+        recientes.start(startOffsetMs = 2500L)
+    }
+
+    private fun stopCarousel() {
+        // Puede llamarse desde onDestroy aunque onCreate haya salido antes de inicializarlos
+        if (!::novedades.isInitialized) return
+        novedades.stop()
+        recientes.stop()
+    }
+
+    // ---------------- Menú superior ----------------
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    /**
+     * Arma el menú superior según el modo, y lo recorta dentro del perfil de niños.
+     *
+     * **Móvil:** tres iconos y nada más — actualizar, lupa y engranaje. Control
+     * parental, multipantalla y cuenta se esconden de la barra y pasan a vivir
+     * detrás del engranaje ([showQuickMenu]). Como no queda ningún ítem fuera de
+     * la barra, Android deja de dibujar los tres puntos: no hay que ocultarlos,
+     * dejan de existir.
+     *
+     * **TV:** igual que siempre, los cinco iconos sueltos. En una pantalla ancha
+     * entran de sobra, y con control remoto esconder cosas detrás de un menú
+     * agrega pulsaciones en vez de ahorrarlas.
+     *
+     * **Perfil de niños:** solo queda "actualizar", en los dos modos.
+     */
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val movil = DeviceMode.isMobile(this)
+
+        menu.findItem(R.id.action_search)?.isVisible = !kidsMode
+        // El engranaje solo existe en móvil
+        menu.findItem(R.id.action_quick)?.isVisible = movil && !kidsMode
+        // Y estos tres, solo cuando NO están agrupados detrás del engranaje
+        val sueltos = !kidsMode && !movil
+        menu.findItem(R.id.action_parental)?.isVisible = sueltos
+        menu.findItem(R.id.action_multi)?.isVisible = sueltos
+        menu.findItem(R.id.action_account)?.isVisible = sueltos
+        menu.findItem(R.id.action_youtube)?.isVisible = !kidsMode
+
+        fijarBajadaDelToolbar()
+        ocultarBotonFantasma()
+
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    /**
+     * Ancla explícitamente hacia dónde baja el foco desde cada ícono del
+     * toolbar (candado, multipantalla, cuenta, etc.) cuando se navega con
+     * control remoto.
+     *
+     * Sin esto, Android busca el foco más cercano en línea recta sin
+     * importarle las filas del diseño: el botón de YouTube quedó justo
+     * debajo de estos íconos, así que bajar desde cualquiera de ellos caía
+     * ahí en vez de entrar al menú de secciones (Inicio, Canales...).
+     */
+    private fun fijarBajadaDelToolbar() {
+        binding.toolbar.post {
+            val destino = if (kidsMode) R.id.navLive else R.id.navHome
+            val remoto = RemoteControl.isEnabled(this)
+            listOf(
+                R.id.action_refresh, R.id.action_search, R.id.action_parental,
+                R.id.action_multi, R.id.action_account, R.id.action_quick
+            ).forEach { id ->
+                binding.toolbar.findViewById<View>(id)?.let { boton ->
+                    boton.nextFocusDownId = destino
+                    // Sin esto los íconos del toolbar reciben el foco (Android los
+                    // hace enfocables solos) pero no muestran ningún resalte: el
+                    // usuario no sabe si está parado en "Buscar" o en "Cuenta".
+                    if (remoto) RemoteControl.applyIconFocus(boton, true, circular = true)
+                }
+            }
+        }
+    }
+
+    /**
+     * Elimina cualquier botón "de más" que Android agregue por su cuenta
+     * dentro del grupo de íconos del toolbar y que no corresponda a ninguno
+     * de los 6 ítems declarados en menu_main.xml.
+     *
+     * En este proyecto, con varios ítems forzados a "always" en TV, Android
+     * a veces igual arma su propio botón de desbordamiento (el de los tres
+     * puntos) para el sobrante — pero como nuestro tema no le define un
+     * ícono propio, ese botón queda en blanco: un rectángulo blanco liso sin
+     * ningún dibujo adentro, pegado al final de la fila. En vez de intentar
+     * adivinar el estilo exacto para que dibuje los tres puntos, se oculta
+     * directamente: cualquier hijo del ActionMenuView (el contenedor real de
+     * los íconos) que no tenga uno de nuestros IDs declarados no debería
+     * estar ahí, así que se apaga.
+     */
+    private fun ocultarBotonFantasma() {
+        val idsConocidos = setOf(
+            R.id.action_refresh, R.id.action_search, R.id.action_parental,
+            R.id.action_multi, R.id.action_account, R.id.action_quick
+        )
+        binding.toolbar.post {
+            for (i in 0 until binding.toolbar.childCount) {
+                val hijo = binding.toolbar.getChildAt(i)
+                if (hijo is ViewGroup && hijo !is LinearLayout) {
+                    for (j in 0 until hijo.childCount) {
+                        val boton = hijo.getChildAt(j)
+                        if (boton.id !in idsConocidos) {
+                            boton.visibility = View.GONE
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.action_refresh -> refreshAll()
+            R.id.action_search -> startActivity(Intent(this, SearchActivity::class.java))
+            R.id.action_parental -> openParentalSettings()
+            R.id.action_multi -> startActivity(Intent(this, MultiScreenActivity::class.java))
+            R.id.action_account -> startActivity(Intent(this, SettingsActivity::class.java))
+            R.id.action_quick -> showQuickMenu()
+            R.id.action_youtube -> openYouTube()
+        }
+        return true
+    }
+
+    /**
+     * Abre la app oficial de YouTube. Este botón es el único acceso: no hay
+     * icono propio ni entrada en el lanzador, solo cuelga de acá adentro del
+     * menú de PlayMix.
+     *
+     * Si YouTube está instalada, se abre directo. Si no, se manda a la Play
+     * Store a instalarla (o al navegador si la Play Store tampoco está).
+     */
+    private fun openYouTube() {
+        val paquete = "com.google.android.youtube"
+        val intentApp = packageManager.getLaunchIntentForPackage(paquete)
+        if (intentApp != null) {
+            startActivity(intentApp)
+            return
+        }
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paquete")))
+        } catch (e: ActivityNotFoundException) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$paquete")))
+        }
+    }
+
+    /**
+     * Despliega los tres iconos del engranaje, colgados de él.
+     *
+     * Van sin etiqueta, como pidió el diseño. Para que eso no sea un problema,
+     * cada uno lleva contentDescription (lectores de pantalla) y un mensaje
+     * emergente al mantenerlo pulsado (TooltipCompat): un icono sin texto se
+     * entiende igual, solo que hay que dar la manera de averiguarlo.
+     */
+    private fun showQuickMenu() {
+        // El ancla es la vista del propio ítem dentro de la barra: comparte el
+        // id del ítem del menú, así que se encuentra por ahí.
+        val ancla = binding.toolbar.findViewById<View>(R.id.action_quick) ?: return
+
+        val vista = layoutInflater.inflate(R.layout.popup_quick_menu, binding.root, false)
+        val popup = PopupWindow(
+            vista,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true // enfocable: se cierra al tocar afuera o con Atrás
+        )
+        popup.elevation = 12f * resources.displayMetrics.density
+
+        fun accion(id: Int, titulo: Int, alTocar: () -> Unit) {
+            val boton = vista.findViewById<View>(id)
+            TooltipCompat.setTooltipText(boton, getString(titulo))
+            boton.setOnClickListener {
+                popup.dismiss()
+                alTocar()
+            }
+        }
+
+        accion(R.id.quickParental, R.string.action_parental) { openParentalSettings() }
+        accion(R.id.quickMulti, R.string.nav_multi) {
+            startActivity(Intent(this, MultiScreenActivity::class.java))
+        }
+        accion(R.id.quickAccount, R.string.action_account) {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        val margen = (6 * resources.displayMetrics.density).toInt()
+        popup.showAsDropDown(ancla, 0, margen, Gravity.END)
+    }
+
+    // ---------------- Perfil de niños ----------------
+
+    /** Toca el ítem "Niños": entra al perfil, o si ya está activo, pide el PIN para salir. */
+    private fun toggleKidsMode() {
+        if (kidsMode) {
+            PinDialog.ask(this) { exitKidsMode() }
+        } else {
+            enterKidsMode()
+        }
+    }
+
+    private fun enterKidsMode() {
+        if (!Parental.hasPin(this)) {
+            Toast.makeText(this, R.string.kids_mode_need_pin, Toast.LENGTH_LONG).show()
+            PinDialog.create(this) { pickAgeTier { activateKidsMode() } }
+        } else {
+            pickAgeTier { activateKidsMode() }
+        }
+    }
+
+    /**
+     * Antes de activar el perfil, el padre elige el tramo de edad para esta
+     * vez (ver [KidsFilter.AgeTier]). Arranca marcado en el último elegido,
+     * así que si siempre es el mismo chico no hace falta tocar nada más que
+     * "Usar este tramo". Si cancela, [activateKidsMode] no se llama y el
+     * perfil no se activa.
+     */
+    private fun pickAgeTier(onElegido: () -> Unit) {
+        val tramos = KidsFilter.AgeTier.values()
+        val actual = KidsMode.getAgeTier(this)
+        val vista = DialogAgeTierBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this).setView(vista.root).create()
+
+        tramos.forEach { tramo ->
+            val fila = ItemAgeTierBinding.inflate(layoutInflater, vista.ageTierContainer, false)
+            fila.tvAgeTierLabel.text = tramo.etiqueta
+            fila.tvAgeTierDesc.text = tramo.descripcion
+            fila.root.background = Appearance.withFocusState(
+                this, ContextCompat.getDrawable(this, R.drawable.bg_option)!!, 12f
+            )
+            val esActual = tramo == actual
+            if (esActual) {
+                fila.tvAgeTierBadge.visibility = View.VISIBLE
+                fila.tvAgeTierBadge.text = getString(R.string.kids_age_tier_current)
+                fila.tvAgeTierBadge.background = Appearance.gradient(this, 14f)
+                fila.root.alpha = 1f
+            } else {
+                fila.tvAgeTierBadge.visibility = View.GONE
+                fila.root.alpha = 0.85f
+            }
+            fila.root.setOnClickListener {
+                KidsMode.setAgeTier(this, tramo)
+                dialog.dismiss()
+                onElegido()
+            }
+            vista.ageTierContainer.addView(fila.root)
+        }
+
+        vista.btnCloseAgeTier.background = Appearance.withFocusState(
+            this, ContextCompat.getDrawable(this, R.drawable.bg_option)!!, 12f
+        )
+        vista.btnCloseAgeTier.setOnClickListener { dialog.dismiss() }
+
+        dialog.show()
+        if (RemoteControl.isEnabled(this)) {
+            RemoteControl.focusWhenReady(vista.ageTierContainer.getChildAt(tramos.indexOf(actual).coerceAtLeast(0)))
+        }
+    }
+
+    private fun activateKidsMode() {
+        kidsMode = true
+        KidsMode.setActive(this, true)
+        applyKidsVisibility()
+        Toast.makeText(
+            this,
+            getString(R.string.kids_mode_on, KidsMode.getAgeTier(this).etiqueta),
+            Toast.LENGTH_LONG
+        ).show()
+        selectSection(Section.LIVE)
+    }
+
+    private fun exitKidsMode() {
+        kidsMode = false
+        KidsMode.setActive(this, false)
+        applyKidsVisibility()
+        Toast.makeText(this, R.string.kids_mode_off, Toast.LENGTH_SHORT).show()
+        selectSection(Section.HOME)
+    }
+
+    /** Oculta lo que no es apto (PPV, Radios, Historial, Favoritos, Inicio) mientras dura el perfil. */
+    private fun applyKidsVisibility() {
+        val visibility = if (kidsMode) View.GONE else View.VISIBLE
+        binding.navHome.visibility = visibility
+        binding.navPpv.visibility = visibility
+        binding.navRadio.visibility = visibility
+        binding.navFavorites.visibility = visibility
+        invalidateOptionsMenu()
+        if (::adapter.isInitialized) highlightNav()
+    }
+
+    private fun refreshAll() {
+        Toast.makeText(this, R.string.catalog_refreshing, Toast.LENGTH_SHORT).show()
+        Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
+        selectSection(section)
+    }
+
+    // ---------------- Refresco diario (3 AM de Chile) ----------------
+
+    /**
+     * Refresco automático del catálogo, una vez al día.
+     *
+     * Hay dos caminos hacia el mismo sitio, y los dos preguntan lo mismo a
+     * [DailyRefresh]:
+     *
+     *  - **App cerrada.** En `setupCarousel`, la primera carga del catálogo se
+     *    pide con `force` si el día lógico cambió.
+     *  - **App abierta.** Este temporizador, que despierta en el próximo corte.
+     *
+     * Se reprograma también en `onResume`. Eso cubre lo que el temporizador por
+     * sí solo no puede: `postDelayed` cuenta con el reloj de actividad del
+     * aparato, que **se congela mientras el aparato duerme**, así que un deco
+     * suspendido a las 2 AM despertaría tarde. Al volver a primer plano se
+     * vuelve a preguntar por la fecha real y se recalcula la espera, con lo que
+     * un aparato dormido, un reloj recién puesto en hora o un cambio de horario
+     * de verano quedan resueltos igual.
+     */
+    private fun programarRefrescoDiario() {
+        refrescoDiario.removeCallbacks(tareaRefrescoDiario)
+        // Cinco segundos de margen para no despertar justo en el filo del minuto
+        // y que el cálculo del día lógico caiga todavía en el día anterior.
+        refrescoDiario.postDelayed(
+            tareaRefrescoDiario,
+            DailyRefresh.msHastaProximoCorte() + 5_000L
+        )
+    }
+
+    private val tareaRefrescoDiario = Runnable { comprobarRefrescoDiario() }
+
+    /** Refresca si cambió el día lógico, y deja programado el corte siguiente. */
+    private fun comprobarRefrescoDiario() {
+        val listo = ::adapter.isInitialized && !isFinishing && !isDestroyed
+        if (listo && DailyRefresh.toca(this)) {
+            DailyRefresh.marcarHecho(this)
+            Toast.makeText(this, R.string.catalog_daily_refresh, Toast.LENGTH_SHORT).show()
+            Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
+            selectSection(section)
+        }
+        // Siempre se reprograma, haya tocado o no: si no tocó es que otro camino
+        // ya lo hizo, y de todos modos hay que dejar puesto el corte de mañana.
+        programarRefrescoDiario()
+    }
+
+    private fun openParentalSettings() {
+        if (Parental.hasPin(this)) {
+            PinDialog.ask(this) {
+                startActivity(Intent(this, ParentalSettingsActivity::class.java))
+            }
+        } else {
+            startActivity(Intent(this, ParentalSettingsActivity::class.java))
+        }
+    }
+
+    // ---------------- Catálogo por categorías ----------------
+
+    private fun loadCategories(type: ContentType, filter: ((Category) -> Boolean)? = null) {
+        setLoading(true)
+        val call = when (type) {
+            ContentType.LIVE -> Session.api(this).getLiveCategories(Session.username(this), Session.password(this))
+            ContentType.MOVIE -> Session.api(this).getVodCategories(Session.username(this), Session.password(this))
+            ContentType.SERIES -> Session.api(this).getSeriesCategories(Session.username(this), Session.password(this))
+        }
+        call.enqueue(object : Callback<List<Category>> {
+            override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
+                if (isFinishing || isDestroyed) return
+                categories = response.body().orEmpty().let { list ->
+                    if (filter != null) list.filter(filter) else list
+                }.let { list -> reorderPreferredFirst(list) }
+                renderCategoryChips(chipsConContinuar(type))
+                if (categories.isEmpty()) {
+                    setLoading(false)
+                    adapter.submitList(emptyList())
+                    binding.tvEmpty.setText(
+                        when {
+                            kidsMode -> R.string.empty_kids
+                            section == Section.PPV -> R.string.empty_ppv
+                            else -> R.string.empty_list
+                        }
+                    )
+                    binding.tvEmpty.visibility = View.VISIBLE
+                } else {
+                    val elegida = categories.first()
+                    loadContent(type, elegida.categoryId)
+                }
+            }
+
+            override fun onFailure(call: Call<List<Category>>, t: Throwable) {
+                if (isFinishing) return
+                setLoading(false)
+                Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
+            }
+        })
+    }
+
+    /**
+     * Pone primera en la lista (izquierda del todo) la carpeta/categoría que
+     * corresponde según el sistema conectado ahora mismo (Sistema L / Sistema XL),
+     * tanto para elegirla como contenido por defecto como para su posición visual
+     * en los chips. Cuál es la carpeta preferida de cada servidor se declara en
+     * gradle.properties (playmix.servers), porque cambia de panel a panel:
+     * Sistema L trae "Cinema HD HQ" donde Sistema XL trae "Cinema Latino".
+     * Si no se encuentra ninguna coincidencia (otro servidor, o el panel no la
+     * trae esta vez), la lista queda igual que vino del servidor.
+     */
+    private fun reorderPreferredFirst(list: List<Category>): List<Category> {
+        // Qué carpeta prefiere cada servidor ya no está escrito acá: viene de
+        // gradle.properties, junto a la definición del servidor. Antes esto era
+        // un when contra Servers.all[0]/[1], o sea contra la POSICIÓN en la
+        // lista: agregar un tercer servidor al principio hacía que Sistema L
+        // empezara a abrir las carpetas de Sistema XL, sin ningún error visible.
+        val servidor = Servers.current(this)
+        val candidatas: List<String> = when (section) {
+            Section.LIVE -> servidor?.preferidas(Servers.Preferidas.CANALES)
+            Section.PPV -> servidor?.preferidas(Servers.Preferidas.PPV)
+            Section.MOVIES -> servidor?.preferidas(Servers.Preferidas.PELICULAS)
+            else -> null
+        }.orEmpty()
+        if (candidatas.isEmpty()) return list
+        // Para cada candidata, primero se busca una carpeta con el nombre EXACTO
+        // (evita que "2026" agarre por error "Copa Mundial 2026" o "Nominados al
+        // Oscar 2026", que también contienen "2026"). Solo si no hay nombre exacto
+        // se usa una coincidencia más floja (contiene la frase), útil para casos
+        // como "Chile Primera 08/15" o "PPV Futbol Sudamericano".
+        var preferida: Category? = null
+        for (candidata in candidatas) {
+            val candidataNorm = PpvFilter.normalizeLoose(candidata)
+            preferida = list.firstOrNull { cat ->
+                PpvFilter.normalizeLoose(cat.categoryName.orEmpty()) == candidataNorm
+            } ?: list.firstOrNull { cat ->
+                PpvFilter.normalizeLoose(cat.categoryName.orEmpty()).contains(candidataNorm)
+            }
+            if (preferida != null) break
+        }
+        if (preferida == null) return list
+        return listOf(preferida) + list.filter { it.categoryId != preferida.categoryId }
+    }
+
+    private fun renderCategoryChips(categories: List<Category>) {
+        binding.categoryContainer.removeAllViews()
+        categories.forEach { cat ->
+            val chip: TextView = ItemCategoryBinding.inflate(layoutInflater, binding.categoryContainer, false).root
+            chip.text = cat.categoryName + if (Parental.isCategoryLocked(this, cat.categoryId)) " 🔒" else ""
+            chip.tag = cat.categoryId
+            // Antes todas se pintaban iguales: no se veía cuál estaba abierta
+            Appearance.applyChipState(chip, cat.categoryId == currentCategoryId)
+            chip.setOnClickListener {
+                if (Parental.isCategoryLocked(this, cat.categoryId)) {
+                    PinDialog.ask(this) { loadContent(currentType(), cat.categoryId) }
+                } else {
+                    loadContent(currentType(), cat.categoryId)
+                }
+            }
+            binding.categoryContainer.addView(chip)
+        }
+    }
+
+    /** Repinta los chips para reflejar cuál está abierto ahora. */
+    private fun refreshCategorySelection() {
+        for (i in 0 until binding.categoryContainer.childCount) {
+            val chip = binding.categoryContainer.getChildAt(i) as? TextView ?: continue
+            Appearance.applyChipState(chip, chip.tag == currentCategoryId)
+        }
+    }
+
+    /**
+     * Ajustes de rendimiento de la lista principal:
+     *  - Su tamaño no depende del contenido (ocupa el alto que le deja el
+     *    layout), así que cambiar la lista no obliga a remedir la pantalla.
+     *  - Guarda más filas ya armadas fuera de pantalla: al volver unas filas
+     *    atrás (algo constante con el control remoto) no se rearman ni se
+     *    vuelven a pedir sus imágenes.
+     *  - Mientras la lista se desplaza sola (un "fling" con el dedo, o
+     *    manteniendo apretada una flecha del control) las descargas de
+     *    imágenes se pausan: no tiene sentido bajar y decodificar cientos de
+     *    carátulas que pasan de largo. Se reanudan apenas se detiene.
+     */
+    private fun configurarListaRapida() {
+        val lista = binding.recyclerChannels
+        lista.setHasFixedSize(true)
+        lista.setItemViewCacheSize(12)
+        lista.addOnScrollListener(object : androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(
+                recyclerView: androidx.recyclerview.widget.RecyclerView,
+                newState: Int
+            ) {
+                val picasso = Picasso.get()
+                if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_SETTLING) {
+                    picasso.pauseTag(ImageLoader.TAG_LISTA)
+                } else {
+                    picasso.resumeTag(ImageLoader.TAG_LISTA)
+                }
+            }
+        })
+    }
+
+    // ---------------- Continuar viendo ----------------
+
+    /** Id del chip "Continuar viendo" (no existe en el panel: no choca con uno real). */
+    private val CONTINUAR_ID = "__continuar_viendo__"
+
+    /**
+     * Películas o series a medio ver, lo más reciente primero. En el perfil de
+     * niños solo las de categorías que ese perfil deja ver (las demás podrían
+     * haberse visto fuera del perfil).
+     */
+    private fun itemsContinuar(type: ContentType): List<ContentItem> {
+        if (type == ContentType.LIVE) return emptyList()
+        val permitidas = if (kidsMode) categories.map { it.categoryId }.toSet() else null
+        return ContinueWatching.list(this, type)
+            .filter { permitidas == null || it.categoryId in permitidas }
+            .map { it.toContentItem() }
+    }
+
+    /**
+     * Las categorías a mostrar como chips: las del panel, con "Continuar
+     * viendo" adelante si hay algo pendiente. No se mete en [categories] a
+     * propósito: esa lista se usa como "las categorías reales" (la que se abre
+     * por defecto, el nombre bajo la vista previa, el paso de Atrás).
+     */
+    private fun chipsConContinuar(type: ContentType): List<Category> =
+        if (itemsContinuar(type).isNotEmpty()) {
+            listOf(Category(CONTINUAR_ID, getString(R.string.continue_chip))) + categories
+        } else categories
+
+    /**
+     * Al volver del reproductor: la lista de pendientes pudo cambiar (algo
+     * nuevo, algo terminado). Se agrega o quita el chip, y si se estaba
+     * mirando esa lista se refresca; si quedó vacía, se vuelve a la primera
+     * categoría.
+     */
+    private fun refrescarContinuar() {
+        if (section !in listOf(Section.MOVIES, Section.SERIES) || categories.isEmpty()) return
+        val tipo = currentType()
+        val pendientes = itemsContinuar(tipo)
+        val tieneChip = binding.categoryContainer.getChildAt(0)?.tag == CONTINUAR_ID
+        // Solo se rearman los chips si cambia si está o no el de Continuar:
+        // rearmarlos siempre le sacaba el foco al chip donde estaba el mando.
+        if (tieneChip != pendientes.isNotEmpty()) renderCategoryChips(chipsConContinuar(tipo))
+        if (currentCategoryId == CONTINUAR_ID) {
+            if (pendientes.isEmpty()) loadContent(tipo, categories.first().categoryId)
+            else mostrarContenido(pendientes)
+        }
+    }
+
+    /** Pedido de contenido en curso: se cancela si se elige otra categoría antes de que llegue. */
+    private var contenidoEnCurso: Call<*>? = null
+
+    /**
+     * Si el catálogo completo ya está en memoria (lo baja el Inicio al
+     * arrancar) y está fresco, el contenido de una categoría se saca de ahí
+     * en el acto, en vez de volver a pedírselo al panel. En el Sistema XL
+     * ese pedido tardaba varios segundos por carpeta. Devuelve null si no se
+     * puede (catálogo vacío, viejo, de otro servidor, o sin nada para esa
+     * categoría); ahí se sigue pidiendo al panel como siempre.
+     */
+    private fun contenidoDesdeCatalogo(type: ContentType, categoryId: String?): List<ContentItem>? {
+        if (categoryId == null || !Catalog.isFreshFor(this)) return null
+        val fuente = when (type) {
+            ContentType.LIVE -> Catalog.live
+            ContentType.MOVIE -> Catalog.movies
+            ContentType.SERIES -> Catalog.series
+        }
+        if (fuente.isEmpty()) return null
+        val items = fuente.filter { it.categoryId == categoryId && it.name.isNotBlank() }
+        return items.ifEmpty { null }
+    }
+
+    private fun loadContent(type: ContentType, categoryId: String?) {
+        currentCategoryId = categoryId
+        refreshCategorySelection()
+        // Si todavía venía en camino la categoría anterior, ya no sirve: si
+        // llegaba después, pisaba la lista de la categoría recién elegida.
+        contenidoEnCurso?.cancel()
+        contenidoEnCurso = null
+
+        // "Continuar viendo" no es una categoría del panel: sale de lo que
+        // la app guardó en el aparato.
+        if (categoryId == CONTINUAR_ID) {
+            setLoading(false)
+            mostrarContenido(itemsContinuar(type))
+            return
+        }
+
+        contenidoDesdeCatalogo(type, categoryId)?.let { items ->
+            setLoading(false)
+            mostrarContenido(items)
+            return
+        }
+
+        setLoading(true)
+        val user = Session.username(this)
+        val pass = Session.password(this)
+        contenidoEnCurso = when (type) {
+            ContentType.LIVE -> Session.api(this).getLiveStreams(user, pass, categoryId = categoryId)
+                .also { it.enqueue(simpleCallback { list -> list.map { item -> item.toContentItem() } }) }
+            ContentType.MOVIE -> Session.api(this).getVodStreams(user, pass, categoryId = categoryId)
+                .also { it.enqueue(simpleCallback { list -> list.map { item -> item.toContentItem() } }) }
+            ContentType.SERIES -> Session.api(this).getSeries(user, pass, categoryId = categoryId)
+                .also { it.enqueue(simpleCallback { list -> list.map { item -> item.toContentItem() } }) }
+        }
+    }
+
+    private fun <T> simpleCallback(map: (List<T>) -> List<ContentItem>) = object : Callback<List<T>> {
+        override fun onResponse(call: Call<List<T>>, response: Response<List<T>>) {
+            if (isFinishing || isDestroyed || call.isCanceled) return
+            if (contenidoEnCurso === call) contenidoEnCurso = null
+            setLoading(false)
+            mostrarContenido(map(response.body().orEmpty()).filter { it.name.isNotBlank() })
+        }
+
+        override fun onFailure(call: Call<List<T>>, t: Throwable) {
+            if (isFinishing || call.isCanceled) return
+            if (contenidoEnCurso === call) contenidoEnCurso = null
+            setLoading(false)
+            Toast.makeText(this@MainActivity, "Error cargando contenido: ${t.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Pone en pantalla el contenido de una categoría, venga del catálogo o del panel. */
+    private fun mostrarContenido(items: List<ContentItem>) {
+        currentItems = items
+        adapter.submitList(items)
+        // Categoría nueva: se arranca desde arriba, no en la posición de la anterior.
+        binding.recyclerChannels.scrollToPosition(0)
+        // Solo la ficha, sin arrancar el video: entrar a una categoría no
+        // debe disparar audio ni gastar una conexión del panel por su cuenta.
+        refreshPreviewCard(items)
+        // Si el perfil de niños tiene una búsqueda escrita, se respeta
+        if (kidsMode) {
+            val q = binding.etKidsSearch.text?.toString().orEmpty()
+            if (q.isNotBlank()) { applyKidsSearch(q); return }
+        }
+        binding.tvEmpty.setText(R.string.empty_list)
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    // ---------------- Deportes - PPV ----------------
+
+    /** Tags fijos de las dos únicas carpetas de esta sección (no vienen del panel). */
+    private val PPV_TAB_CANALES = "ppv_tab_canales"
+    private val PPV_TAB_EVENTOS = "ppv_tab_eventos"
+
+    /**
+     * Deportes - PPV ya no navega por las categorías del panel tal como
+     * vienen: trae TODAS las categorías y TODOS los canales en vivo del
+     * servidor de una sola vez y los reparte en dos carpetas fijas según el
+     * nombre (de la categoría o del propio canal):
+     *  - "PPV Eventos": menciona "PPV".
+     *  - "Canales": todo lo demás.
+     * El mini reproductor funciona igual que en la sección de Canales.
+     */
+    private fun showPpv() {
+        binding.tvSectionTitle.visibility = View.GONE
+        binding.etPpvSearch.visibility = View.VISIBLE
+        // Solo si había algo escrito: setText dispara el TextWatcher, que
+        // pintaba las carpetas con los datos anteriores justo antes de cargar
+        // (un parpadeo, y dos repintados seguidos para el control remoto).
+        if (binding.etPpvSearch.text?.isNotEmpty() == true) binding.etPpvSearch.setText("")
+        // loadPpvContent() ya se encarga de pedir (o reutilizar) el catálogo.
+        loadPpvContent()
+    }
+
+    /**
+     * Carga Deportes - PPV lo más rápido posible. Tres cosas que antes la
+     * volvían lenta, y cómo se evitan ahora:
+     *
+     *  1. Se esperaba el catálogo COMPLETO (canales + películas + series)
+     *     aunque acá solo se usan canales; en el Sistema XL películas y
+     *     series tardan mucho. Ahora alcanza con que esté el bloque de
+     *     canales, y si ya hay canales en memoria no se espera nada (aunque
+     *     tengan más de 30 min: el Inicio se encarga de refrescarlos).
+     *  2. La lista de categorías y el catálogo se pedían uno DESPUÉS del
+     *     otro; ahora van a la vez.
+     *  3. Cada vez que se entraba se volvía a recorrer todo el catálogo. Ahora
+     *     el reparto queda guardado y se reutiliza mientras los canales en
+     *     memoria no cambien ([Catalog.liveVersion]): volver a la sección es
+     *     instantáneo.
+     */
+    private fun loadPpvContent() {
+        val generacion = ++ppvGeneracion
+        val servidor = Session.server(this)
+
+        val hayCache = ppvCacheVersion == Catalog.liveVersion &&
+            ppvCacheServer == servidor &&
+            Catalog.isFor(this) &&
+            (ppvCanales.isNotEmpty() || ppvEventos.isNotEmpty())
+        if (hayCache) {
+            setLoading(false)
+            categories = ppvCategorias
+            renderPpvChips()
+            mostrarGrupoPpv(
+                if (currentCategoryId == PPV_TAB_EVENTOS || ppvCanales.isEmpty()) PPV_TAB_EVENTOS
+                else PPV_TAB_CANALES
+            )
+            return
+        }
+
+        setLoading(true)
+        // Mientras carga no se muestra el aviso de "vacío" (antes aparecía
+        // junto a la ruedita, como si no hubiera nada) ni la lista anterior.
+        binding.tvEmpty.visibility = View.GONE
+        binding.ppvSportFilterScroll.visibility = View.GONE
+        adapter.submitList(emptyList())
+        var categoriasListas: List<Category>? = null
+        var catalogoListo = false
+        var lanzado = false
+
+        fun intentar() {
+            if (lanzado || generacion != ppvGeneracion || isFinishing || isDestroyed) return
+            val cats = categoriasListas ?: return
+            if (!catalogoListo) return
+            lanzado = true
+            procesarPpv(cats, generacion)
+        }
+
+        Session.api(this).getLiveCategories(Session.username(this), Session.password(this))
+            .enqueue(object : Callback<List<Category>> {
+                override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
+                    categoriasListas = response.body().orEmpty()
+                    intentar()
+                }
+
+                override fun onFailure(call: Call<List<Category>>, t: Throwable) {
+                    // Sin categorías igual se puede repartir mirando solo el
+                    // nombre de cada canal: mejor eso que dejar la sección vacía.
+                    categoriasListas = emptyList()
+                    intentar()
+                }
+            })
+
+        if (Catalog.live.isNotEmpty() && Catalog.isFor(this)) {
+            catalogoListo = true
+            intentar()
+        } else {
+            Catalog.ensureLoaded(this) { todaviaCargando ->
+                // Basta con que haya llegado el bloque de canales; no hace
+                // falta esperar películas ni series.
+                if (Catalog.live.isNotEmpty() || (!todaviaCargando && !Catalog.isLoading)) {
+                    catalogoListo = true
+                    intentar()
+                }
+            }
+        }
+    }
+
+    /**
+     * Reparte los canales en "Canales" (solo deportes) y "PPV Eventos", y de
+     * paso deja calculado a qué deporte corresponde cada canal (para los
+     * chips de filtro rápido, que así no recalculan nada al tocarlos).
+     *
+     * Corre en un hilo aparte y evalúa cada CATEGORÍA una sola vez (son
+     * cientos) en vez de una vez por canal (son miles): la mayoría de los
+     * canales se resuelven con solo mirar la categoría ya evaluada.
+     */
+    private fun procesarPpv(categorias: List<Category>, generacion: Int) {
+        val serverId = Servers.current(this)?.id
+        val servidor = Session.server(this)
+        val version = Catalog.liveVersion
+        // Copia tomada en el hilo principal: Catalog.live puede volver a
+        // llenarse (un refresco forzado) mientras el hilo de abajo la recorre.
+        val todos = Catalog.live.toList()
+
+        Thread {
+            class InfoCategoria(
+                val ppv: Boolean,
+                val deporte: Boolean,
+                val noDeportivo: Boolean,
+                val tag: PpvFilter.SportTag?
+            )
+
+            val infoPorCategoria = HashMap<String, InfoCategoria>(categorias.size * 2)
+            for (c in categorias) {
+                val t = PpvFilter.preparar(c.categoryName)
+                infoPorCategoria[c.categoryId] = InfoCategoria(
+                    ppv = PpvFilter.esPpv(t),
+                    deporte = PpvFilter.esDeporte(t, serverId),
+                    noDeportivo = PpvFilter.esNoDeportivo(t),
+                    tag = PpvFilter.deporteDe(t)
+                )
+            }
+
+            val eventos = ArrayList<ContentItem>()
+            val canales = ArrayList<ContentItem>()
+            val porDeporte = HashMap<PpvFilter.SportTag, MutableList<ContentItem>>()
+
+            for (canal in todos) {
+                if (canal.name.isBlank()) continue
+                val cat = canal.categoryId?.let { infoPorCategoria[it] }
+                val t = PpvFilter.preparar(canal.name)
+
+                // Cine, realities, etc. nunca entran, aunque vengan en una
+                // carpeta de PPV ("PPV CINEMA 01", "Gran Hermano" en
+                // "PPV- Eventos"). Si lo que no es deporte es la CATEGORÍA,
+                // el canal todavía se salva si su propio nombre es de deporte.
+                if (PpvFilter.esNoDeportivo(t)) continue
+                val nombreEsDeporte = PpvFilter.esDeporte(t, serverId)
+                if (cat?.noDeportivo == true && !nombreEsDeporte) continue
+
+                if (cat?.ppv == true || PpvFilter.esPpv(t)) {
+                    eventos.add(canal)
+                    continue
+                }
+                // "Canales" es solo deportes: nunca se mezcla con cine,
+                // misceláneo, países, etc. La lista de palabras depende del
+                // servidor conectado.
+                if (cat?.deporte == true || nombreEsDeporte) {
+                    canales.add(canal)
+                    val tag = PpvFilter.deporteDe(t) ?: cat?.tag
+                    if (tag != null) porDeporte.getOrPut(tag) { ArrayList() }.add(canal)
+                }
+            }
+
+            runOnUiThread {
+                if (generacion != ppvGeneracion || isFinishing || isDestroyed) return@runOnUiThread
+                ppvEventos = eventos
+                ppvCanales = canales
+                ppvCanalesPorDeporte = porDeporte
+                ppvCategorias = categorias
+                ppvCacheVersion = version
+                ppvCacheServer = servidor
+                // Contenido nuevo: el filtro por deporte elegido la vez
+                // anterior puede ni existir en este panel.
+                ppvSportTag = null
+                if (section != Section.PPV) return@runOnUiThread
+                setLoading(false)
+                categories = categorias
+                renderPpvChips()
+                mostrarGrupoPpv(if (ppvCanales.isNotEmpty()) PPV_TAB_CANALES else PPV_TAB_EVENTOS)
+                // Si el foco estaba en una fila de la lista, esa fila
+                // desapareció al vaciarla durante la carga: sin esto el mando
+                // quedaba mudo hasta pulsar varias flechas.
+                if (currentFocus == null) enfocarPrimerChip()
+            }
+        }.start()
+    }
+
+    /** Dibuja las dos únicas carpetas de Deportes - PPV: Canales y PPV Eventos. */
+    private fun renderPpvChips() {
+        binding.categoryContainer.removeAllViews()
+        listOf(
+            PPV_TAB_CANALES to getString(R.string.ppv_tab_canales),
+            PPV_TAB_EVENTOS to getString(R.string.ppv_tab_eventos)
+        ).forEach { (tag, label) ->
+            val chip: TextView = ItemCategoryBinding.inflate(layoutInflater, binding.categoryContainer, false).root
+            chip.text = label
+            chip.tag = tag
+            Appearance.applyChipState(chip, tag == currentCategoryId)
+            chip.setOnClickListener { mostrarGrupoPpv(tag) }
+            binding.categoryContainer.addView(chip)
+        }
+    }
+
+    /** Cambia entre las carpetas Canales / PPV Eventos, sin ir al servidor: ya está todo en memoria. */
+    private fun mostrarGrupoPpv(tab: String) {
+        currentCategoryId = tab
+        refreshCategorySelection()
+        if (tab == PPV_TAB_CANALES) {
+            // El filtro por deporte es propio de esta carpeta; en PPV Eventos
+            // no tiene sentido (son eventos puntuales, no canales de un
+            // deporte fijo).
+            renderPpvSportFilters()
+            mostrarListaPpvCanales()
+        } else {
+            ppvSportTag = null
+            binding.ppvSportFilterScroll.visibility = View.GONE
+            currentItems = ppvEventos
+            adapter.submitList(ppvEventos)
+            binding.recyclerChannels.scrollToPosition(0)
+            refreshPreviewCard(ppvEventos)
+            binding.tvEmpty.setText(R.string.empty_ppv)
+            binding.tvEmpty.visibility = if (ppvEventos.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    /**
+     * Chips "Todos / Fútbol / Tenis / Box / ..." dentro de "Canales": ayuda a
+     * elegir cuando se sabe qué deporte se quiere ver pero no un canal
+     * puntual, sin tener que escribir nada. Solo se muestran los tipos que
+     * de verdad tienen canales en este panel — y solo si hay más de uno: con
+     * un solo tipo el filtro no acota nada y sobra. El deporte de cada canal
+     * ya viene calculado de procesarPpv, así que esto no recorre nada.
+     */
+    private fun renderPpvSportFilters() {
+        binding.ppvSportFilterContainer.removeAllViews()
+        val presentes = PpvFilter.SportTag.values().filter { ppvCanalesPorDeporte[it].isNullOrEmpty().not() }
+
+        if (presentes.size < 2) {
+            binding.ppvSportFilterScroll.visibility = View.GONE
+            ppvSportTag = null
+            return
+        }
+
+        binding.ppvSportFilterScroll.visibility = View.VISIBLE
+        val opciones: List<PpvFilter.SportTag?> = listOf<PpvFilter.SportTag?>(null) + presentes
+
+        opciones.forEach { tag ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.ppvSportFilterContainer, false).root
+            chip.text = tag?.etiqueta ?: getString(R.string.fav_all)
+            chip.tag = tag
+            Appearance.applyChipState(chip, tag == ppvSportTag)
+            chip.setOnClickListener {
+                ppvSportTag = tag
+                // Se repintan los chips que ya están, en vez de volver a
+                // armarlos: armarlos de nuevo destruía justo el chip que tenía
+                // el foco y el control remoto quedaba "sin cursor".
+                refreshPpvSportSelection()
+                mostrarListaPpvCanales()
+            }
+            binding.ppvSportFilterContainer.addView(chip)
+        }
+    }
+
+    /** Repinta los chips de deporte para reflejar cuál está elegido, sin reconstruirlos. */
+    private fun refreshPpvSportSelection() {
+        for (i in 0 until binding.ppvSportFilterContainer.childCount) {
+            val chip = binding.ppvSportFilterContainer.getChildAt(i) as? TextView ?: continue
+            Appearance.applyChipState(chip, chip.tag == ppvSportTag)
+        }
+    }
+
+    /** Aplica ppvSportTag (si hay uno elegido) sobre ppvCanales y refresca la lista en pantalla. */
+    private fun mostrarListaPpvCanales() {
+        val tag = ppvSportTag
+        val items = if (tag == null) ppvCanales else ppvCanalesPorDeporte[tag].orEmpty()
+        currentItems = items
+        adapter.submitList(items)
+        // Lista nueva: se vuelve al principio. Si no, quedaba en la posición
+        // de la lista anterior, a veces con una fila cortada arriba.
+        binding.recyclerChannels.scrollToPosition(0)
+        refreshPreviewCard(items)
+        binding.tvEmpty.setText(R.string.empty_ppv)
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    /** Buscador propio del perfil de niños: filtra lo que ya está en pantalla. */
+    private fun setupKidsSearch() {
+        binding.etKidsSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                applyKidsSearch(s?.toString().orEmpty())
+            }
+        })
+    }
+
+    private fun applyKidsSearch(query: String) {
+        val q = query.trim()
+        val visibles = if (q.isBlank()) currentItems
+        else currentItems.filter { it.name.contains(q, ignoreCase = true) }
+        adapter.submitList(visibles)
+        binding.tvEmpty.setText(if (q.isBlank()) R.string.empty_kids else R.string.kids_no_match)
+        binding.tvEmpty.visibility = if (visibles.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Filtro rápido de canales: escribe parte del nombre y la lista se acota
+     * al instante, sin salir a la búsqueda global. Aparece solo en Canales;
+     * Deportes - PPV tiene su propio buscador (etPpvSearch, ver más abajo).
+     */
+    private fun setupChannelFilter() {
+        binding.etChannelFilter.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                applyChannelFilter(s?.toString().orEmpty())
+            }
+        })
+    }
+
+    private fun applyChannelFilter(query: String) {
+        val q = query.trim()
+        val visibles = if (q.isBlank()) currentItems
+        else currentItems.filter { it.name.contains(q, ignoreCase = true) }
+        adapter.submitList(visibles)
+        binding.tvEmpty.setText(R.string.empty_list)
+        binding.tvEmpty.visibility = if (visibles.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun setupPpvSearch() {
+        binding.etPpvSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: Editable?) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {
+                filterPpvCategories(s?.toString().orEmpty())
+            }
+        })
+    }
+
+    /**
+     * Busca en **todo** el contenido de Deportes - PPV (las dos carpetas
+     * juntas), no solo en la que está abierta: así se encuentra por equipo,
+     * liga, país, canal o nombre del evento sin tener que cambiar de pestaña.
+     */
+    private fun filterPpvCategories(query: String) {
+        val q = query.trim()
+        val todo = ppvCanales + ppvEventos
+
+        if (q.isBlank()) {
+            // Sin búsqueda: vuelve la navegación normal por las dos carpetas
+            renderPpvChips()
+            mostrarGrupoPpv(
+                if (currentCategoryId == PPV_TAB_EVENTOS) PPV_TAB_EVENTOS else PPV_TAB_CANALES
+            )
+            return
+        }
+
+        val resultados = todo
+            .filter { it.name.contains(q, ignoreCase = true) }
+            .take(300)
+
+        currentCategoryId = null
+        refreshCategorySelection()
+        // El filtro por deporte es de la carpeta "Canales"; buscando texto se
+        // mezclan las dos carpetas, así que no tiene dónde aplicarse.
+        binding.ppvSportFilterScroll.visibility = View.GONE
+        adapter.submitList(resultados)
+        currentItems = resultados
+
+        binding.tvEmpty.setText(
+            if (todo.isEmpty()) R.string.empty_ppv else R.string.ppv_no_match
+        )
+        binding.tvEmpty.visibility = if (resultados.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    // ---------------- Radios del mundo ----------------
+
+    /**
+     * Radios en dos niveles: carpetas arriba, contenido de la carpeta abajo.
+     *
+     *     🌎 Países · 🎪 Tomorrowland · 🎛️ Electrónica
+     *     └─ 🇪🇸 España · 🇺🇸 EE.UU. · 🇲🇽 México · ...
+     *
+     * Antes era una sola fila con España, Loca FM, Tomorrowland y doce países
+     * seguidos: marcas y lugares mezclados en la misma línea, y había que
+     * desplazarse un buen rato para llegar al final.
+     *
+     * Al volver a la sección se recupera la carpeta donde estaba el usuario, no
+     * se vuelve siempre a Países.
+     */
+    private fun showRadio() {
+        binding.tvSectionTitle.setText(R.string.section_radio)
+        binding.tvSectionTitle.visibility = View.VISIBLE
+
+        val carpeta = RadioCatalog.folderOf(currentRadioSource?.id) ?: RadioCatalog.defaultFolder
+        openRadioFolder(carpeta, currentRadioSource ?: carpeta.sources.first())
+    }
+
+    /** Abre una carpeta: repinta las dos filas y carga la fuente indicada. */
+    private fun openRadioFolder(
+        folder: RadioCatalog.Folder,
+        source: RadioCatalog.Source = folder.sources.first()
+    ) {
+        currentRadioFolder = folder
+        // Se fija antes de dibujar: si no, la segunda fila se pinta una vez con
+        // la fuente de la carpeta anterior todavía marcada y loadRadio tiene que
+        // corregirlo enseguida. Funciona igual, pero se ve el parpadeo.
+        currentRadioSource = source
+        renderRadioFolderChips()
+        renderRadioSourceChips(folder)
+        loadRadio(source)
+    }
+
+    private fun renderRadioFolderChips() {
+        binding.categoryContainer.removeAllViews()
+        RadioCatalog.folders.forEach { folder ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.categoryContainer, false).root
+            chip.text = "${folder.icon}  ${folder.name}"
+            chip.tag = folder.id
+            Appearance.applyChipState(chip, folder.id == currentRadioFolder?.id)
+            chip.setOnClickListener { openRadioFolder(folder) }
+            binding.categoryContainer.addView(chip)
+        }
+    }
+
+    /**
+     * Segunda fila. Una carpeta con una sola fuente (Tomorrowland) no tiene
+     * nada que elegir: la fila se oculta en vez de mostrar un chip solitario
+     * que además ya estaría seleccionado.
+     */
+    private fun renderRadioSourceChips(folder: RadioCatalog.Folder) {
+        binding.radioSubContainer.removeAllViews()
+        binding.radioSubScroll.visibility = if (folder.hasChoices) View.VISIBLE else View.GONE
+        if (!folder.hasChoices) return
+
+        folder.sources.forEach { source ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.radioSubContainer, false).root
+            chip.text = "${source.flag}  ${source.name}"
+            chip.tag = source.id
+            Appearance.applyChipState(chip, source.id == currentRadioSource?.id)
+            chip.setOnClickListener { loadRadio(source) }
+            binding.radioSubContainer.addView(chip)
+        }
+    }
+
+    private fun loadRadio(source: RadioCatalog.Source) {
+        // La lista que viene va a ser otra: si algo sonaba en preview de la
+        // fuente anterior, cortarlo antes de repintar.
+        stopRadioPreview()
+        currentRadioSource = source
+        // Repinta la fila de fuentes para que se vea cuál está abierta
+        for (i in 0 until binding.radioSubContainer.childCount) {
+            val chip = binding.radioSubContainer.getChildAt(i) as? TextView ?: continue
+            Appearance.applyChipState(chip, chip.tag == source.id)
+        }
+        setLoading(true)
+        binding.tvEmpty.visibility = View.GONE
+        binding.tvSectionTitle.text = "${source.flag}  ${source.name} · ${source.genres}"
+
+        RadioCatalog.load(this, source) { items, error ->
+            if (isFinishing || isDestroyed) return@load
+            // Llegó tarde: el usuario ya tocó otro chip
+            if (currentRadioSource?.id != source.id) return@load
+            setLoading(false)
+            radioPlaylist = items
+            adapter.submitList(items)
+            binding.tvEmpty.text = error
+                ?: getString(R.string.empty_radio_source, source.name)
+            binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    // ---------------- Historial y Favoritos ----------------
+
+    private fun showHistory() {
+        setLoading(false)
+        binding.categoryContainer.removeAllViews()
+        val items = History.getAll(this)
+        binding.tvSectionTitle.setText(R.string.section_history)
+        binding.tvSectionTitle.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+        adapter.submitList(items)
+        binding.tvEmpty.setText(R.string.empty_history)
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    /**
+     * Películas y series a medio ver, de las dos listas juntas y ordenadas
+     * por lo último tocado primero (cada una ya viene ordenada por separado,
+     * pero mezcladas hay que reordenar de nuevo).
+     */
+    private fun itemsContinuarTodo(): List<ContentItem> {
+        val permitidas = if (kidsMode) categories.map { it.categoryId }.toSet() else null
+        return (ContinueWatching.list(this, ContentType.MOVIE) + ContinueWatching.list(this, ContentType.SERIES))
+            .filter { permitidas == null || it.categoryId in permitidas }
+            .sortedByDescending { it.updatedAt }
+            .map { it.toContentItem() }
+    }
+
+    /** Películas y series ya reproducidas (el Historial completo también trae canales). */
+    private fun itemsVistas(): List<ContentItem> =
+        History.getAll(this).filter { it.type == ContentType.MOVIE || it.type == ContentType.SERIES }
+
+    /**
+     * Si Mi Espacio se restauró solo (ver la llamada a DataSync.restore en
+     * onCreate) y la pantalla sigue mostrando esa sección, hay que repintarla
+     * para que se vea lo nuevo sin que el usuario tenga que salir y volver a
+     * entrar. Si está en otra sección no hace falta nada: Favorites/
+     * ContinueWatching/History ya quedaron al día en disco, así que la
+     * próxima vez que se abra Mi Espacio va a mostrar lo correcto solo.
+     */
+    private fun refrescarEspacioSiEstaVisible() {
+        if (isFinishing || isDestroyed) return
+        if (section == Section.FAVORITES) showFavorites()
+    }
+
+    /** Botón "Actualizar" de Mi Espacio: lo mismo que al abrir la app, pero al toque y con feedback. */
+    private fun sincronizarEspacioAhora() {
+        binding.btnEspacioSync.isEnabled = false
+        DataSync.restore(applicationContext) { ok ->
+            if (isFinishing || isDestroyed) return@restore
+            binding.btnEspacioSync.isEnabled = true
+            showFavorites()
+            Toast.makeText(
+                this,
+                if (ok) R.string.espacio_sync_done else R.string.espacio_sync_failed,
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun showFavorites() {
+        setLoading(false)
+        binding.categoryContainer.removeAllViews()
+        // Si la pestaña en la que se había quedado ya no tiene nada (se
+        // terminó la última pendiente, o el historial se borró) se cae a
+        // Favoritos en vez de quedar mostrando un chip que ya no está.
+        if (espacioModo == EspacioModo.CONTINUAR && itemsContinuarTodo().isEmpty()) espacioModo = EspacioModo.FAVORITOS
+        if (espacioModo == EspacioModo.VISTAS && itemsVistas().isEmpty()) espacioModo = EspacioModo.FAVORITOS
+        renderEspacioGroups()
+        renderFavoriteFilters()
+        applyFavoriteFilter()
+    }
+
+    /**
+     * Subcategorías de "Mi Espacio": Actividad reciente (Continuar viendo +
+     * Vistas) y Favoritos (Todos/Canales/Radios/Películas/Series). Van en su
+     * propia fila, separada de los chips de [renderFavoriteFilters]: cada
+     * grupo tiene un conjunto de chips completamente distinto debajo.
+     *
+     * "Actividad reciente" ni se dibuja si no hay nada que mostrar en
+     * ninguna de las dos (nunca se vio nada, o se borró el historial).
+     */
+    private fun renderEspacioGroups() {
+        binding.favGroupContainer.removeAllViews()
+
+        data class Grupo(val etiqueta: String, val grupo: EspacioGrupo)
+        val grupos = mutableListOf<Grupo>()
+        if (itemsContinuarTodo().isNotEmpty() || itemsVistas().isNotEmpty()) {
+            grupos += Grupo(getString(R.string.espacio_group_recent), EspacioGrupo.RECIENTE)
+        }
+        grupos += Grupo(getString(R.string.espacio_group_favorites), EspacioGrupo.FAVORITOS)
+
+        val grupoActivo = grupoDe(espacioModo)
+        grupos.forEach { g ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.favGroupContainer, false).root
+            chip.text = g.etiqueta
+            Appearance.applyChipState(chip, g.grupo == grupoActivo)
+            chip.setOnClickListener {
+                if (grupoDe(espacioModo) != g.grupo) {
+                    espacioModo = when (g.grupo) {
+                        EspacioGrupo.FAVORITOS -> EspacioModo.FAVORITOS
+                        // Se entra por la que tenga algo; si las dos tienen,
+                        // Continuar viendo primero (es la más "activa").
+                        EspacioGrupo.RECIENTE ->
+                            if (itemsContinuarTodo().isNotEmpty()) EspacioModo.CONTINUAR else EspacioModo.VISTAS
+                    }
+                    if (g.grupo == EspacioGrupo.FAVORITOS) {
+                        favFilter = null
+                        favIsRadio = false
+                    }
+                    renderEspacioGroups()
+                    renderFavoriteFilters()
+                    applyFavoriteFilter()
+                }
+            }
+            binding.favGroupContainer.addView(chip)
+        }
+    }
+
+    /**
+     * Chips de segundo nivel, según el grupo activo (ver [renderEspacioGroups]):
+     * en Actividad reciente son Continuar viendo / Vistas; en Favoritos son
+     * Todos / Canales / Radios / Películas / Series, que se comportan
+     * exactamente igual que antes de agrupar todo esto en dos pestañas.
+     */
+    private fun renderFavoriteFilters() {
+        binding.favFilterContainer.removeAllViews()
+
+        data class Filtro(val etiqueta: String, val modo: EspacioModo, val tipo: ContentType?, val radio: Boolean)
+        val filtros = mutableListOf<Filtro>()
+        if (grupoDe(espacioModo) == EspacioGrupo.RECIENTE) {
+            if (itemsContinuarTodo().isNotEmpty()) {
+                filtros += Filtro(getString(R.string.continue_chip), EspacioModo.CONTINUAR, null, false)
+            }
+            if (itemsVistas().isNotEmpty()) {
+                filtros += Filtro(getString(R.string.my_space_watched_chip), EspacioModo.VISTAS, null, false)
+            }
+        } else {
+            filtros += Filtro(getString(R.string.fav_all), EspacioModo.FAVORITOS, null, false)
+            filtros += Filtro(getString(R.string.tab_live), EspacioModo.FAVORITOS, ContentType.LIVE, false)
+            filtros += Filtro(getString(R.string.fav_radios), EspacioModo.FAVORITOS, ContentType.LIVE, true)
+            filtros += Filtro(getString(R.string.tab_movies), EspacioModo.FAVORITOS, ContentType.MOVIE, false)
+            filtros += Filtro(getString(R.string.tab_series), EspacioModo.FAVORITOS, ContentType.SERIES, false)
+        }
+
+        filtros.forEach { f ->
+            val chip: TextView =
+                ItemCategoryBinding.inflate(layoutInflater, binding.favFilterContainer, false).root
+            chip.text = f.etiqueta
+            val activo = f.modo == espacioModo &&
+                (f.modo != EspacioModo.FAVORITOS || (f.tipo == favFilter && f.radio == favIsRadio))
+            Appearance.applyChipState(chip, activo)
+            chip.setOnClickListener {
+                espacioModo = f.modo
+                favFilter = f.tipo
+                favIsRadio = f.radio
+                renderFavoriteFilters()
+                applyFavoriteFilter()
+            }
+            binding.favFilterContainer.addView(chip)
+        }
+    }
+
+    private fun applyFavoriteFilter() {
+        // Igual que el chip "Continuar viendo" de Películas/Series: marcar
+        // esto es lo que hace que abrir una serie desde acá la retome en el
+        // episodio pendiente en vez de en el primero (ver reallyOpen).
+        currentCategoryId = if (espacioModo == EspacioModo.CONTINUAR) CONTINUAR_ID else null
+
+        val items = when (espacioModo) {
+            EspacioModo.CONTINUAR -> itemsContinuarTodo()
+            EspacioModo.VISTAS -> itemsVistas()
+            EspacioModo.FAVORITOS -> {
+                val todos = Favorites.getAll(this)
+                // Las radios son LIVE pero traen su propia URL: así se separan de los canales
+                when {
+                    favFilter == null -> todos
+                    favIsRadio -> todos.filter { it.type == ContentType.LIVE && it.streamUrl != null }
+                    favFilter == ContentType.LIVE -> todos.filter { it.type == ContentType.LIVE && it.streamUrl == null }
+                    else -> todos.filter { it.type == favFilter }
+                }
+            }
+        }
+
+        adapter.submitList(items)
+        applyEspacioLayoutMode()
+
+        // Título de contexto: Favoritos ya se entiende por los chips solos
+        // (como siempre), pero Continuar viendo y Vistas ganan claridad con
+        // uno arriba de la lista.
+        binding.tvSectionTitle.setText(
+            when (espacioModo) {
+                EspacioModo.CONTINUAR -> R.string.title_continue_watching
+                EspacioModo.VISTAS -> R.string.title_watched
+                EspacioModo.FAVORITOS -> R.string.tab_favorites
+            }
+        )
+        binding.tvSectionTitle.visibility = if (espacioModo == EspacioModo.FAVORITOS) View.GONE else View.VISIBLE
+
+        binding.tvEmpty.setText(
+            when (espacioModo) {
+                EspacioModo.CONTINUAR -> R.string.empty_continue_watching
+                EspacioModo.VISTAS -> R.string.empty_watched
+                EspacioModo.FAVORITOS -> R.string.empty_favorites
+            }
+        )
+        binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        // Mi Espacio nunca usa el panel de previsualización (ver
+        // showPreviewFor), pero updatePreviewVisibility también se encarga de
+        // acomodar bodyContainer/listColumn -- y cambiar de pestaña acá no
+        // pasa por selectSection, que es donde se llama siempre.
+        updatePreviewVisibility(Section.FAVORITES)
+        refreshPreviewCard(items)
+    }
+
+    /**
+     * Densidad de "Mi Espacio": "Todos" (dentro de Favoritos) sigue en lista,
+     * igual que siempre. El resto -- Continuar viendo, Vistas, y las demás
+     * pestañas de Favoritos (Canales/Radios/Películas/Series) -- se muestra
+     * en grilla de carátulas chicas, con la misma densidad por defecto que
+     * usa el resto de la app según el aparato (ver Appearance.getEspacioColumns).
+     */
+    private fun applyEspacioLayoutMode() {
+        val esLista = espacioModo == EspacioModo.FAVORITOS && favFilter == null
+        val columns = if (esLista) 1 else Appearance.getEspacioColumns(this)
+        adapter.posterMode = columns > 1
+        // Igual que en applyLayoutMode(): no se pisa el LayoutManager si las
+        // columnas no cambiaron, para no perder la posición del scroll.
+        val actual = binding.recyclerChannels.layoutManager as? GridLayoutManager
+        if (actual == null || actual.spanCount != columns) {
+            binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
+        }
+    }
+
+    // ---------------- Abrir contenido ----------------
+
+    private fun openItem(item: ContentItem) {
+        if (Parental.isCategoryLocked(this, item.categoryId)) {
+            PinDialog.ask(this) { reallyOpen(item) }
+        } else {
+            reallyOpen(item)
+        }
+    }
+
+    private fun reallyOpen(item: ContentItem) {
+        if (item.type != ContentType.MOVIE || Appearance.getMovieClick(this) == Appearance.CLICK_PLAY) {
+            History.add(this, item)
+        }
+        // Las radios ya traen su URL; el resto se arma con los datos de la sesión
+        item.streamUrl?.let { url ->
+            // Si esta radio estaba sonando en preview, el id ya no debe seguir
+            // marcado: PlayerActivity toma el mismo PlaybackHolder tal cual
+            // (ver previewRadio/PlaybackHolder.canResume), así que acá solo se
+            // limpia el estado visual de la lista, sin tocar el reproductor.
+            if (::adapter.isInitialized) adapter.setPreviewing(null)
+            startActivity(radioIntent(item, url))
+            return
+        }
+
+        when (item.type) {
+            ContentType.LIVE -> {
+                // Guarda el foco actual: si venía del toolbar (Buscar, Cuenta…)
+                // se recupera al volver; si venía de la lista, guarda el id del
+                // canal para recuperar esa fila (idAlAbrirPantallaCompleta).
+                idToolbarEnfoqueAntes = currentFocus?.id?.takeIf {
+                    it == R.id.action_refresh || it == R.id.action_search ||
+                    it == R.id.action_parental || it == R.id.action_multi ||
+                    it == R.id.action_account || it == R.id.action_quick
+                }
+                idAlAbrirPantallaCompleta = if (idToolbarEnfoqueAntes == null) item.id else null
+                startActivity(liveIntent(item))
+            }
+            ContentType.MOVIE -> {
+                if (Appearance.getMovieClick(this) == Appearance.CLICK_DETAILS) {
+                    startActivity(
+                        Intent(this, MovieDetailActivity::class.java)
+                            .putExtra(MovieDetailActivity.EXTRA_ID, item.id)
+                            .putExtra(MovieDetailActivity.EXTRA_NAME, item.name)
+                            .putExtra(MovieDetailActivity.EXTRA_ICON, item.icon)
+                            .putExtra(MovieDetailActivity.EXTRA_EXT, item.containerExtension)
+                            .putExtra(MovieDetailActivity.EXTRA_CATEGORY, item.categoryId)
+                    )
+                } else {
+                    startActivity(
+                        Intent(this, PlayerActivity::class.java)
+                            .putExtra(
+                                PlayerActivity.EXTRA_URL,
+                                Session.vodStreamUrl(this, item.id, item.containerExtension ?: "mp4")
+                            )
+                            .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
+                    .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
+                    )
+                }
+            }
+            ContentType.SERIES -> {
+                // Desde el chip "Continuar viendo" la serie abre directo en el
+                // episodio pendiente; desde cualquier otro lado, su ficha.
+                val pendiente = if (currentCategoryId == CONTINUAR_ID) {
+                    ContinueWatching.get(this, ContentType.SERIES, item.id)?.episodeId
+                } else null
+                startActivity(
+                    Intent(this, SeriesDetailActivity::class.java)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_ID, item.id)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_NAME, item.name)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_ICON, item.icon)
+                        .putExtra(SeriesDetailActivity.EXTRA_SERIES_CATEGORY, item.categoryId)
+                        .apply { if (pendiente != null) putExtra(SeriesDetailActivity.EXTRA_RESUME_EPISODE_ID, pendiente) }
+                )
+            }
+        }
+    }
+
+    /**
+     * Abre una emisora en el reproductor y le lleva además la lista completa de
+     * la que salió, para que los botones "anterior / siguiente" de la barra de
+     * reproducción puedan saltar de emisora sin volver acá.
+     *
+     * La lista es la que se ve en pantalla en ese momento: el país o la marca
+     * abiertos en Radios, o las radios guardadas si se entró desde Favoritos o
+     * Historial.
+     */
+    private fun radioIntent(item: ContentItem, url: String): Intent {
+        val emisoras = (if (section == Section.RADIO) radioPlaylist else adapter.currentItems)
+            .filter { !it.streamUrl.isNullOrBlank() }
+            .ifEmpty { listOf(item) }
+
+        val posicion = emisoras.indexOfFirst { it.streamUrl == url }.coerceAtLeast(0)
+
+        // Solo se etiqueta el origen cuando venimos de la sección Radios; desde
+        // Favoritos o Historial la lista es mezcla y poner un país sería mentir.
+        val origen = if (section == Section.RADIO) {
+            currentRadioSource?.let { "${it.flag}  ${it.name}" }
+        } else {
+            null
+        }
+
+        return Intent(this, PlayerActivity::class.java)
+            .putExtra(PlayerActivity.EXTRA_URL, url)
+            .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
+            .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
+            .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
+            .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
+            .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
+            .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
+            .putExtra(PlayerActivity.EXTRA_IS_RADIO, true)
+            .putExtra(PlayerActivity.EXTRA_RADIO_SOURCE, origen)
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_URLS,
+                ArrayList(emisoras.map { it.streamUrl.orEmpty() })
+            )
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_TITLES,
+                ArrayList(emisoras.map { it.name })
+            )
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_ICONS,
+                ArrayList(emisoras.map { it.icon.orEmpty() })
+            )
+            .putIntegerArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_IDS,
+                ArrayList(emisoras.map { it.id })
+            )
+            .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, posicion)
+    }
+
+    /**
+     * Intent de un canal en vivo, con la lista de la categoría para poder
+     * zapear desde el reproductor.
+     *
+     * Solo viajan ids y nombres: la URL de cada canal se arma sola a partir del
+     * id, así que mandarla sería duplicar datos. Y la lista se recorta a una
+     * ventana alrededor del canal elegido, porque un intent con miles de
+     * entradas revienta el límite de tamaño de una transacción Binder
+     * (TransactionTooLargeException) y la app se cae al abrir el reproductor.
+     */
+    private fun liveIntent(item: ContentItem): Intent {
+        val intent = Intent(this, PlayerActivity::class.java)
+            .putExtra(PlayerActivity.EXTRA_URL, Session.liveStreamUrl(this, item.id))
+            .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
+            .putExtra(PlayerActivity.EXTRA_ITEM_ID, item.id)
+            .putExtra(PlayerActivity.EXTRA_ITEM_ICON, item.icon)
+            .putExtra(PlayerActivity.EXTRA_ITEM_CATEGORY, item.categoryId)
+            .putExtra(PlayerActivity.EXTRA_ITEM_TYPE, item.type.name)
+            .putExtra(PlayerActivity.EXTRA_ITEM_EXT, item.containerExtension)
+            // El EPG solo corre si se entró desde Canales o PPV: abrir el mismo
+            // canal desde Favoritos o Historial no debe mostrarlo.
+            .putExtra(PlayerActivity.EXTRA_EPG_ALLOWED, section == Section.LIVE || section == Section.PPV)
+
+        val lista = currentItems.filter { it.type == ContentType.LIVE }
+        val actual = lista.indexOfFirst { it.id == item.id }
+        if (actual < 0 || lista.size < 2) return intent
+
+        val desde = (actual - ZAP_WINDOW).coerceAtLeast(0)
+        val hasta = (actual + ZAP_WINDOW + 1).coerceAtMost(lista.size)
+        val ventana = lista.subList(desde, hasta)
+
+        return intent
+            .putIntegerArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_IDS, ArrayList(ventana.map { it.id })
+            )
+            .putStringArrayListExtra(
+                PlayerActivity.EXTRA_PLAYLIST_TITLES, ArrayList(ventana.map { it.name })
+            )
+            .putExtra(PlayerActivity.EXTRA_PLAYLIST_INDEX, actual - desde)
+    }
+
+    private fun setLoading(loading: Boolean) {
+        binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
+    }
+
+    // ---------------- Botón Atrás ----------------
+
+    /**
+     * Navegación hacia atrás, paso a paso.
+     *
+     * ANTES: `MainActivity` no interceptaba Atrás, así que el sistema hacía
+     * `finish()` de la activity. Y como Splash y Login ya se cerraron a sí
+     * mismas, la pila quedaba vacía: **la app entera saltaba al escritorio**
+     * desde cualquier punto. Con el dedo casi no se nota, porque nadie usa
+     * Atrás para navegar; con el control remoto es el botón que uno pulsa cien
+     * veces por sesión, y perder la app cada vez es exasperante.
+     *
+     * AHORA se deshace la navegación en el orden inverso al que se hizo:
+     *
+     *     búsqueda escrita  →  categoría/carpeta  →  sección  →  Inicio  →  ¿cerrar?
+     *
+     * Es la misma escalera de la entrada, recorrida al revés, y son como mucho
+     * tres pulsaciones hasta el Inicio, sin importar por cuántas secciones haya
+     * pasado el usuario. Por eso se deduce el nivel del estado actual en vez de
+     * apilar un historial: con una pila, alternar veinte veces entre Canales y
+     * Películas obligaría a pulsar Atrás veinte veces para salir.
+     *
+     * SOBRE LA API: se usa el `OnBackPressedDispatcher` en vez de sobrescribir
+     * `onBackPressed()`, que está obsoleto desde Android 13 y deja de llamarse
+     * cuando se active el gesto predictivo. El despachador es el camino que
+     * seguirá funcionando.
+     */
+    private fun setupBackNavigation() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                retrocederUnPaso()
+            }
+        })
+    }
+
+    /** Sección a la que se vuelve desde cualquier otra. En el perfil de niños el Inicio está oculto. */
+    private fun seccionBase(): Section = if (kidsMode) Section.LIVE else Section.HOME
+
+    private fun retrocederUnPaso() {
+        // 1. Una búsqueda escrita es lo último que hizo el usuario: se borra primero.
+        if (section == Section.PPV && binding.etPpvSearch.text?.isNotEmpty() == true) {
+            binding.etPpvSearch.setText("")   // el TextWatcher repuebla las carpetas
+            enfocarPrimerChip()
+            return
+        }
+        if (binding.etKidsSearch.visibility == View.VISIBLE &&
+            binding.etKidsSearch.text?.isNotEmpty() == true
+        ) {
+            binding.etKidsSearch.setText("")
+            enfocarPrimerChip()
+            return
+        }
+
+        // 2. Mi Espacio: volver al grupo Favoritos → Todos antes de abandonar
+        // la sección, sea cual sea el grupo o la pestaña en la que estaba.
+        if (section == Section.FAVORITES && (espacioModo != EspacioModo.FAVORITOS || favFilter != null)) {
+            espacioModo = EspacioModo.FAVORITOS
+            favFilter = null
+            favIsRadio = false
+            renderEspacioGroups()
+            renderFavoriteFilters()
+            applyFavoriteFilter()
+            // "Todos" ahora es siempre el primer chip de su fila: Continuar
+            // viendo y Vistas viven en la fila de grupos, no acá.
+            enfocarSiTV(binding.favFilterContainer.getChildAt(0))
+            return
+        }
+
+        // 3. Radios: dos niveles propios (carpeta y fuente), así que dos pasos.
+        if (section == Section.RADIO && retrocederEnRadio()) return
+
+        // 4a. Deportes - PPV tiene sus propios niveles: primero se quita el
+        // filtro por deporte, después se vuelve de "PPV Eventos" a "Canales".
+        // Antes caía en el paso 4 de abajo, que abría la primera categoría
+        // del panel (una carpeta cualquiera de canales) dentro de esta sección.
+        if (section == Section.PPV) {
+            if (ppvSportTag != null) {
+                ppvSportTag = null
+                refreshPpvSportSelection()
+                mostrarListaPpvCanales()
+                enfocarSiTV(binding.ppvSportFilterContainer.getChildAt(0))
+                return
+            }
+            if (currentCategoryId == PPV_TAB_EVENTOS && ppvCanales.isNotEmpty()) {
+                mostrarGrupoPpv(PPV_TAB_CANALES)
+                enfocarPrimerChip()
+                return
+            }
+        }
+
+        // 4. Categoría abierta que no es la que se abre por defecto al entrar.
+        if (section in listOf(Section.LIVE, Section.MOVIES, Section.SERIES)) {
+            val porDefecto = categories.firstOrNull()?.categoryId
+            if (porDefecto != null && currentCategoryId != porDefecto) {
+                loadContent(currentType(), porDefecto)
+                enfocarPrimerChip()
+                return
+            }
+        }
+
+        // 5. Cualquier sección que no sea la base vuelve a la base.
+        val base = seccionBase()
+        if (section != base) {
+            selectSection(base)
+            enfocarSiTV(if (kidsMode) binding.navLive else binding.navHome)
+            return
+        }
+
+        // 6. Ya no queda hacia dónde volver: se pregunta antes de cerrar.
+        confirmarSalida()
+    }
+
+    /**
+     * @return true si había un nivel de Radios que deshacer.
+     *
+     * Las dos filas se recorren en el orden inverso al que se abren: primero se
+     * vuelve a la emisora inicial de la carpeta, y recién después a la carpeta
+     * inicial. Una carpeta de una sola fuente (Tomorrowland) no tiene primer
+     * paso, y se salta sola porque su fuente ya es la primera.
+     */
+    private fun retrocederEnRadio(): Boolean {
+        val carpeta = currentRadioFolder ?: return false
+        val fuenteInicial = carpeta.sources.firstOrNull()
+
+        if (fuenteInicial != null && currentRadioSource?.id != fuenteInicial.id) {
+            loadRadio(fuenteInicial)
+            enfocarSiTV(binding.radioSubContainer.getChildAt(0))
+            return true
+        }
+
+        val carpetaInicial = RadioCatalog.defaultFolder
+        if (carpeta.id != carpetaInicial.id) {
+            openRadioFolder(carpetaInicial)
+            enfocarPrimerChip()
+            return true
+        }
+
+        return false
+    }
+
+    /**
+     * Devuelve el foco a un sitio estable después de retroceder. No hace nada
+     * en modo móvil, donde el foco no se usa ni se ve.
+     *
+     * Sin esto el control remoto se queda mudo: el foco estaba en una tarjeta de
+     * la lista, la lista se vuelve a cargar, la vista enfocada desaparece y
+     * Android no tiene a quién pasarle el foco. La siguiente flecha que pulse el
+     * usuario se pierde eligiendo un destino, y parece que el mando dejó de
+     * responder justo después de volver atrás.
+     */
+    private fun enfocarSiTV(view: View?) {
+        if (!RemoteControl.isEnabled(this)) return
+        RemoteControl.focusWhenReady(view)
+    }
+
+    /** Atajo para el caso más repetido: la primera categoría de la fila de chips. */
+    private fun enfocarPrimerChip() = enfocarSiTV(binding.categoryContainer.getChildAt(0))
+
+    /**
+     * Diálogo de confirmación antes de cerrar.
+     *
+     * El foco arranca en **Cancelar** a propósito: quien llega hasta acá suele
+     * venir de pulsar Atrás varias veces seguidas, y una pulsación de más no
+     * debería cerrar la app. Salir cuesta un movimiento del mando; salir sin
+     * querer costaba volver a abrir todo.
+     *
+     * Se guarda la referencia para no apilar dos diálogos si el mando repite la
+     * pulsación (los remotos baratos rebotan bastante).
+     */
+    private fun confirmarSalida() {
+        if (exitDialog?.isShowing == true) return
+        exitDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.exit_title)
+            .setMessage(R.string.exit_message)
+            .setPositiveButton(R.string.exit_confirm) { _, _ -> finish() }
+            .setNegativeButton(R.string.exit_cancel, null)
+            .show()
+            .also { dialogo ->
+                enfocarSiTV(dialogo.getButton(AlertDialog.BUTTON_NEGATIVE))
+            }
+    }
+
+    // ---------------- Ciclo de vida ----------------
+
+    override fun onResume() {
+        super.onResume()
+        // Al volver a primer plano puede haber pasado la noche entera con el
+        // aparato dormido, así que se recalcula el corte contra la fecha real.
+        // Si mientras tanto cambió el día lógico, esto lo detecta y refresca.
+        comprobarRefrescoDiario()
+        if (::adapter.isInitialized) {
+            applyHomeOrientation()
+            binding.tvToolbarTitle.applyBrandGradient()
+            highlightNav()
+            applyLayoutMode(section)
+            if (section in listOf(Section.HISTORY, Section.FAVORITES)) {
+                selectSection(section)   // refresca al volver del reproductor
+            }
+            // Al volver del reproductor se rearma la previsualización del canal
+            // que estaba elegido (onStop la había liberado).
+            if (showPreviewFor(section)) {
+                applyPreviewLayout(conPreview = true)
+                previewItem?.let { showPreview(it) }
+            }
+            refrescarContinuar()
+            restaurarFocoTrasReproductor()
+            if (section == Section.HOME) showHome()   // re-dibuja con la paleta vigente
+        }
+    }
+
+    /**
+     * Devuelve el foco visual a la fila del canal que estaba elegido antes de
+     * abrir la pantalla completa (ver [idAlAbrirPantallaCompleta]).
+     *
+     * Se busca por posición en la lista actual del adapter en vez de guardar
+     * la View directamente porque, si la sección se refrescó mientras tanto
+     * (Favoritos, Historial), la fila vieja ya no existe: hay una nueva
+     * instancia en la misma posición y hay que enfocar ESA.
+     */
+    private fun restaurarFocoTrasReproductor() {
+        if (!RemoteControl.isEnabled(this)) return
+
+        // Caso 1: el foco venía de un ícono del toolbar
+        val idToolbar = idToolbarEnfoqueAntes
+        idToolbarEnfoqueAntes = null
+        if (idToolbar != null) {
+            binding.toolbar.post {
+                enfocarSiTV(binding.toolbar.findViewById(idToolbar))
+            }
+            return
+        }
+
+        // Caso 2: el foco venía de una fila de la lista de canales
+        val id = idAlAbrirPantallaCompleta ?: return
+        idAlAbrirPantallaCompleta = null
+        val posicion = adapter.currentItems.indexOfFirst { it.id == id }
+        if (posicion < 0) return
+        binding.recyclerChannels.post {
+            val vista = binding.recyclerChannels.layoutManager?.findViewByPosition(posicion)
+            enfocarSiTV(vista ?: binding.recyclerChannels)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Se suelta la conexión al irse de la pantalla. Es imprescindible: al
+        // abrir el reproductor a pantalla completa esta activity pasa por acá,
+        // y si la previsualización siguiera conectada el panel podría rechazar
+        // el canal por tope de conexiones simultáneas.
+        releasePreview()
+        // Ídem para el preview de radio: si se llegó hasta acá habiendo
+        // tocado "Abrir", reallyOpen ya limpió el id antes, así que esto no
+        // hace nada y no corta el audio que PlayerActivity acaba de tomar.
+        stopRadioPreview()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopCarousel()
+    }
+
+    override fun onDestroy() {
+        // Un diálogo todavía en pantalla cuando se destruye la activity es una
+        // ventana filtrada (WindowLeaked en el log).
+        exitDialog?.dismiss()
+        exitDialog = null
+        // El temporizador del refresco diario tiene por delante hasta 24 horas
+        // de espera y captura la activity: sin quitarlo, la mantiene viva.
+        refrescoDiario.removeCallbacks(tareaRefrescoDiario)
+        releasePreview()
+        stopRadioPreview()
+        RadioCatalog.cancel()
+        stopCarousel()
+        Catalog.removeListener(catalogListener)
+        super.onDestroy()
+    }
+
+    private companion object {
+        /** Espera antes de conectar la previsualización, al recorrer la lista. */
+        const val PREVIEW_DELAY_MS = 800L
+
+        /** Canales a cada lado del elegido que viajan al reproductor para zapear. */
+        const val ZAP_WINDOW = 200
+    }
+}

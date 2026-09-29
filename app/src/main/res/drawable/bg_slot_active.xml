@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Marco del recuadro que tiene el audio activo.
+
+    Va en una vista superpuesta y NO en el background del FrameLayout: el
+    PlayerView ocupa todo el recuadro y tapa por completo cualquier fondo, así
+    que pintar el background dejaba el resaltado invisible.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="3dp" android:color="@color/brand_primary" />
+</shape>

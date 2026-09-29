@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Marco de la carátula en los resultados de búsqueda. Además de dar el fondo
+     mientras la imagen carga, define el contorno con el que el adapter recorta
+     la propia imagen (clipToOutline), para que las esquinas queden redondeadas. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#1E1533" />
+    <corners android:radius="8dp" />
+    <stroke android:width="0.6dp" android:color="@color/glass_border" />
+</shape>

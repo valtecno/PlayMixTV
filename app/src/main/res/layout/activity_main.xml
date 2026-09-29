@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@android:color/transparent"
+        android:title=""
+        android:titleTextColor="@color/text_light"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/ivToolbarLogo"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginEnd="10dp"
+                android:adjustViewBounds="true"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/logo_playmix" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvToolbarTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_light" />
+
+                <TextView
+                    android:id="@+id/tvToolbarBy"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="-2dp"
+                    android:text="@string/app_author"
+                    android:textSize="10sp"
+                    android:letterSpacing="0.04"
+                    android:textColor="@color/text_muted" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.appcompat.widget.Toolbar>
+
+    <!-- ===== Menú de secciones + saludo/vencimiento, todo en una sola línea ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp">
+
+        <HorizontalScrollView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:requiresFadingEdge="horizontal"
+            android:fadingEdgeLength="24dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp">
+
+                <TextView android:id="@+id/navHome" style="@style/NavItem"
+                    android:text="@string/nav_home" android:drawableStart="@drawable/ic_home" />
+
+                <TextView android:id="@+id/navLive" style="@style/NavItem"
+                    android:text="@string/tab_live" android:drawableStart="@drawable/ic_live" />
+
+                <TextView android:id="@+id/navMovies" style="@style/NavItem"
+                    android:text="@string/tab_movies" android:drawableStart="@drawable/ic_movie" />
+
+                <TextView android:id="@+id/navSeries" style="@style/NavItem"
+                    android:text="@string/tab_series" android:drawableStart="@drawable/ic_series" />
+
+                <TextView android:id="@+id/navRadio" style="@style/NavItem"
+                    android:text="@string/nav_radio" android:drawableStart="@drawable/ic_radio" />
+
+                <TextView android:id="@+id/navPpv" style="@style/NavItem"
+                    android:text="@string/nav_ppv" android:drawableStart="@drawable/ic_ball" />
+
+                <TextView android:id="@+id/navFavorites" style="@style/NavItem"
+                    android:text="@string/nav_my_space" android:drawableStart="@drawable/ic_favorite" />
+
+                <TextView android:id="@+id/navKids" style="@style/NavItem"
+                    android:text="@string/nav_kids" android:drawableStart="@drawable/ic_kids" />
+
+                <!-- "Enviar contacto": comparte PlayMix por WhatsApp. Reemplaza al
+                     acceso directo a YouTube, que ya no está. Solo tiene sentido en
+                     móvil: ahí es donde la gente tiene sus redes a mano; en TV
+                     nadie comparte un link desde el control remoto. Se oculta en
+                     modo TV desde código (ver applyDeviceMode en MainActivity). -->
+                <TextView android:id="@+id/btnSendContact" style="@style/NavItem"
+                    android:text="@string/nav_send_contact" android:drawableStart="@drawable/ic_whatsapp" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Indica que el menú sigue hacia la derecha -->
+        <ImageView
+            android:id="@+id/navScrollHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_chevron_right"
+            android:contentDescription="@null"
+            android:alpha="0.6" />
+
+    </LinearLayout>
+
+    <!-- ===== Inicio: dos secciones lado a lado, un póster por vez =====
+
+         OJO CON LA POSICIÓN DE ESTE BLOQUE: homeArea es hermano del menú dentro
+         del LinearLayout vertical raíz, no un hermano que se superponga. Va
+         DESPUÉS de la barra de menú, así que arranca justo debajo de ella y
+         llega hasta el final de la pantalla.
+
+         De ahí salen dos garantías estructurales para la imagen de fondo del
+         Inicio (ivHomeBackdrop), sin depender de que ningún código se acuerde:
+          1. No puede taparle nada al menú superior ni a la barra de título,
+             porque físicamente empieza más abajo.
+          2. No puede aparecer en otra sección, porque homeArea entero se oculta
+             al salir del Inicio.
+    -->
+    <FrameLayout
+        android:id="@+id/homeArea"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+    <!-- ===== Imagen de marca del Inicio (SOLO en modo móvil) =====
+         Reemplaza a los carruseles: en móvil se ocultan homeSections y queda
+         esto. En TV no se muestra nunca y los carruseles siguen como estaban.
+         Lo enciende y apaga showHome() según DeviceMode.
+
+         Para que se vea más o menos marcada, cambiá android:alpha acá abajo:
+         0.20 = apenas insinuada · 0.35 = actual · 0.60 = bien presente. -->
+    <ImageView
+        android:id="@+id/ivHomeBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/home_backdrop"
+        android:alpha="0.35"
+        android:contentDescription="@null"
+        android:visibility="gone" />
+
+    <!-- Funde la imagen con el fondo de la app por arriba y por abajo -->
+    <View
+        android:id="@+id/homeBackdropScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_home_backdrop_scrim"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/homeSections"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <!-- Izquierda: Novedades -->
+        <LinearLayout
+            android:id="@+id/colNovedades"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvCarouselTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="6dp"
+                android:text="@string/carousel_title"
+                android:textColor="@color/text_light"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerCarousel"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="true"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp" />
+        </LinearLayout>
+
+        <!-- Separador entre las dos secciones. La orientación (línea vertical en
+             TV, horizontal en móvil) se ajusta en applyHomeOrientation(). -->
+        <View
+            android:id="@+id/homeDivider"
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_divider_vertical" />
+
+        <!-- Derecha: Agregado recientemente -->
+        <LinearLayout
+            android:id="@+id/colRecientes"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvRecentTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginBottom="6dp"
+                android:text="@string/section_recent"
+                android:textColor="@color/text_light"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerRecent"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="true"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+        <!-- Mensaje del Inicio. Va acá y no en tvEmpty porque aquel vive dentro
+             de bodyContainer, que en Inicio está oculto. -->
+        <TextView
+            android:id="@+id/tvHomeEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:textColor="@color/text_muted"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- ===== Filtro rápido de canales =====
+         Aparece solo en la sección Canales. Permite escribir parte del
+         nombre y la lista se filtra al instante, sin salir a la pantalla de
+         búsqueda global. Deportes - PPV usa su propio buscador (etPpvSearch,
+         más abajo), no este. -->
+    <EditText
+        android:id="@+id/etChannelFilter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_search_field"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:hint="@string/channel_filter_hint"
+        android:textColor="@color/text_light"
+        android:textColorHint="@color/text_muted"
+        android:textCursorDrawable="@null"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch"
+        android:visibility="gone" />
+
+    <!-- ===== Buscador dedicado del perfil de niños ===== -->
+    <EditText
+        android:id="@+id/etKidsSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_search_field"
+        android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+        android:hint="@string/kids_search_hint"
+        android:textColor="@color/text_light"
+        android:textColorHint="@color/text_muted"
+        android:textCursorDrawable="@null"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch"
+        android:visibility="gone" />
+
+    <!-- ===== Buscador propio de PPV ===== -->
+    <EditText
+        android:id="@+id/etPpvSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_search_field"
+        android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+        android:hint="@string/ppv_search_hint"
+        android:textColor="@color/text_light"
+        android:textColorHint="@color/text_muted"
+        android:textCursorDrawable="@null"
+        android:inputType="text"
+        android:maxLines="1"
+        android:imeOptions="actionSearch"
+        android:visibility="gone" />
+
+    <!-- ===== Subcategorías de "Mi Espacio": Actividad reciente / Favoritos,
+         más un botón para forzar a mano la sincronización con la nube (ver
+         DataSync): entre equipos que ya tenían sesión iniciada de antes, uno
+         puede tener actividad más nueva que el otro todavía no bajó. ===== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <HorizontalScrollView
+            android:id="@+id/favGroupScroll"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:paddingBottom="8dp"
+            android:visibility="gone">
+            <LinearLayout
+                android:id="@+id/favGroupContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+        </HorizontalScrollView>
+
+        <ImageButton
+            android:id="@+id/btnEspacioSync"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="12dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_refresh"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/espacio_sync_now"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- ===== Filtros por tipo dentro de la subcategoría activa ===== -->
+    <HorizontalScrollView
+        android:id="@+id/favFilterScroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+        <LinearLayout
+            android:id="@+id/favFilterContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp" />
+    </HorizontalScrollView>
+
+    <!-- ===== Cuerpo: lista de la sección + panel de previsualización =====
+         En TV va al costado de la lista; en móvil se pone arriba (la orientación
+         y los pesos se ajustan desde applyPreviewLayout()). -->
+    <LinearLayout
+        android:id="@+id/bodyContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/listColumn"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.15"
+            android:orientation="vertical">
+
+            <!-- ===== Categorías (secciones de catálogo) ===== -->
+            <HorizontalScrollView
+                android:id="@+id/categoryScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp">
+                <LinearLayout
+                    android:id="@+id/categoryContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
+            </HorizontalScrollView>
+
+            <!-- ===== Filtro rápido por tipo de deporte: SOLO en Deportes - PPV,
+                 dentro de la carpeta "Canales" =====
+                 Ayuda a elegir cuando se sabe qué deporte se quiere ver
+                 (fútbol, tenis, box, etc.) pero no un canal puntual, sin
+                 tener que escribir nada en el buscador. Se arma con los
+                 tipos que de verdad tienen canales en este panel (ver
+                 renderPpvSportFilters en MainActivity), así que puede traer
+                 menos chips que tipos existen, o ninguno si todo es de un
+                 solo tipo. -->
+            <HorizontalScrollView
+                android:id="@+id/ppvSportFilterScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/ppvSportFilterContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
+            </HorizontalScrollView>
+
+            <!-- ===== Segunda fila de chips: SOLO para Radios =====
+                 Arriba van las carpetas (Países · Tomorrowland · Electrónica) y
+                 acá lo que hay dentro de la carpeta abierta: los países, o los
+                 géneros de Electrónica.
+
+                 Se oculta cuando la carpeta tiene una sola fuente (Tomorrowland)
+                 y en todas las demás secciones. Es una fila aparte y no un menú
+                 desplegable a propósito: así los dos niveles se ven a la vez y
+                 con control remoto se pasa de uno a otro con arriba/abajo. -->
+            <HorizontalScrollView
+                android:id="@+id/radioSubScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingBottom="8dp"
+                android:visibility="gone">
+                <LinearLayout
+                    android:id="@+id/radioSubContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp" />
+            </HorizontalScrollView>
+
+            <TextView
+                android:id="@+id/tvSectionTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="6dp"
+                android:textColor="@color/text_light"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="40dp" />
+
+            <TextView
+                android:id="@+id/tvEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:gravity="center"
+                android:textColor="@color/text_muted"
+                android:visibility="gone"
+                android:text="@string/empty_list" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerChannels"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:clipChildren="false"
+                android:padding="8dp" />
+
+        </LinearLayout>
+
+        <!-- ===== Previsualización: Canales, PPV y Favoritos (solo canales) =====
+             Muestra el canal recién enfocado sin cortar la reproducción actual;
+             hay que tocar "Ampliar" para recién ahí abrir el reproductor. -->
+        <LinearLayout
+            android:id="@+id/previewPanel"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.85"
+            android:orientation="vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:visibility="gone">
+
+            <!-- El alto real lo fija MainActivity.applyPreviewLayout() en
+                 código (16:9 sobre el ancho ya medido, ver
+                 fijarAltoVideo16x9()); estos valores son solo el arranque
+                 antes del primer layout. android:maxHeight no se usa: un
+                 FrameLayout no lo respeta (es una propiedad de ImageView,
+                 no de ViewGroup), así que dejarlo acá era engañoso. -->
+            <FrameLayout
+                android:id="@+id/previewThumbFrame"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_glass_card"
+                android:clickable="true"
+                android:focusable="true">
+
+                <!-- Video de la previsualización. Va primero para que el logo,
+                     la insignia y los botones queden por encima. -->
+                <androidx.media3.ui.PlayerView
+                    android:id="@+id/previewPlayer"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:visibility="gone"
+                    app:use_controller="false"
+                    app:resize_mode="fit" />
+
+                <ImageView
+                    android:id="@+id/ivPreviewLogo"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerInside"
+                    android:padding="24dp"
+                    android:contentDescription="@null" />
+
+                <ProgressBar
+                    android:id="@+id/previewProgress"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvPreviewError"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:background="#B3000000"
+                    android:gravity="center"
+                    android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+                    android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+
+                <!-- Silenciar: al recorrer la lista con el control remoto conviene
+                     poder callar la previsualización sin dejar de verla. -->
+                <ImageView
+                    android:id="@+id/btnPreviewMute"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="top|end"
+                    android:layout_margin="10dp"
+                    android:padding="9dp"
+                    android:background="@drawable/bg_play_circle"
+                    android:src="@drawable/ic_volume_up"
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:contentDescription="@string/preview_mute" />
+
+                <TextView
+                    android:id="@+id/tvPreviewLive"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|start"
+                    android:layout_margin="12dp"
+                    android:background="@drawable/bg_live_badge"
+                    android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+                    android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+                    android:text="@string/preview_live"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <!-- Pantalla completa. Antes estaba centrado y tapaba el video;
+                     ahora va en una esquina y con el texto al lado. -->
+                <LinearLayout
+                    android:id="@+id/previewPlayRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="12dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_glass_card"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+                    android:focusable="true"
+                    android:clickable="true">
+
+                    <ImageView
+                        android:id="@+id/btnPreviewPlay"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_play_circle"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_play_arrow"
+                        android:contentDescription="@string/preview_play" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/preview_play"
+                        android:textColor="@color/text_light"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvPreviewTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="@color/text_light"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tvPreviewCategory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="@color/text_muted"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- EPG del canal seleccionado: misma info que ya aparece en cada
+                 fila de la lista de la izquierda, repetida acá debajo del
+                 minireproductor para que se lea cómodamente desde el sillón
+                 sin tener que mirar hacia el otro lado de la pantalla. -->
+            <TextView
+                android:id="@+id/tvPreviewEpgNow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:drawableStart="@drawable/ic_live"
+                android:drawablePadding="6dp"
+                android:gravity="center_vertical"
+                android:textColor="@color/text_light"
+                android:textSize="12sp"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvPreviewEpgNext"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:drawablePadding="6dp"
+                android:gravity="center_vertical"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

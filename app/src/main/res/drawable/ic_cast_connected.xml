@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    "cast_connected" de Material Icons (Google). Se usa acá y no en el botón
+    de la barra; el botón de la barra es el MediaRouteButton de Google, que
+    ya trae su propio ícono y lo cambia solo. Este es para el overlay de
+    "Reproduciendo en <dispositivo>", donde sí hace falta dibujar algo a mano.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M1,18v3h3C4,19.34 2.66,18 1,18zM1,14v2c2.76,0 5,2.24 5,5h2C8,17.13 4.87,14 1,14zM1,10v2c4.97,0 9,4.03 9,9h2C12,14.92 7.08,10 1,10zM21,3L3,3c-1.1,0 -2,0.9 -2,2v3h2L3,5h18v14h-7v2h7c1.1,0 2,-0.9 2,-2L23,5c0,-1.1 -0.9,-2 -2,-2zM19,7L5,7v1.63c3.96,1.28 7.09,4.41 8.37,8.37L19,17L19,7z" />
+</vector>

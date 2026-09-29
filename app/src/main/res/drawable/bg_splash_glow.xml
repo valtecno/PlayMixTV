@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Resplandor que se expande una sola vez detrás del logo, al abrir la app.
+
+    Es un degradado radial que se apaga hacia afuera, así que no tiene borde:
+    parece luz, no un círculo. El radio es absoluto (110dp) y la vista mide
+    220dp, o sea que llega justo hasta el borde.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="110dp"
+        android:startColor="#80FF3CAC"
+        android:centerColor="#40FF6A00"
+        android:endColor="#00FF6A00" />
+</shape>

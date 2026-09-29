@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Velo que se dibuja ENCIMA de la imagen del Inicio (solo en móvil).
+
+    La imagen ya va con poca opacidad, pero sin este velo le queda un borde
+    duro arriba y abajo: se nota el rectángulo donde empieza y termina, y choca
+    con el degradado de fondo de la app. El velo la funde por los extremos —
+    oscuro pegado al menú, casi transparente en el medio (donde está la cara y
+    el logo, que es lo que se quiere dejar ver) y oscuro otra vez abajo.
+
+    Para que la imagen se vea más o menos, no toques esto: cambiá el
+    android:alpha del ImageView ivHomeBackdrop en activity_main.xml.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#D90A0A0F"
+        android:centerColor="#330A0A0F"
+        android:endColor="#E60A0A0F" />
+</shape>

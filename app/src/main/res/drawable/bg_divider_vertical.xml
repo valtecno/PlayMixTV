@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Separador de 1dp entre las dos secciones del Inicio, en modo TV.
+     Se desvanece en los extremos para que no corte en seco. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="90"
+        android:startColor="#00FFFFFF"
+        android:centerColor="@color/glass_border"
+        android:endColor="#00FFFFFF"
+        android:type="linear" />
+</shape>

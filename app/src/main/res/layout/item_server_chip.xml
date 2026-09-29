@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Un botón de servidor de la pantalla de login.
+
+    Antes había dos TextView fijos escritos en activity_login.xml, así que la
+    app soportaba exactamente dos servidores. Ahora LoginActivity infla este
+    layout una vez por cada servidor configurado en gradle.properties, y el
+    ancho se reparte solo entre los que haya.
+-->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:padding="14dp"
+    android:textColor="@color/text_light"
+    android:textStyle="bold"
+    android:focusable="true"
+    android:clickable="true" />

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Oscurece el pie del fondo para que la barra de reproducción se despegue -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="90"
+        android:startColor="#CC000000"
+        android:centerColor="#59000000"
+        android:endColor="#00000000" />
+</shape>
