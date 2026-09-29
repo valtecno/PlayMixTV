@@ -33,6 +33,8 @@ object CrashLogger {
 
     private const val CARPETA = "logs"
     private const val ARCHIVO = "last_crash.txt"
+    private const val PREFS = "miiptv_crashlog"
+    private const val KEY_MOSTRADO_EN = "mostrado_en"
 
     /**
      * Instala el manejador. Se llama una sola vez, desde
@@ -80,5 +82,33 @@ object CrashLogger {
     fun lastCrash(context: Context): String? {
         val archivo = File(File(context.filesDir, CARPETA), ARCHIVO)
         return runCatching { archivo.takeIf { it.exists() }?.readText() }.getOrNull()
+    }
+
+    /**
+     * Igual que [lastCrash], pero null si ese cierre ya se mostró una vez
+     * (ver [marcarMostrado]) -para no repetir el mismo diálogo en cada
+     * apertura, para siempre.
+     *
+     * Pensado para mostrarse SOLO, sin que el usuario tenga que navegar a
+     * ningún lado (ver la llamada en MainActivity/LoginActivity.onCreate):
+     * en equipos de TV donde la app se cierra tan rápido que no da tiempo
+     * de llegar a Ajustes, es la única forma de que el diagnóstico se
+     * alcance a ver siquiera una vez.
+     */
+    fun pendingCrash(context: Context): String? {
+        val texto = lastCrash(context) ?: return null
+        val archivo = File(File(context.filesDir, CARPETA), ARCHIVO)
+        val cuandoOcurrio = archivo.lastModified()
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val yaMostradoEn = prefs.getLong(KEY_MOSTRADO_EN, 0L)
+        return if (cuandoOcurrio > yaMostradoEn) texto else null
+    }
+
+    /** Marca el cierre actual como ya mostrado, para que [pendingCrash] no lo repita. */
+    fun marcarMostrado(context: Context) {
+        val archivo = File(File(context.filesDir, CARPETA), ARCHIVO)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong(KEY_MOSTRADO_EN, System.currentTimeMillis().coerceAtLeast(archivo.lastModified()))
+            .apply()
     }
 }
