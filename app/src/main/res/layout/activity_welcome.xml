@@ -40,18 +40,6 @@
         android:layout_height="wrap_content"
         android:text="@string/welcome_cta"
         android:background="@drawable/bg_button_gradient"
-        android:textColor="@color/text_light"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:id="@+id/tvWelcomeContact"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/welcome_contact"
-        android:textColor="@color/text_muted"
-        android:textSize="13sp"
-        android:gravity="center"
-        android:clickable="true"
-        android:focusable="true" />
+        android:textColor="@color/text_light" />
 
 </LinearLayout>

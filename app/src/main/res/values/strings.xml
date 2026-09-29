@@ -69,7 +69,6 @@
     <string name="welcome_access_until">Tu acceso está activo hasta el %1$s</string>
     <string name="welcome_unlimited">Acceso sin fecha de vencimiento</string>
     <string name="welcome_cta">Explorar contenido</string>
-    <string name="welcome_contact">¿Dudas o renovaciones? Escríbenos</string>
     <string name="catalog_offline">Mostrando contenido guardado (sin conexión)</string>
     <string name="kids_search_hint">Buscar en el perfil de niños…</string>
     <string name="setting_personalize">Personalizar apariencia</string>

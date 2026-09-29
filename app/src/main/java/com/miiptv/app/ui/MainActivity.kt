@@ -306,8 +306,7 @@ class MainActivity : AppCompatActivity() {
             binding.navPpv to Section.PPV,
             binding.navRadio to Section.RADIO,
             binding.navMovies to Section.MOVIES,
-            binding.navSeries to Section.SERIES,
-            binding.navFavorites to Section.FAVORITES
+            binding.navSeries to Section.SERIES
         )
         map.forEach { (view, sec) ->
             val active = sec != null && sec == section
@@ -324,18 +323,29 @@ class MainActivity : AppCompatActivity() {
         // El ícono de WhatsApp también tiene su color propio (verde de marca);
         // igual que antes con YouTube, no se tiñe de un solo color.
         paintNavItem(binding.btnSendContact, active = false, tintIcon = false)
+        // "Mi Espacio": el corazón se queda siempre en rojo tenue (en vez de
+        // seguir el color del texto como el resto de los íconos) para que se
+        // note más entre los demás botones del menú. tintIcon = false: si no,
+        // el listener de foco de applyLevel lo volvería a pintar del color
+        // del texto apenas el control remoto lo enfocara.
+        val favoritesActive = section == Section.FAVORITES
+        paintNavItem(binding.navFavorites, favoritesActive, tintIcon = false)
+        binding.navFavorites.compoundDrawablesRelative.forEach {
+            it?.mutate()?.setTint(ContextCompat.getColor(this, R.color.heart_red_dim))
+        }
         // El de Niños no representa una Section: se resalta según kidsMode y cambia
         // de texto/ícono para indicar que, tocándolo de nuevo, se pide el PIN de salida.
         binding.navKids.text = getString(if (kidsMode) R.string.nav_kids_exit else R.string.nav_kids)
-        paintNavItem(binding.navKids, kidsMode)
-        // El ícono se distingue en verde, activo o no. El texto sigue esa
-        // misma regla salvo cuando dice "Salir" (perfil activo): ahí va en
-        // blanco, que se lee mejor que el verde sobre el fondo del botón.
+        // tintIcon = false por lo mismo que arriba: el ícono de Niños es
+        // siempre verde, nunca sigue al color del texto.
+        paintNavItem(binding.navKids, kidsMode, tintIcon = false)
+        // Ícono en verde (activo o no) y texto en blanco, igual que el resto
+        // de los botones del menú -- antes el texto también se ponía verde
+        // cuando el perfil no estaba activo, y ahí no hacía falta.
         val verdeNinos = ContextCompat.getColor(
             this, if (kidsMode) R.color.kids_green else R.color.kids_green_dim
         )
-        val colorTextoKids = if (kidsMode) ContextCompat.getColor(this, R.color.text_light) else verdeNinos
-        binding.navKids.setTextColor(colorTextoKids)
+        binding.navKids.setTextColor(ContextCompat.getColor(this, R.color.text_light))
         binding.navKids.compoundDrawablesRelative.forEach { it?.mutate()?.setTint(verdeNinos) }
     }
 

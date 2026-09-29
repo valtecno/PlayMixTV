@@ -25,4 +25,7 @@
     <!-- Perfil de niños: verde, para distinguirlo del resto del menú -->
     <color name="kids_green">#4BD97F</color>
     <color name="kids_green_dim">#8A4BD97F</color>
+    <!-- Corazón de "Mi Espacio": rojo tenue fijo, para que se note más que
+         el resto de los íconos del menú (que se tiñen del color del texto). -->
+    <color name="heart_red_dim">#C9575D</color>
 </resources>

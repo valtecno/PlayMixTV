@@ -2,14 +2,14 @@ package com.miiptv.app.ui
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
 import com.miiptv.app.R
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityWelcomeBinding
 import com.miiptv.app.util.DeviceMode
-import com.miiptv.app.util.Servers
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -18,9 +18,14 @@ import java.util.Locale
  * Pantalla de bienvenida.
  *
  * Aparece una sola vez, la primera vez que el usuario accede después de
- * ingresar un código nuevo. Le confirma que está dentro, le muestra hasta
- * cuándo tiene acceso y le da un acceso directo de contacto para renovar
- * o consultar dudas.
+ * ingresar un código nuevo. Le confirma que está dentro y le muestra hasta
+ * cuándo tiene acceso. No dice a qué sistema/servidor pertenece esa cuenta
+ * (es un detalle interno, no algo que el usuario necesite ver) ni tiene
+ * accesos de contacto: eso ya vive en el menú de Cuenta.
+ *
+ * Se cierra sola: al tocar "Explorar contenido", o a los 5 segundos si nadie
+ * la toca (pensado para control remoto/TV, donde nadie llega a apretar nada
+ * antes de que la app arranque de verdad).
  *
  * Se omite si ya se mostró (flag en SharedPreferences) para no interrumpir
  * cada vez que se abre la app.
@@ -30,6 +35,7 @@ class WelcomeActivity : AppCompatActivity() {
     companion object {
         private const val PREFS       = "miiptv_welcome"
         private const val KEY_SHOWN   = "welcome_shown_for"
+        private const val AUTO_CLOSE_MS = 5000L
 
         /**
          * Devuelve true si la pantalla de bienvenida debe mostrarse para la
@@ -47,6 +53,8 @@ class WelcomeActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityWelcomeBinding
+    private val autoCloseHandler = Handler(Looper.getMainLooper())
+    private val autoCloseRunnable = Runnable { entrar() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,16 +64,21 @@ class WelcomeActivity : AppCompatActivity() {
 
         mostrarFechaVencimiento()
 
-        binding.btnWelcomeStart.setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-        }
+        binding.btnWelcomeStart.setOnClickListener { entrar() }
+        autoCloseHandler.postDelayed(autoCloseRunnable, AUTO_CLOSE_MS)
+    }
 
-        binding.tvWelcomeContact.setOnClickListener {
-            val mensaje = "Hola, soy usuario de PlayMix TV y tengo una consulta."
-            val url = "https://wa.me/56948714030?text=" + Uri.encode(mensaje)
-            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-        }
+    override fun onDestroy() {
+        // Si ya se salió por el botón (o por Atrás), que el cierre automático
+        // no dispare igual un segundo "entrar()" un rato después.
+        autoCloseHandler.removeCallbacks(autoCloseRunnable)
+        super.onDestroy()
+    }
+
+    private fun entrar() {
+        if (isFinishing) return
+        startActivity(Intent(this, MainActivity::class.java))
+        finish()
     }
 
     private fun mostrarFechaVencimiento() {
@@ -88,17 +101,11 @@ class WelcomeActivity : AppCompatActivity() {
                 }
             }
         }
-
-        // Mostrar también el sistema al que pertenece
-        val sistema = Servers.labelFor(Session.server(this))
-        val titulo = "${getString(R.string.welcome_title)} — $sistema"
-        binding.tvWelcomeTitle.text = titulo
     }
 
     override fun onBackPressed() {
         // Saltar hacia atrás lleva al login, no al Inicio. En la bienvenida
         // el botón correcto es "Explorar contenido".
-        startActivity(Intent(this, MainActivity::class.java))
-        finish()
+        entrar()
     }
 }
