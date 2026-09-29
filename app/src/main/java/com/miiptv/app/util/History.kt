@@ -60,9 +60,26 @@ object History {
         prefs(context).edit()
             .putString(KEY, gson.toJson(updated.take(MAX)))
             .apply()
+        DataSync.scheduleBackup(context)
     }
 
     fun clear(context: Context) {
         prefs(context).edit().remove(KEY).apply()
+        DataSync.scheduleBackup(context)
+    }
+
+    /**
+     * Combina lo que bajó de la nube (ver DataSync) con lo que ya hay en este
+     * equipo. Sin fecha por ítem acá (a diferencia de Continuar viendo), así
+     * que se respeta el orden local y se agregan al final los que falten.
+     */
+    fun mergeFromRemote(context: Context, remoto: List<ContentItem>): List<ContentItem> {
+        val local = getAll(context)
+        val clavesLocales = local.mapTo(HashSet(local.size)) { uniqueKey(it.type, it.id) }
+        val extra = remoto.filterNot { uniqueKey(it.type, it.id) in clavesLocales }
+        if (extra.isEmpty()) return local
+        val combinado = (local + extra).take(MAX)
+        prefs(context).edit().putString(KEY, gson.toJson(combinado)).apply()
+        return combinado
     }
 }

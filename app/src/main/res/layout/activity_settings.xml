@@ -305,6 +305,12 @@
                 <TextView android:id="@+id/tvCrashLogState" style="@style/SettingsValue" />
             </LinearLayout>
 
+            <!-- Copia de seguridad de Favoritos/Continuar viendo/Historial. Ver DataSync. -->
+            <LinearLayout android:id="@+id/rowDataSync" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/setting_data_sync" />
+                <TextView android:id="@+id/tvDataSyncState" style="@style/SettingsValue" />
+            </LinearLayout>
+
             <Button
                 android:id="@+id/btnLogout"
                 android:layout_width="match_parent"

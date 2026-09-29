@@ -77,6 +77,25 @@ object ContinueWatching {
         prefs(context).edit()
             .putString(KEY, gson.toJson(lista.sortedByDescending { it.updatedAt }.take(MAX)))
             .apply()
+        DataSync.scheduleBackup(context)
+    }
+
+    /**
+     * Combina lo que bajó de la nube (ver DataSync) con lo que ya hay en este
+     * equipo: por cada película o serie se queda con la entrada más nueva
+     * ([Entry.updatedAt]), sin importar de qué lado vino.
+     */
+    fun mergeFromRemote(context: Context, remoto: List<Entry>): List<Entry> {
+        fun clave(e: Entry) = "${e.type}:${e.id}"
+        val combinado = LinkedHashMap<String, Entry>()
+        leer(context).forEach { combinado[clave(it)] = it }
+        remoto.forEach { r ->
+            val actual = combinado[clave(r)]
+            if (actual == null || r.updatedAt > actual.updatedAt) combinado[clave(r)] = r
+        }
+        val lista = combinado.values.toList()
+        escribir(context, lista)
+        return lista
     }
 
     private fun sin(lista: List<Entry>, type: ContentType, id: Int) =

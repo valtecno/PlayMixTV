@@ -17,6 +17,7 @@ import com.miiptv.app.databinding.ItemServerChipBinding
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Servers
@@ -199,16 +200,26 @@ class LoginActivity : AppCompatActivity() {
                             call: retrofit2.Call<LoginResponse>,
                             response: retrofit2.Response<LoginResponse>
                         ) {
-                            setLoading(false)
                             if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
                                 Accounts.save(this@LoginActivity, urlFinal, user, pass)
                                 Session.saveExpDate(this@LoginActivity, response.body()?.userInfo?.expDate)
                                 Catalog.clear()
-                                val destino = if (WelcomeActivity.debesMostrar(this@LoginActivity))
-                                    WelcomeActivity::class.java else MainActivity::class.java
-                                startActivity(Intent(this@LoginActivity, destino))
-                                finish()
+                                // Antes de abrir el Inicio: si esta cuenta ya tenía favoritos/
+                                // continuar viendo/historial guardados en la nube (otro equipo,
+                                // o una reinstalación), se restauran acá. Con sesión nueva no hay
+                                // nada que bajar y esto no demora casi nada; con mala conexión se
+                                // sigue de largo igual (mejor esfuerzo, nunca bloquea el login). El
+                                // círculo de carga se deja encendido hasta que esto termina: apagarlo
+                                // antes dejaba un momento sin ningún indicador antes de pasar a Inicio.
+                                DataSync.restore(this@LoginActivity) {
+                                    setLoading(false)
+                                    val destino = if (WelcomeActivity.debesMostrar(this@LoginActivity))
+                                        WelcomeActivity::class.java else MainActivity::class.java
+                                    startActivity(Intent(this@LoginActivity, destino))
+                                    finish()
+                                }
                             } else {
+                                setLoading(false)
                                 Session.logout(this@LoginActivity)
                                 Toast.makeText(
                                     this@LoginActivity,

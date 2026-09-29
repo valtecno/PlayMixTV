@@ -6,12 +6,15 @@ import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.speech.RecognizerIntent
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.miiptv.app.R
@@ -40,6 +43,24 @@ class SearchActivity : AppCompatActivity() {
     private val worker = Executors.newSingleThreadExecutor()
     private var pendingFilter: Runnable? = null
     private var stillLoading = true
+
+    // Búsqueda por voz: se delega en la propia app de reconocimiento de Google
+    // (ACTION_RECOGNIZE_SPEECH), así no hace falta pedir permiso de micrófono
+    // acá — lo pide, si corresponde, esa otra app. Muchos equipos Android TV
+    // genéricos (como el que sea) no tienen Play Services ni esa app instalada,
+    // así que el botón se oculta si el intent no resuelve a nada.
+    private val voiceSearchLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val texto = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+        if (!texto.isNullOrBlank()) {
+            binding.etQuery.setText(texto)
+            binding.etQuery.setSelection(texto.length)
+            runFilter(immediate = true)
+        }
+    }
 
     /** Referencia estable para poder darse de baja del catálogo al cerrar. */
     private val catalogListener: (Boolean) -> Unit = { loading ->
@@ -111,6 +132,8 @@ class SearchActivity : AppCompatActivity() {
         // Texto suelto sin fondo: no mostraba nada al recibir el foco.
         binding.tvClearRecent.background = Appearance.withFocusState(this, ColorDrawable(Color.TRANSPARENT), 8f)
 
+        setupVoiceSearch()
+
         binding.progressBar.visibility = View.VISIBLE
         Catalog.ensureLoaded(this, onUpdate = catalogListener)
         renderRecentSearches()
@@ -146,6 +169,29 @@ class SearchActivity : AppCompatActivity() {
         }
         runFilter(immediate = true)
     }
+
+    // ---------------- Búsqueda por voz ----------------
+
+    private fun setupVoiceSearch() {
+        val intent = voiceRecognitionIntent()
+        val disponible = intent.resolveActivity(packageManager) != null
+        binding.btnVoiceSearch.visibility = if (disponible) View.VISIBLE else View.GONE
+        if (!disponible) return
+
+        binding.btnVoiceSearch.background = Appearance.withFocusState(this, ColorDrawable(Color.TRANSPARENT), 24f)
+        binding.btnVoiceSearch.setOnClickListener {
+            runCatching { voiceSearchLauncher.launch(intent) }
+                .onFailure {
+                    Toast.makeText(this, R.string.search_voice_unavailable, Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+
+    private fun voiceRecognitionIntent(): Intent =
+        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.search_voice_hint))
+        }
 
     // ---------------- Búsquedas recientes ----------------
 

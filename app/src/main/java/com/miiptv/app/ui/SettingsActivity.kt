@@ -19,6 +19,7 @@ import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Catalog
+import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PlayerPrefs
@@ -111,6 +112,10 @@ class SettingsActivity : AppCompatActivity() {
         // ANTES de applyFocusToTree (ver el comentario de más abajo): es una
         // fila normal, alcanzable con el control remoto igual que el resto.
         binding.rowCrashLog.setOnClickListener { showCrashLog() }
+        // Copia de seguridad en la nube de Favoritos/Continuar viendo/Historial:
+        // ver DataSync. Se sube sola en segundo plano con cada cambio, pero
+        // esta fila deja forzarla a mano y ver cuándo fue la última vez.
+        binding.rowDataSync.setOnClickListener { forceDataSync() }
 
         /*
          * Resalte del foco con control remoto.
@@ -189,6 +194,36 @@ class SettingsActivity : AppCompatActivity() {
             else
                 R.string.crash_log_state_available
         )
+
+        binding.tvDataSyncState.text = dataSyncStateLabel()
+    }
+
+    /** Texto de la fila "Copia de seguridad": cuándo fue la última subida exitosa. */
+    private fun dataSyncStateLabel(): String {
+        val ultima = DataSync.lastSyncAt(this)
+        if (ultima == 0L) return getString(R.string.data_sync_never)
+        val minutos = (System.currentTimeMillis() - ultima) / 60_000
+        val hace = when {
+            minutos < 1 -> getString(R.string.data_sync_minutes, 0)
+            minutos < 60 -> getString(R.string.data_sync_minutes, minutos.toInt())
+            minutos < 60 * 24 -> getString(R.string.data_sync_hours, (minutos / 60).toInt())
+            else -> getString(R.string.data_sync_days, (minutos / (60 * 24)).toInt())
+        }
+        return getString(R.string.data_sync_ok, hace)
+    }
+
+    /** Fuerza una subida ya mismo, con feedback visible (a diferencia de la que se hace sola en segundo plano). */
+    private fun forceDataSync() {
+        binding.tvDataSyncState.text = getString(R.string.data_sync_syncing)
+        DataSync.backupNow(this) { ok ->
+            // La respuesta puede llegar después de salir de esta pantalla
+            // (o de un segundo toque mientras la primera subida seguía en
+            // curso): sin este chequeo, tocar binding acá podía escribir
+            // sobre una Activity ya destruida.
+            if (isFinishing || isDestroyed) return@backupNow
+            binding.tvDataSyncState.text =
+                if (ok) dataSyncStateLabel() else getString(R.string.data_sync_failed)
+        }
     }
 
     /**
@@ -271,11 +306,18 @@ class SettingsActivity : AppCompatActivity() {
         Toast.makeText(
             this, getString(R.string.account_switched, cuenta.serverLabel), Toast.LENGTH_SHORT
         ).show()
-        startActivity(
-            Intent(this, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        )
-        finish()
+        // Igual que al iniciar sesión: si esta cuenta tiene favoritos/continuar
+        // viendo/historial guardados en la nube que este equipo todavía no
+        // tiene (por ejemplo, se agregó acá pero se usó antes en otro
+        // equipo), se restauran antes de abrir el Inicio. Mejor esfuerzo: sin
+        // conexión, sigue de largo con lo que ya haya local.
+        DataSync.restore(this) {
+            startActivity(
+                Intent(this, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            )
+            finish()
+        }
     }
 
     private fun pickBuffer() {

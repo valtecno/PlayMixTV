@@ -154,6 +154,7 @@ object Favorites {
             cachedAccountKey = accountKey(context)
         }
         prefs(context).edit().putString(KEY, gson.toJson(items)).apply()
+        DataSync.scheduleBackup(context)
     }
 
     /**
@@ -169,6 +170,21 @@ object Favorites {
             cachedKeys = emptySet()
             cachedAccountKey = null
         }
+    }
+
+    /**
+     * Combina lo que bajó de la nube (ver DataSync) con lo que ya hay en este
+     * equipo, sin pisar nada: un favorito marcado acá mientras la descarga
+     * estaba en curso no se pierde. Solo se agregan los que faltan.
+     */
+    fun mergeFromRemote(context: Context, remoto: List<ContentItem>): List<ContentItem> {
+        val local = load(context)
+        val clavesLocales = cachedKeys
+        val nuevos = remoto.filter { uniqueKey(it) !in clavesLocales }
+        if (nuevos.isEmpty()) return local
+        val combinado = local + nuevos
+        save(context, combinado)
+        return combinado
     }
 
     /**

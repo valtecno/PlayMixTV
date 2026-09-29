@@ -29,6 +29,19 @@ data class CodeValidationResponse(
     val isOk: Boolean get() = status == "success" && !username.isNullOrBlank() && !password.isNullOrBlank()
 }
 
+/** Respuesta de sync.php?accion=obtener: [datos] es el JSON guardado tal cual (o null si no hay nada aún). */
+data class SyncGetResponse(
+    @SerializedName("status") val status: String?,
+    @SerializedName("datos")  val datos: String?,
+    @SerializedName("mensaje") val mensaje: String?
+)
+
+/** Respuesta de sync.php?accion=guardar. */
+data class SyncPostResponse(
+    @SerializedName("status") val status: String?,
+    @SerializedName("mensaje") val mensaje: String?
+)
+
 data class Category(
     @SerializedName("category_id") val categoryId: String,
     @SerializedName("category_name") val categoryName: String

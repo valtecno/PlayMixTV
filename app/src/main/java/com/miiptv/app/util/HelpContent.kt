@@ -58,8 +58,12 @@ object HelpContent {
             Tema.PRIMEROS_PASOS,
             "¿Cómo busco un canal, una película o una serie?",
             "Toca la lupa de la barra superior y escribe al menos 2 letras. Busca canales, películas y " +
-                "series a la vez, y guarda tus búsquedas recientes para repetirlas con un toque.",
-            listOf("buscar", "busqueda", "lupa", "encontrar", "donde esta")
+                "series a la vez, y guarda tus búsquedas recientes para repetirlas con un toque. Si el " +
+                "equipo lo permite, junto al buscador aparece un botón de micrófono para buscar por voz " +
+                "en vez de escribir; en algunos equipos de TV sin los servicios de Google ese botón no " +
+                "aparece, y hay que escribir con el control remoto.",
+            listOf("buscar", "busqueda", "lupa", "encontrar", "donde esta", "voz", "microfono",
+                "buscar por voz", "hablar", "dictar")
         ),
         Pregunta(
             Tema.PRIMEROS_PASOS,
@@ -311,6 +315,16 @@ object HelpContent {
             "¿Cómo cierro sesión?",
             "Ve a Cuenta → Cerrar sesión, al final de la pantalla.",
             listOf("cerrar sesion", "logout", "salir cuenta")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Se pierden mis favoritos si cambio de equipo o reinstalo la app?",
+            "No. Tus Favoritos, Continuar viendo e Historial se guardan también en la nube (no solo en " +
+                "el equipo), y se restauran solos al iniciar sesión de nuevo. En Cuenta → Ajustes hay una " +
+                "fila llamada \"Copia de seguridad\" con la fecha de la última vez que se guardó, y que " +
+                "también sirve para forzarla en el momento si no quieres esperar.",
+            listOf("perder favoritos", "cambio de equipo", "reinstalar", "reinstale", "nuevo celular",
+                "nueva tv", "copia de seguridad", "respaldo", "sincronizar", "sincronizacion", "nube")
         ),
         Pregunta(
             Tema.CUENTA,

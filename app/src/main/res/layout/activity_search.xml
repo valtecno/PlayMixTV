@@ -13,23 +13,44 @@
         android:titleTextColor="@color/text_light"
         android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar" />
 
-    <!-- Campo de búsqueda con estilo vidrio -->
-    <EditText
-        android:id="@+id/etQuery"
+    <!-- Campo de búsqueda con estilo vidrio, más el botón de búsqueda por voz -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
+        android:layout_marginEnd="16dp"
         android:layout_marginTop="4dp"
-        android:background="@drawable/bg_glass_card"
-        android:padding="14dp"
-        android:hint="@string/search_hint"
-        android:textColor="@color/text_light"
-        android:textColorHint="@color/text_muted"
-        android:textCursorDrawable="@null"
-        android:inputType="text"
-        android:maxLines="1"
-        android:imeOptions="actionSearch" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_glass_card">
+
+        <EditText
+            android:id="@+id/etQuery"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="14dp"
+            android:background="@null"
+            android:hint="@string/search_hint"
+            android:textColor="@color/text_light"
+            android:textColorHint="@color/text_muted"
+            android:textCursorDrawable="@null"
+            android:inputType="text"
+            android:maxLines="1"
+            android:imeOptions="actionSearch" />
+
+        <ImageButton
+            android:id="@+id/btnVoiceSearch"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="4dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_mic"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/search_voice_hint"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <!-- Filtros por tipo de contenido -->
     <LinearLayout

@@ -32,6 +32,8 @@
     <string name="action_parental">Control parental</string>
 
     <string name="search_hint">Buscar canales, películas o series…</string>
+    <string name="search_voice_hint">Buscar por voz</string>
+    <string name="search_voice_unavailable">Este equipo no tiene reconocimiento de voz disponible</string>
     <string name="parental_title">Control parental</string>
     <string name="parental_create_pin">Crear PIN</string>
     <string name="parental_change_pin">Cambiar PIN</string>
@@ -306,6 +308,15 @@
     <string name="setting_crash_log">Código de errores</string>
     <string name="crash_log_state_available">Disponible</string>
     <string name="crash_log_state_empty">Sin errores</string>
+
+    <string name="setting_data_sync">Copia de seguridad</string>
+    <string name="data_sync_never">Nunca • Toca para sincronizar</string>
+    <string name="data_sync_syncing">Sincronizando…</string>
+    <string name="data_sync_ok">Sincronizado hace %1$s</string>
+    <string name="data_sync_failed">No se pudo sincronizar</string>
+    <string name="data_sync_minutes">%1$d min</string>
+    <string name="data_sync_hours">%1$d h</string>
+    <string name="data_sync_days">%1$d d</string>
     <!-- ===== Multi-pantalla ===== -->
     <string name="multiscreen_slot_empty">Sin canal</string>
     
