@@ -1030,11 +1030,26 @@ class MainActivity : AppCompatActivity() {
         // Si el catálogo está vacío y hay datos guardados en disco, los cargamos
         // de inmediato para que la pantalla no quede en blanco mientras baja el
         // nuevo. El usuario ve contenido al instante aunque no haya conexión.
-        if (Catalog.isEmpty && Catalog.loadFromDisk(this)) {
-            Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
+        //
+        // loadFromDiskAsync (no loadFromDisk) a propósito: parsear el catálogo
+        // entero -en un panel grande, decenas de miles de ítems- en el hilo
+        // principal, justo al abrir la app, es la clase de ráfaga que puede
+        // hacer que el sistema mate el proceso por memoria en equipos con poca
+        // RAM (ver el comentario largo en Catalog.loadFromDisk). Como ahora es
+        // asíncrono, el resultado puede llegar después de que esta pantalla ya
+        // se haya ido: de ahí el resguardo isFinishing/isDestroyed antes de
+        // tocar cualquier vista.
+        if (Catalog.isEmpty) {
+            Catalog.loadFromDiskAsync(this) { cargoDeDisco ->
+                if (isFinishing || isDestroyed) return@loadFromDiskAsync
+                if (cargoDeDisco) {
+                    Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
+                }
+                Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
+            }
+        } else {
+            Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
         }
-
-        Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
 
         // Y se deja programado el corte de esta noche por si la app queda abierta.
         programarRefrescoDiario()

@@ -209,26 +209,90 @@ object Catalog {
     /**
      * Carga el catálogo guardado en disco y devuelve true si había algo.
      * Solo se usa cuando la descarga en línea falla por completo.
+     *
+     * SIEMPRE en el hilo que la llama (ver [loadFromDiskAsync] para la
+     * versión que corre en segundo plano). Queda pública por compatibilidad,
+     * pero MainActivity ya no la llama directo: parsear el catálogo entero
+     * -en un panel grande, decenas de miles de ítems- desde el hilo
+     * principal significa construir todos esos objetos ahí mismo, justo al
+     * abrir la app. En un Android TV box con poca memoria eso es exactamente
+     * el tipo de ráfaga que puede hacer que el sistema mate el proceso por
+     * memoria ANTES de que salte ninguna excepción atrapable -por eso ese
+     * cierre nunca dejaba nada en CrashLogger, a diferencia del
+     * OutOfMemoryError original (ese sí era una excepción de Java real,
+     * capturable; esto es distinto: el sistema operativo corta el proceso
+     * desde afuera).
      */
     fun loadFromDisk(context: Context): Boolean {
+        val leido = leerDeDiscoPuro(context) ?: return false
+        aplicarLeidoDeDisco(context, leido)
+        return true
+    }
+
+    /** Lo que se leyó de disco, todavía sin aplicar a las listas compartidas. */
+    private class CatalogoLeido(
+        val live: List<ContentItem>,
+        val movies: List<ContentItem>,
+        val series: List<ContentItem>
+    )
+
+    /**
+     * Solo lee y parsea el JSON de los tres bloques -sin tocar [live]/[movies]/
+     * [series] ni ningún otro campo compartido. Pensada para poder correr en
+     * [ioExecutor] (un hilo aparte) sin ninguna carrera: no lee ni escribe
+     * nada que el hilo principal pueda estar usando al mismo tiempo.
+     */
+    private fun leerDeDiscoPuro(context: Context): CatalogoLeido? {
         val prefs = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
-        val stamp = prefs.getString(CACHE_KEY_SERVER, null) ?: return false
+        val stamp = prefs.getString(CACHE_KEY_SERVER, null) ?: return null
         val serverNow = "${Session.server(context)}|${Session.username(context)}"
-        if (stamp != serverNow) return false   // caché de otro sistema, no sirve
+        if (stamp != serverNow) return null   // caché de otro sistema, no sirve
 
         val type = object : TypeToken<List<ContentItem>>() {}.type
         return try {
-            val liveList   = leerBloque(context, "live", type) ?: return false
-            val moviesList = leerBloque(context, "movies", type) ?: return false
-            val seriesList = leerBloque(context, "series", type) ?: return false
-            if (liveList.isEmpty() && moviesList.isEmpty() && seriesList.isEmpty()) return false
-            live.addAll(liveList); movies.addAll(moviesList); series.addAll(seriesList)
-            liveVersion++
-            stampServer = Session.server(context).trim().trimEnd('/')
-            stampUser   = Session.username(context)
-            true
+            val liveList   = leerBloque(context, "live", type) ?: return null
+            val moviesList = leerBloque(context, "movies", type) ?: return null
+            val seriesList = leerBloque(context, "series", type) ?: return null
+            if (liveList.isEmpty() && moviesList.isEmpty() && seriesList.isEmpty()) return null
+            CatalogoLeido(liveList, moviesList, seriesList)
         } catch (e: Exception) {
-            false
+            null
+        }
+    }
+
+    /**
+     * Vuelca lo ya leído a las listas compartidas. SIEMPRE en el hilo
+     * principal (ver [loadFromDiskAsync]): es la única parte de la carga
+     * desde disco que toca estado compartido, así que es la única que
+     * necesita correr donde nadie más puede estar leyéndolo a la vez.
+     */
+    private fun aplicarLeidoDeDisco(context: Context, leido: CatalogoLeido) {
+        live.addAll(leido.live); movies.addAll(leido.movies); series.addAll(leido.series)
+        liveVersion++
+        stampServer = Session.server(context).trim().trimEnd('/')
+        stampUser   = Session.username(context)
+    }
+
+    /**
+     * Igual que [loadFromDisk], pero parseando el JSON en [ioExecutor] (un
+     * hilo aparte) y volcando el resultado a las listas compartidas ya en el
+     * hilo principal, antes de avisar por [onDone] -así quien llama puede
+     * tocar vistas sin preocuparse por eso, y las listas [live]/[movies]/
+     * [series] nunca se mutan desde el hilo de fondo (esa mutación,
+     * sin sincronizar, podía chocar con una lectura simultánea del hilo
+     * principal -adaptador, buscador- y terminar en una
+     * ConcurrentModificationException o en datos a medio escribir). Ver el
+     * porqué de mover esto del hilo principal en el comentario de
+     * [loadFromDisk].
+     */
+    fun loadFromDiskAsync(context: Context, onDone: (Boolean) -> Unit) {
+        val app = context.applicationContext
+        ioExecutor.execute {
+            val leido = leerDeDiscoPuro(app)
+            ui.post {
+                if (leido != null) aplicarLeidoDeDisco(app, leido)
+                onDone(leido != null)
+            }
         }
     }
 

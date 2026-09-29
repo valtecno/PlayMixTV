@@ -65,6 +65,20 @@
 # tras una actualización, la lista guardada se leería vacía.
 -keep class com.miiptv.app.util.ContinueWatching$Entry { *; }
 
+# c) EL BUG REAL detrás de "no abre la aplicación, se cierra sola" reportado
+#    por un usuario (confirmado con el texto exacto que guardó CrashLogger):
+#    DataSync.Payload -el blob que se sube/baja de la nube en Mi Espacio- es
+#    exactamente el mismo caso que (b) pero se quedó afuera de esta lista.
+#    Sin este -keep, R8 puede renombrar sus campos Y, más grave, perder la
+#    firma genérica de sus campos List<ContentItem>: Gson entonces no sabe a
+#    qué tipo deserializar cada elemento de la lista y arma un LinkedTreeMap
+#    en vez de un ContentItem. Eso no se nota al escribir (Gson igual arma
+#    algún JSON), pero revienta con ClassCastException apenas algo intenta
+#    usar esos elementos como ContentItem -en DataSync.restore(), que corre
+#    ANTES de abrir Inicio, así que el proceso entero moría justo después de
+#    ingresar el código de acceso, sin llegar nunca a la pantalla principal.
+-keep class com.miiptv.app.util.DataSync$Payload { *; }
+
 # Igual para el modelo de las radios, que también viaja por Gson.
 -keep class com.miiptv.app.api.RadioStation { *; }
 
