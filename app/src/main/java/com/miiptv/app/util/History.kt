@@ -23,11 +23,8 @@ object History {
 
     private fun uniqueKey(type: ContentType, id: Int) = "$type:$id"
 
-    private fun accountKey(context: Context): String {
-        val server = com.miiptv.app.api.Session.server(context)
-        val user   = com.miiptv.app.api.Session.username(context)
-        return "$server|$user".replace(Regex("[^A-Za-z0-9]"), "_").take(80)
-    }
+    /** Clave cuenta+perfil. Cada perfil tiene su propio historial. */
+    private fun accountKey(context: Context): String = Profiles.activeKey(context)
 
     private fun prefs(context: Context) =
         context.getSharedPreferences("miiptv_history_${accountKey(context)}", Context.MODE_PRIVATE)
@@ -74,6 +71,9 @@ object History {
 
     /** Momento (epoch ms) de la última vez que se vació el historial, o 0 si nunca. */
     fun clearedAt(context: Context): Long = prefs(context).getLong(KEY_CLEARED_AT, 0L)
+
+    /** Fuerza releer del disco en la próxima consulta (al cambiar de perfil). */
+    fun invalidate() { /* History no tiene caché en memoria; la clave cambia con el perfil. */ }
 
     fun clear(context: Context) {
         prefs(context).edit()

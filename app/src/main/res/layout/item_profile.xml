@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="12dp"
+    android:focusable="true"
+    android:clickable="true"
+    android:background="?attr/selectableItemBackgroundBorderless">
+
+    <!-- Círculo de color con emoji del avatar -->
+    <FrameLayout
+        android:id="@+id/flAvatarBg"
+        android:layout_width="100dp"
+        android:layout_height="100dp">
+
+        <!-- Fondo circular coloreado -->
+        <View
+            android:id="@+id/vAvatarCircle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_profile_avatar"/>
+
+        <!-- Emoji del avatar centrado -->
+        <TextView
+            android:id="@+id/tvAvatarEmoji"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textSize="42sp"
+            android:includeFontPadding="false"/>
+
+        <!-- Ícono de editar (lápiz), solo visible en modo edición) -->
+        <ImageView
+            android:id="@+id/ivEditOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_edit_overlay"
+            android:visibility="gone"
+            android:background="#88000000"
+            android:padding="28dp"/>
+
+    </FrameLayout>
+
+    <!-- Nombre del perfil -->
+    <TextView
+        android:id="@+id/tvProfileName"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:textColor="#CCCCCC"
+        android:textSize="14sp"
+        android:maxLines="1"
+        android:ellipsize="end"/>
+
+</LinearLayout>

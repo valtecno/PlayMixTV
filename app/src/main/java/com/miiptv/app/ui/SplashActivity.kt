@@ -175,7 +175,8 @@ class SplashActivity : AppCompatActivity() {
         val next = when {
             // Primera vez: elegir móvil o TV antes que nada
             !DeviceMode.isChosen(this) -> DeviceModeActivity::class.java
-            Session.isLoggedIn(this) -> MainActivity::class.java
+            // Logueado: pasar por selector de perfiles (como Netflix)
+            Session.isLoggedIn(this) -> ProfileSelectorActivity::class.java
             else -> LoginActivity::class.java
         }
         startActivity(Intent(this, next))

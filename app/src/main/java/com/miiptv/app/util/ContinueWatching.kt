@@ -59,14 +59,14 @@ object ContinueWatching {
 
     private val gson = Gson()
 
-    private fun accountKey(context: Context): String {
-        val server = com.miiptv.app.api.Session.server(context)
-        val user = com.miiptv.app.api.Session.username(context)
-        return "$server|$user".replace(Regex("[^A-Za-z0-9]"), "_").take(80)
-    }
+    /** Clave cuenta+perfil. Cada perfil tiene su propio "Continuar viendo". */
+    private fun accountKey(context: Context): String = Profiles.activeKey(context)
 
     private fun prefs(context: Context) =
         context.getSharedPreferences("miiptv_continue_${accountKey(context)}", Context.MODE_PRIVATE)
+
+    /** Fuerza releer del disco en la próxima consulta (al cambiar de perfil). */
+    fun invalidate() { /* ContinueWatching no tiene caché en memoria; la clave cambia con el perfil. */ }
 
     private fun leer(context: Context): List<Entry> {
         val json = prefs(context).getString(KEY, null) ?: return emptyList()

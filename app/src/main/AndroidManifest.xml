@@ -101,6 +101,7 @@
             android:exported="false" />
 
         <activity android:name=".ui.WelcomeActivity" android:exported="false" />
+        <activity android:name=".ui.ProfileSelectorActivity" android:exported="false" />
 
         <activity
             android:name=".ui.SplashActivity"
