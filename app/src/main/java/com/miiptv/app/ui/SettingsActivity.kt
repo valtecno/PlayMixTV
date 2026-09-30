@@ -104,11 +104,7 @@ class SettingsActivity : AppCompatActivity() {
             .takeIf { it.isNotBlank() }
             ?.let { Servers.labelFor(it) } ?: "—"
         binding.tvServer.text = getString(R.string.settings_on_server, sistemaActual)
-        binding.rowSwitchProfile.setOnClickListener {
-            ProfileSelectorActivity.start(this, fromSettings = true)
-        }
-        binding.rowSwitchAccount.setOnClickListener { switchAccount() }
-        binding.rowAudio.setOnClickListener { showAudioDialog() }
+        binding.rowSwitchProfile.setOnClickListener { showProfileMenu() }
         binding.btnLogout.setOnClickListener { confirmLogout() }
         // Código de errores: para equipos (sobre todo TV box) donde no hay
         // forma práctica de sacar un logcat. Ver CrashLogger. Tiene que ir
@@ -238,6 +234,27 @@ class SettingsActivity : AppCompatActivity() {
      * como tarjeta, marca la activa, y "Agregar otra cuenta" es un botón real
      * con el degradado de la app, no un texto suelto.
      */
+    /** Menú unificado de perfil: cambiar, editar, cuenta y audio en un solo lugar. */
+    private fun showProfileMenu() {
+        val opciones = arrayOf(
+            "👤  ${getString(R.string.profile_switch)}",
+            "✏️  ${getString(R.string.profile_edit_title)}",
+            "🔄  ${getString(R.string.switch_account)}",
+            "🔊  ${getString(R.string.setting_audio)}"
+        )
+        AlertDialog.Builder(this, R.style.AppDialog)
+            .setTitle(getString(R.string.profile_manage))
+            .setItems(opciones) { _, which ->
+                when (which) {
+                    0 -> ProfileSelectorActivity.start(this, fromSettings = true)
+                    1 -> ProfileSelectorActivity.startEditActive(this)
+                    2 -> switchAccount()
+                    3 -> showAudioDialog()
+                }
+            }
+            .show()
+    }
+
     private fun switchAccount() {
         val vista = DialogAccountsBinding.inflate(layoutInflater)
         val dialog = AlertDialog.Builder(this).setView(vista.root).create()

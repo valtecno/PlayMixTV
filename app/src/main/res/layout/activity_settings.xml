@@ -311,20 +311,13 @@
                     android:textSize="22sp" />
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/rowSwitchAccount" style="@style/SettingsRow">
-                <TextView style="@style/SettingsLabel" android:text="@string/switch_account" />
-                <TextView android:id="@+id/tvAccountCount" style="@style/SettingsValue" />
-            </LinearLayout>
-
-            <LinearLayout android:id="@+id/rowAudio" style="@style/SettingsRow">
-                <TextView style="@style/SettingsLabel" android:text="@string/setting_audio" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="@color/text_muted"
-                    android:textSize="22sp" />
-            </LinearLayout>
+            <!-- tvAccountCount se mantiene oculto para compatibilidad con el binding;
+                 la lógica de cuenta y audio ahora vive en el menú del botón Perfiles. -->
+            <TextView
+                android:id="@+id/tvAccountCount"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
             <!-- Actualización de la app (distinta de "Actualizar catálogo", que
                  refresca el contenido del servidor) -->
