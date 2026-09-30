@@ -3,6 +3,10 @@ package com.miiptv.app.ui
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
 import com.miiptv.app.util.Epg
@@ -42,6 +46,7 @@ import com.miiptv.app.util.CrashLogger
 import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
+import com.miiptv.app.util.Profiles
 import com.miiptv.app.util.History
 import com.miiptv.app.util.ImageLoader
 import com.miiptv.app.util.KidsFilter
@@ -1108,10 +1113,55 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.action_account)?.isVisible = sueltos
         menu.findItem(R.id.action_youtube)?.isVisible = !kidsMode
 
+        // Muestra el avatar del perfil activo en el ícono de cuenta (solo en TV,
+        // donde ese ícono vive en la barra; en móvil está dentro del menú rápido)
+        if (!movil) {
+            menu.findItem(R.id.action_account)?.icon = perfilAvatarIcon()
+        }
+
         fijarBajadaDelToolbar()
         ocultarBotonFantasma()
 
         return super.onPrepareOptionsMenu(menu)
+    }
+
+    /**
+     * Genera un drawable circular con el emoji y el color del perfil activo.
+     *
+     * Reemplaza al ícono genérico de persona: el usuario ve de un vistazo qué
+     * perfil está usando sin necesidad de entrar a ajustes.
+     *
+     * El tamaño (40 dp) coincide con el área táctil del ícono en la toolbar;
+     * el sistema lo escala solo si hace falta, pero así queda nítido a cualquier
+     * densidad de pantalla.
+     */
+    private fun perfilAvatarIcon(): BitmapDrawable {
+        val perfil = Profiles.active(this)
+        val avatar = perfil?.let { Profiles.Avatar.fromId(it.avatarId) }
+            ?: Profiles.Avatar.STAR
+
+        val dp = resources.displayMetrics.density
+        val size = (40 * dp).toInt()
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+
+        // Círculo de fondo con el color del avatar
+        val paintBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = avatar.color }
+        val r = size / 2f
+        canvas.drawCircle(r, r, r, paintBg)
+
+        // Emoji centrado
+        val textSize = size * 0.52f
+        val paintText = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.textSize = textSize
+            textAlign = Paint.Align.CENTER
+        }
+        // Centrar verticalmente usando las métricas reales del texto
+        val metrics = paintText.fontMetrics
+        val textY = r - (metrics.ascent + metrics.descent) / 2f
+        canvas.drawText(avatar.emoji, r, textY, paintText)
+
+        return BitmapDrawable(resources, bmp)
     }
 
     /**
@@ -1251,6 +1301,10 @@ class MainActivity : AppCompatActivity() {
         accion(R.id.quickAccount, R.string.action_account) {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+
+        // Muestra el avatar del perfil activo en el botón de cuenta del popup
+        vista.findViewById<android.widget.ImageButton>(R.id.quickAccount)
+            ?.setImageDrawable(perfilAvatarIcon())
 
         val margen = (6 * resources.displayMetrics.density).toInt()
         popup.showAsDropDown(ancla, 0, margen, Gravity.END)
@@ -2857,6 +2911,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Refresca el ícono de cuenta por si el perfil cambió mientras la app
+        // estaba en segundo plano (ej.: vuelta desde ProfileSelectorActivity)
+        invalidateOptionsMenu()
         // Al volver a primer plano puede haber pasado la noche entera con el
         // aparato dormido, así que se recalcula el corte contra la fecha real.
         // Si mientras tanto cambió el día lógico, esto lo detecta y refresca.
