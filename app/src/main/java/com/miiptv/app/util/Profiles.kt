@@ -119,7 +119,7 @@ object Profiles {
     fun getAll(context: Context): List<Profile> {
         val json = prefs(context).getString(KEY_PROFILES, null) ?: return initDefaults(context)
         val type = object : TypeToken<List<Profile>>() {}.type
-        val list: List<Profile>? = runCatching { gson.fromJson(json, type) }.getOrNull()
+        val list: List<Profile>? = runCatching { gson.fromJson<List<Profile>>(json, type) }.getOrNull()
         return if (list.isNullOrEmpty()) initDefaults(context) else list
     }
 
