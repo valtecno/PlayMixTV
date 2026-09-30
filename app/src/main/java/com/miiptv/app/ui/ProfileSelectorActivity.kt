@@ -142,7 +142,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
         rvAvatars.layoutManager = GridLayoutManager(this, 5)
         rvAvatars.adapter = avatarAdapter
 
-        val dialog = AlertDialog.Builder(this, R.style.Theme_MiiPTV_Dialog)
+        val dialog = AlertDialog.Builder(this, R.style.AppDialog)
             .setView(dialogView)
             .create()
 
