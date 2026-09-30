@@ -84,10 +84,6 @@ class SettingsActivity : AppCompatActivity() {
             )
         }
 
-        binding.rowPersonalize.setOnClickListener {
-            startActivity(Intent(this, PersonalizeActivity::class.java))
-        }
-
         // La acción vive ahora en su propio botón; el recuadro de abajo solo
         // muestra el recuento y, con pulsación larga, abre el diagnóstico.
         binding.rowUpdate.setOnClickListener { UpdateDialog.check(this, manual = true) }
@@ -234,11 +230,12 @@ class SettingsActivity : AppCompatActivity() {
      * como tarjeta, marca la activa, y "Agregar otra cuenta" es un botón real
      * con el degradado de la app, no un texto suelto.
      */
-    /** Menú unificado de perfil: cambiar, editar, cuenta y audio en un solo lugar. */
+    /** Menú unificado de perfil: cambiar, editar, apariencia, cuenta y audio. */
     private fun showProfileMenu() {
         val opciones = arrayOf(
             "👤  ${getString(R.string.profile_switch)}",
             "✏️  ${getString(R.string.profile_edit_title)}",
+            "🎨  ${getString(R.string.setting_personalize)}",
             "🔄  ${getString(R.string.switch_account)}",
             "🔊  ${getString(R.string.setting_audio)}"
         )
@@ -248,8 +245,9 @@ class SettingsActivity : AppCompatActivity() {
                 when (which) {
                     0 -> ProfileSelectorActivity.start(this, fromSettings = true)
                     1 -> ProfileSelectorActivity.startEditActive(this)
-                    2 -> switchAccount()
-                    3 -> showAudioDialog()
+                    2 -> startActivity(Intent(this, PersonalizeActivity::class.java))
+                    3 -> switchAccount()
+                    4 -> showAudioDialog()
                 }
             }
             .show()
