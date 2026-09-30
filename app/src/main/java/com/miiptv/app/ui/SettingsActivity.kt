@@ -104,9 +104,6 @@ class SettingsActivity : AppCompatActivity() {
             .takeIf { it.isNotBlank() }
             ?.let { Servers.labelFor(it) } ?: "—"
         binding.tvServer.text = getString(R.string.settings_on_server, sistemaActual)
-        binding.rowEditProfile.setOnClickListener {
-            ProfileSelectorActivity.startEditActive(this)
-        }
         binding.rowSwitchProfile.setOnClickListener {
             ProfileSelectorActivity.start(this, fromSettings = true)
         }
