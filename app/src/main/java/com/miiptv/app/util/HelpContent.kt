@@ -69,15 +69,15 @@ object HelpContent {
             Tema.PRIMEROS_PASOS,
             "¿Qué son Sistema L y Sistema XL?",
             "Son los dos servidores de PlayMix TV. Cada uno tiene su propio catálogo de canales, películas " +
-                "y series. El sistema se elige al iniciar sesión; para pasar al otro ve a Cuenta (el ícono " +
-                "de persona) → Cambiar de cuenta.",
+                "y series. El sistema se elige al iniciar sesión; para pasar al otro toca el ícono de " +
+                "perfil de la barra superior → Perfiles → Cambiar de cuenta.",
             listOf("sistema", "servidor", "l", "xl", "cambiar servidor")
         ),
         Pregunta(
             Tema.PRIMEROS_PASOS,
             "¿Cómo cambio entre modo TV y modo celular?",
-            "Ve a Cuenta (el ícono de persona) → Modo de pantalla. TV muestra las secciones lado a lado " +
-                "y está pensado para control remoto; Móvil las apila y usa grillas más angostas.",
+            "Ve a Ajustes → Modo de pantalla. TV muestra las secciones lado a lado y está pensado para " +
+                "control remoto; Móvil las apila y usa grillas más angostas.",
             listOf("modo", "tv", "celular", "movil", "tablet", "pantalla")
         ),
 
@@ -143,7 +143,7 @@ object HelpContent {
             "¿Cómo veo una película?",
             "Entra a Películas, elige una categoría y después la película. Según cómo lo tengas " +
                 "configurado, empieza a reproducirse o primero muestra la ficha con sinopsis, reparto y " +
-                "director. Se cambia en Cuenta → Personalizar apariencia → Al tocar una película.",
+                "director. Se cambia en Ajustes → Perfiles → Personalizar apariencia → Al tocar una película.",
             listOf("pelicula", "peliculas", "ver pelicula", "ficha", "sinopsis")
         ),
         Pregunta(
@@ -167,15 +167,15 @@ object HelpContent {
             Tema.PELICULAS,
             "¿Cómo cambio el idioma del audio o pongo subtítulos?",
             "Mientras miras, usa los botones de pista de audio y de subtítulos del reproductor. Para " +
-                "dejar un idioma preferido fijo, ve a Cuenta → Audio: ahí eliges el idioma de audio y los " +
-                "subtítulos que se usan al abrir películas y series.",
+                "dejar un idioma preferido fijo, ve a Ajustes → Perfiles → Audio: ahí eliges el idioma " +
+                "de audio y los subtítulos que se usan al abrir películas y series.",
             listOf("idioma", "audio", "subtitulos", "español", "ingles", "latino", "doblaje")
         ),
         Pregunta(
             Tema.PELICULAS,
             "¿Puedo cambiar cuántas películas o series se ven por fila?",
-            "Sí. Ve a Cuenta → Personalizar apariencia y elige las columnas de la vista de películas y " +
-                "de series.",
+            "Sí. Ve a Ajustes → Perfiles → Personalizar apariencia y elige las columnas de la vista " +
+                "de películas y de series.",
             listOf("columnas", "grilla", "tamaño", "fila", "vista")
         ),
 
@@ -240,13 +240,13 @@ object HelpContent {
         Pregunta(
             Tema.REPRODUCTOR,
             "La imagen se ve cortada o estirada",
-            "Ve a Cuenta → Relación de aspecto y prueba Ajustar (se ve completa), Rellenar, Zoom o Estirar.",
+            "Ve a Ajustes → Relación de aspecto y prueba Ajustar (se ve completa), Rellenar, Zoom o Estirar.",
             listOf("cortada", "estirada", "aspecto", "bordes", "negro", "zoom", "tamaño imagen")
         ),
         Pregunta(
             Tema.REPRODUCTOR,
             "El video se corta o se queda cargando",
-            "Ve a Cuenta → Buffer y elige Alto (conexión inestable): tarda un poco más en empezar pero " +
+            "Ve a Ajustes → Buffer y elige Alto (conexión inestable): tarda un poco más en empezar pero " +
                 "se corta menos. Deja también activado Reconectar automáticamente. Si pasa con un solo " +
                 "canal, puede que ese canal esté caído en el servidor: prueba otro.",
             listOf("se corta", "cargando", "buffer", "lento", "congela", "pausa sola", "trabado", "lag")
@@ -255,14 +255,14 @@ object HelpContent {
             Tema.REPRODUCTOR,
             "Se escucha muy bajo o no se escucha",
             "Primero revisa el volumen del reproductor y que el mini reproductor no esté silenciado. En " +
-                "Cuenta → Audio está Normalizar volumen del sistema. Si aparece un aviso de audio no " +
-                "compatible, elige otra pista con el botón de audio.",
+                "Ajustes → Perfiles → Audio está Normalizar volumen del sistema. Si aparece un aviso de " +
+                "audio no compatible, elige otra pista con el botón de audio.",
             listOf("bajo", "sin sonido", "no se escucha", "volumen", "audio")
         ),
         Pregunta(
             Tema.REPRODUCTOR,
             "¿Puedo seguir escuchando al salir de la app?",
-            "Sí. Activa en Cuenta la opción Seguir sonando en segundo plano.",
+            "Sí. Activa en Ajustes la opción Seguir sonando en segundo plano.",
             listOf("segundo plano", "fondo", "salir", "musica", "background")
         ),
         Pregunta(
@@ -283,44 +283,62 @@ object HelpContent {
         // ---------------- Cuenta y ajustes ----------------
         Pregunta(
             Tema.CUENTA,
+            "¿Cómo cambio de perfil, edito mi nombre o elijo otro avatar?",
+            "Toca el ícono de la barra superior (muestra tu avatar actual) y elige Perfiles. Desde " +
+                "ahí puedes cambiar de perfil tocando uno, o editar el nombre y avatar del perfil activo " +
+                "tocando el lápiz. También está en Ajustes → Perfiles.",
+            listOf("perfil", "perfiles", "avatar", "nombre perfil", "editar perfil", "cambiar perfil",
+                "lapiz", "icono perfil", "emoji")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Cómo cambio de cuenta o agrego otra?",
+            "Toca el ícono de perfil en la barra superior (o ve a Ajustes → Perfiles) y elige " +
+                "Cambiar de cuenta. Ahí están las cuentas guardadas (toca una para usarla) y la " +
+                "opción Agregar otra cuenta.",
+            listOf("cuenta", "otra cuenta", "usuario", "cambiar cuenta", "agregar cuenta")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Puedo cambiar los colores o la apariencia de la app?",
+            "Sí. Toca el ícono de perfil en la barra superior (o ve a Ajustes → Perfiles) y elige " +
+                "Personalizar apariencia. Ahí eliges el color principal, el tamaño de los subtítulos " +
+                "y cómo se ven películas y series.",
+            listOf("color", "colores", "tema", "apariencia", "personalizar", "subtitulos grandes")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Cómo cambio el idioma de audio o los subtítulos predeterminados?",
+            "Toca el ícono de perfil en la barra superior (o ve a Ajustes → Perfiles) y elige Audio. " +
+                "Ahí fijas el idioma de audio y de subtítulos que se usan al abrir películas y series.",
+            listOf("idioma predeterminado", "audio preferido", "subtitulos fijos", "idioma default")
+        ),
+        Pregunta(
+            Tema.CUENTA,
             "¿Cómo actualizo el contenido?",
-            "Toca la flecha circular amarilla de la barra superior (Actualizar) o ve a Cuenta → " +
-                "Actualizar. Igual, la app baja el catálogo nuevo sola cada madrugada.",
+            "Toca la flecha circular amarilla de la barra superior (Actualizar) o ve a Ajustes → " +
+                "Actualizar catálogo. Igual, la app baja el catálogo nuevo sola cada madrugada.",
             listOf("actualizar", "refrescar", "nuevo contenido", "recargar", "catalogo")
         ),
         Pregunta(
             Tema.CUENTA,
             "¿Cómo actualizo la aplicación?",
-            "La app te avisa sola cuando hay una versión nueva. También puedes buscarla en Cuenta → " +
+            "La app te avisa sola cuando hay una versión nueva. También puedes buscarla en Ajustes → " +
                 "Buscar actualizaciones. La primera vez Android te pide permiso para instalar aplicaciones " +
                 "desde PlayMix TV.",
             listOf("version", "actualizacion", "actualizar app", "app", "nueva version", "instalar", "update")
         ),
         Pregunta(
             Tema.CUENTA,
-            "¿Cómo cambio de cuenta o agrego otra?",
-            "Ve a Cuenta → Cambiar de cuenta. Ahí están las cuentas guardadas (toca una para usarla) y " +
-                "la opción Agregar otra cuenta.",
-            listOf("cuenta", "otra cuenta", "usuario", "cambiar cuenta", "agregar cuenta")
-        ),
-        Pregunta(
-            Tema.CUENTA,
-            "¿Puedo cambiar los colores de la app?",
-            "Sí. En Cuenta → Personalizar apariencia eliges el color principal, el tamaño de los " +
-                "subtítulos y cómo se ven películas y series.",
-            listOf("color", "colores", "tema", "apariencia", "personalizar", "subtitulos grandes")
-        ),
-        Pregunta(
-            Tema.CUENTA,
             "¿Cómo cierro sesión?",
-            "Ve a Cuenta → Cerrar sesión, al final de la pantalla.",
+            "Ve a Ajustes → Cerrar sesión, al final de la pantalla.",
             listOf("cerrar sesion", "logout", "salir cuenta")
         ),
         Pregunta(
             Tema.CUENTA,
             "¿Se pierden mis favoritos si cambio de equipo o reinstalo la app?",
             "No. Tus Favoritos, Continuar viendo e Historial se guardan también en la nube (no solo en " +
-                "el equipo), y se restauran solos al iniciar sesión de nuevo. En Cuenta → Ajustes hay una " +
+                "el equipo), y se restauran solos al iniciar sesión de nuevo. En Ajustes hay una " +
                 "fila llamada \"Copia de seguridad\" con la fecha de la última vez que se guardó, y que " +
                 "también sirve para forzarla en el momento si no quieres esperar.",
             listOf("perder favoritos", "cambio de equipo", "reinstalar", "reinstale", "nuevo celular",
@@ -361,13 +379,13 @@ object HelpContent {
         Pregunta(
             Tema.PROBLEMAS,
             "No se ven las imágenes o se ven raras",
-            "Ve a Cuenta → Vaciar caché de imágenes. Se vuelven a bajar la próxima vez que las veas.",
+            "Ve a Ajustes → Vaciar caché de imágenes. Se vuelven a bajar la próxima vez que las veas.",
             listOf("imagenes", "caratulas", "logos", "fotos", "cache", "no cargan imagenes")
         ),
         Pregunta(
             Tema.PROBLEMAS,
             "La app se cierra sola o se queda en pantalla negra al abrirla",
-            "En Cuenta → Ajustes hay una fila llamada \"Código de errores\": si la app se cerró sola, ahí " +
+            "En Ajustes hay una fila llamada \"Código de errores\": si la app se cerró sola, ahí " +
                 "queda guardado el detalle exacto de ese cierre, con un botón para copiarlo. Cópialo y " +
                 "mándanoslo por WhatsApp junto con el modelo del aparato: con eso encontramos la causa " +
                 "mucho más rápido que solo con la descripción del problema.",
