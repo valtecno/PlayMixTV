@@ -373,6 +373,10 @@
     <string name="help_topic_all">Todos</string>
     <string name="help_no_results">No encontré nada sobre eso. Prueba con otras palabras, o escríbenos por WhatsApp y te ayudamos.</string>
     <string name="help_whatsapp">¿No está tu respuesta? Escríbenos por WhatsApp</string>
+    <string name="whatsapp_qr_title">Contáctanos por WhatsApp</string>
+    <string name="whatsapp_qr_desc">Escanea el código con tu celular</string>
+    <string name="whatsapp_qr_hint">Abre la cámara o WhatsApp y apunta al código QR</string>
+    <string name="whatsapp_qr_content_desc">Código QR de WhatsApp de soporte</string>
     <string name="help_whatsapp_message">Hola, necesito ayuda con PlayMix TV.</string>
     <string name="setting_help">Asistente de ayuda</string>
     <string name="setting_help_desc">Pregúntale a Vanessa cómo usar la app</string>

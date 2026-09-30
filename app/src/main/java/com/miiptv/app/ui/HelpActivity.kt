@@ -1,5 +1,6 @@
 package com.miiptv.app.ui
 
+import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -10,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +25,7 @@ import com.miiptv.app.databinding.ItemHelpBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.HelpContent
+import com.miiptv.app.util.QrBitmap
 import com.miiptv.app.util.RemoteControl
 
 /**
@@ -122,11 +125,32 @@ class HelpActivity : AppCompatActivity() {
     private fun abrirWhatsapp() {
         val mensaje = getString(R.string.help_whatsapp_message)
         val url = "https://wa.me/${HelpContent.WHATSAPP_SOPORTE}?text=" + Uri.encode(mensaje)
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(this, R.string.contact_no_whatsapp, Toast.LENGTH_LONG).show()
+        if (RemoteControl.isEnabled(this)) {
+            // En TV no se puede lanzar WhatsApp directamente: se muestra un
+            // código QR para que el usuario lo escanee con su celular.
+            mostrarQrWhatsapp(url)
+        } else {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            } catch (e: ActivityNotFoundException) {
+                Toast.makeText(this, R.string.contact_no_whatsapp, Toast.LENGTH_LONG).show()
+            }
         }
+    }
+
+    private fun mostrarQrWhatsapp(url: String) {
+        val vista = LayoutInflater.from(this).inflate(R.layout.dialog_whatsapp_qr, null)
+        val ivQr = vista.findViewById<ImageView>(R.id.ivQr)
+        // El QR se genera en un hilo para no bloquear la UI (es rápido pero
+        // implica encode + relleno de pixels, mejor no hacerlo en el main thread).
+        Thread {
+            val bmp = QrBitmap.generate(url)
+            ivQr.post { ivQr.setImageBitmap(bmp) }
+        }.start()
+        AlertDialog.Builder(this, R.style.AppDialog)
+            .setView(vista)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     // ---------------- Lista de preguntas ----------------

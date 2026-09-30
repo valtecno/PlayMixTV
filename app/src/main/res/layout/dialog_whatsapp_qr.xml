@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/whatsapp_qr_title"
+        android:textColor="@color/text_light"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="6dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/whatsapp_qr_desc"
+        android:textColor="@color/text_muted"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:layout_marginBottom="20dp" />
+
+    <!-- El QR ocupa un cuadrado con fondo blanco para que los módulos
+         oscuros tengan contraste independientemente del tema de la app. -->
+    <ImageView
+        android:id="@+id/ivQr"
+        android:layout_width="220dp"
+        android:layout_height="220dp"
+        android:background="#FFFFFF"
+        android:padding="8dp"
+        android:scaleType="fitXY"
+        android:contentDescription="@string/whatsapp_qr_content_desc" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/whatsapp_qr_hint"
+        android:textColor="@color/text_muted"
+        android:textSize="12sp"
+        android:gravity="center"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>
