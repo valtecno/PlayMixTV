@@ -407,7 +407,8 @@
     <string name="profile_edit_title">Editar perfil</string>
     <string name="profile_long_press_hint">Mantén para editar</string>
     <string name="profile_switch">Cambiar perfil</string>
-    <string name="profile_manage">Perfiles</string>
+    <string name="profile_manage">Mi perfil</string>
     <string name="profile_manage_desc">Perfiles, apariencia, cuenta y audio</string>
+    <string name="profile_switch_or_edit">Cambiar / Editar perfil</string>
     <string name="save">Guardar</string>
 </resources>
