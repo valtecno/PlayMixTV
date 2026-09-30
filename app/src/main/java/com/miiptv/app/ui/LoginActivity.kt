@@ -219,9 +219,10 @@ class LoginActivity : AppCompatActivity() {
                                 // antes dejaba un momento sin ningún indicador antes de pasar a Inicio.
                                 DataSync.restore(this@LoginActivity) {
                                     setLoading(false)
-                                    val destino = if (WelcomeActivity.debesMostrar(this@LoginActivity))
-                                        WelcomeActivity::class.java else MainActivity::class.java
-                                    startActivity(Intent(this@LoginActivity, destino))
+                                    // Después del login siempre se pasa por el selector de perfiles.
+                                    // ProfileSelectorActivity se encarga de pasar a WelcomeActivity
+                                    // la primera vez, o directo a MainActivity en las siguientes.
+                                    startActivity(Intent(this@LoginActivity, ProfileSelectorActivity::class.java))
                                     finish()
                                 }
                             } else {

@@ -108,6 +108,13 @@ object DataSync {
      * varias subidas). Se llama desde Favorites/ContinueWatching/History
      * después de cada escritura; no hace falta llamarla a mano.
      */
+    /** Cancela una subida pendiente (al cambiar de perfil: no subir datos del perfil viejo). */
+    @Synchronized
+    fun cancelPending() {
+        pendingPush?.let { ui.removeCallbacks(it) }
+        pendingPush = null
+    }
+
     @Synchronized
     fun scheduleBackup(context: Context) {
         if (!haySesion(context)) return

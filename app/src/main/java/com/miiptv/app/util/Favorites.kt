@@ -290,13 +290,13 @@ object Favorites {
      * sensible ni se muestra en ningún lado -- es solo la clave que separa un
      * archivo de preferencias del otro.
      */
-    private fun accountKey(context: Context): String {
-        val server = com.miiptv.app.api.Session.server(context)
-        val user = com.miiptv.app.api.Session.username(context)
-        return "$server|$user"
-            .replace(Regex("[^A-Za-z0-9]"), "_")
-            .take(80)
-    }
+    /**
+     * Clave que identifica la combinación cuenta+perfil activa.
+     * Cada perfil tiene sus propios favoritos gracias a este sufijo.
+     * El perfil "p1" hereda los datos anteriores a la introducción de perfiles
+     * (Profiles.activeKey devuelve solo la cuenta base para p1).
+     */
+    private fun accountKey(context: Context): String = Profiles.activeKey(context)
 
     private fun prefs(context: Context) =
         context.getSharedPreferences("miiptv_favorites_${accountKey(context)}", Context.MODE_PRIVATE)

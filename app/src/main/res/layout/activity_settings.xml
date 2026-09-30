@@ -276,6 +276,16 @@
                     android:textSize="14sp" />
             </LinearLayout>
 
+            <LinearLayout android:id="@+id/rowSwitchProfile" style="@style/SettingsRow">
+                <TextView style="@style/SettingsLabel" android:text="@string/profile_switch" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/text_muted"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
             <LinearLayout android:id="@+id/rowSwitchAccount" style="@style/SettingsRow">
                 <TextView style="@style/SettingsLabel" android:text="@string/switch_account" />
                 <TextView android:id="@+id/tvAccountCount" style="@style/SettingsValue" />

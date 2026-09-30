@@ -399,4 +399,13 @@
     <string name="title_watched">Vistas recientemente</string>
     <string name="empty_continue_watching">No tienes nada pendiente por continuar</string>
     <string name="empty_watched">Aún no has visto ninguna película o serie</string>
+
+    <!-- Perfiles -->
+    <string name="profile_who_is_watching">¿Quién está viendo?</string>
+    <string name="profile_name_hint">Nombre del perfil</string>
+    <string name="profile_change_avatar">Tocar para cambiar avatar</string>
+    <string name="profile_edit_title">Editar perfil</string>
+    <string name="profile_long_press_hint">Mantén para editar</string>
+    <string name="profile_switch">Cambiar perfil</string>
+    <string name="save">Guardar</string>
 </resources>
