@@ -194,6 +194,16 @@ class MainActivity : AppCompatActivity() {
     private var kidsMode: Boolean = false
 
     /**
+     * Perfil que estaba activo justo antes de entrar al modo niños.
+     *
+     * Se restaura al salir, para que Favorites/History/ContinueWatching
+     * vuelvan a leer las claves del perfil adulto correspondiente.
+     * Se persiste en SharedPreferences para sobrevivir reinicios de la app
+     * (si la app arranca ya en modo niños, no hay "perfil anterior" en memoria).
+     */
+    private var profileAnteriorAlModoNinos: com.miiptv.app.util.Profiles.Profile? = null
+
+    /**
      * Diálogo de "¿cerrar la app?" mientras está en pantalla.
      *
      * Se guarda por dos motivos: para no apilar dos si el mando repite la
@@ -261,6 +271,16 @@ class MainActivity : AppCompatActivity() {
         binding.tvToolbarTitle.applyBrandGradient()
 
         kidsMode = KidsMode.isActive(this)
+
+        // Si la app arranca ya en modo niños (venía activo de la sesión anterior),
+        // asegurar que el perfil activo sea el de Niños para que Favorites,
+        // History y ContinueWatching lean las claves aisladas del perfil kids.
+        if (kidsMode) {
+            val kidsProfile = Profiles.getAll(this).firstOrNull { it.isKids }
+            if (kidsProfile != null && Profiles.active(this)?.isKids != true) {
+                Profiles.setActive(this, kidsProfile)
+            }
+        }
 
         setupNav()
         setupPpvSearch()
@@ -1351,6 +1371,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun activateKidsMode() {
+        // Guardar el perfil actual para restaurarlo al salir del modo niños.
+        // Favorites/History/ContinueWatching usan Profiles.activeKey(), que
+        // incluye el profileId: al cambiar a "kids" sus datos quedan aislados.
+        profileAnteriorAlModoNinos = Profiles.active(this)
+
+        val kidsProfile = Profiles.getAll(this).firstOrNull { it.isKids }
+        if (kidsProfile != null) Profiles.setActive(this, kidsProfile)
+
         kidsMode = true
         KidsMode.setActive(this, true)
         applyKidsVisibility()
@@ -1363,6 +1391,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun exitKidsMode() {
+        // Restaurar el perfil que había antes de entrar al modo niños, para que
+        // Favorites/History/ContinueWatching vuelvan a las claves del adulto.
+        val perfilPrevio = profileAnteriorAlModoNinos
+            ?: Profiles.getAll(this).firstOrNull { !it.isKids }
+        if (perfilPrevio != null) Profiles.setActive(this, perfilPrevio)
+        profileAnteriorAlModoNinos = null
+
         kidsMode = false
         KidsMode.setActive(this, false)
         applyKidsVisibility()
