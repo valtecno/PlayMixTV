@@ -111,7 +111,16 @@
                 <TextView android:id="@+id/tvDeviceMode" style="@style/SettingsValue" />
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/rowPersonalize" style="@style/SettingsRow">
+            <!-- Botón unificado de perfil: ocupa el lugar donde estaba Personalizar apariencia -->
+            <LinearLayout android:id="@+id/rowSwitchProfile" style="@style/SettingsRow">
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_account"
+                    android:tint="@color/brand_primary"
+                    android:scaleType="centerInside"
+                    android:contentDescription="@null" />
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -120,13 +129,13 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/setting_personalize"
+                        android:text="@string/profile_manage"
                         android:textColor="@color/text_light"
                         android:textSize="15sp" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/setting_personalize_desc"
+                        android:text="@string/profile_manage_desc"
                         android:textColor="@color/text_muted"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -274,41 +283,6 @@
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_light"
                     android:textSize="14sp" />
-            </LinearLayout>
-
-            <LinearLayout android:id="@+id/rowSwitchProfile" style="@style/SettingsRow">
-                <ImageView
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="12dp"
-                    android:src="@drawable/ic_account"
-                    android:tint="@color/brand_primary"
-                    android:scaleType="centerInside"
-                    android:contentDescription="@null" />
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/profile_manage"
-                        android:textColor="@color/text_light"
-                        android:textSize="15sp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/profile_manage_desc"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="@color/text_muted"
-                    android:textSize="22sp" />
             </LinearLayout>
 
             <!-- tvAccountCount se mantiene oculto para compatibilidad con el binding;
