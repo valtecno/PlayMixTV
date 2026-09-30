@@ -233,8 +233,7 @@ class SettingsActivity : AppCompatActivity() {
     /** Menú unificado de perfil: cambiar, editar, apariencia, cuenta y audio. */
     private fun showProfileMenu() {
         val opciones = arrayOf(
-            "👤  ${getString(R.string.profile_switch)}",
-            "✏️  ${getString(R.string.profile_edit_title)}",
+            "👤  ${getString(R.string.profile_switch_or_edit)}",
             "🎨  ${getString(R.string.setting_personalize)}",
             "🔄  ${getString(R.string.switch_account)}",
             "🔊  ${getString(R.string.setting_audio)}"
@@ -244,10 +243,9 @@ class SettingsActivity : AppCompatActivity() {
             .setItems(opciones) { _, which ->
                 when (which) {
                     0 -> ProfileSelectorActivity.start(this, fromSettings = true)
-                    1 -> ProfileSelectorActivity.startEditActive(this)
-                    2 -> startActivity(Intent(this, PersonalizeActivity::class.java))
-                    3 -> switchAccount()
-                    4 -> showAudioDialog()
+                    1 -> startActivity(Intent(this, PersonalizeActivity::class.java))
+                    2 -> switchAccount()
+                    3 -> showAudioDialog()
                 }
             }
             .show()
