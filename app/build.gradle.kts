@@ -189,6 +189,10 @@ dependencies {
     // MediaRouteButton (el ícono de cast de la barra) vive acá, no en el SDK de Cast.
     implementation("androidx.mediarouter:mediarouter:1.7.0")
 
+    // Generación de códigos QR (dialog de WhatsApp en modo TV).
+    // Solo se usa ZXing Core (sin UI extra): ~480 KB, sin actividades propias.
+    implementation("com.google.zxing:core:3.5.3")
+
     // ---- Tests de JVM (./gradlew test) ----
     testImplementation("junit:junit:4.13.2")
 }
