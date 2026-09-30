@@ -106,11 +106,10 @@
                 <TextView android:id="@+id/navKids" style="@style/NavItem"
                     android:text="@string/nav_kids" android:drawableStart="@drawable/ic_kids" />
 
-                <!-- "Enviar contacto": comparte PlayMix por WhatsApp. Reemplaza al
-                     acceso directo a YouTube, que ya no está. Solo tiene sentido en
-                     móvil: ahí es donde la gente tiene sus redes a mano; en TV
-                     nadie comparte un link desde el control remoto. Se oculta en
-                     modo TV desde código (ver applyDeviceMode en MainActivity). -->
+                <!-- "Enviar contacto": comparte PlayMix por WhatsApp. Solo tiene
+                     sentido en móvil: ahí es donde la gente tiene sus redes a mano;
+                     en TV nadie comparte un link desde el control remoto. Se oculta
+                     en modo TV desde código (ver applyDeviceMode en MainActivity). -->
                 <TextView android:id="@+id/btnSendContact" style="@style/NavItem"
                     android:text="@string/nav_send_contact" android:drawableStart="@drawable/ic_whatsapp" />
 

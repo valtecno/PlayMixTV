@@ -384,16 +384,8 @@ class MainActivity : AppCompatActivity() {
             val active = sec != null && sec == section
             paintNavItem(view, active)
         }
-        // No representa ninguna Section (no hay "estar parado en YouTube"),
-        // así que siempre va en nivel inactivo -- pero por acá es donde cada
-        // botón del menú gana el anillo de foco del control remoto (ver
-        // Appearance.applyLevel). Sin esta línea se queda con el fondo
-        // transparente de siempre y no muestra nada al enfocarlo.
-        // tintIcon = false: el logo de YouTube tiene sus propios colores
-        // (rojo + blanco) y no se tiñe de un solo color como el resto de
-        // los íconos del menú -- si no, se pierde el rojo y queda todo blanco.
-        // El ícono de WhatsApp también tiene su color propio (verde de marca);
-        // igual que antes con YouTube, no se tiñe de un solo color.
+        // El ícono de WhatsApp tiene su color propio (verde de marca) y no se
+        // tiñe de un solo color como el resto de los íconos del menú.
         paintNavItem(binding.btnSendContact, active = false, tintIcon = false)
         // "Mi Espacio": el corazón se queda siempre en rojo tenue (en vez de
         // seguir el color del texto como el resto de los íconos) para que se
@@ -1111,8 +1103,6 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.action_parental)?.isVisible = sueltos
         menu.findItem(R.id.action_multi)?.isVisible = sueltos
         menu.findItem(R.id.action_account)?.isVisible = sueltos
-        menu.findItem(R.id.action_youtube)?.isVisible = !kidsMode
-
         // Muestra el avatar del perfil activo en el ícono de cuenta (solo en TV,
         // donde ese ícono vive en la barra; en móvil está dentro del menú rápido)
         if (!movil) {
@@ -1175,9 +1165,8 @@ class MainActivity : AppCompatActivity() {
      * control remoto.
      *
      * Sin esto, Android busca el foco más cercano en línea recta sin
-     * importarle las filas del diseño: el botón de YouTube quedó justo
-     * debajo de estos íconos, así que bajar desde cualquiera de ellos caía
-     * ahí en vez de entrar al menú de secciones (Inicio, Canales...).
+     * importarle las filas del diseño y el foco podría caer en un sitio
+     * inesperado en vez de entrar al menú de secciones (Inicio, Canales...).
      */
     private fun fijarBajadaDelToolbar() {
         binding.toolbar.post {
@@ -1241,31 +1230,8 @@ class MainActivity : AppCompatActivity() {
             R.id.action_multi -> startActivity(Intent(this, MultiScreenActivity::class.java))
             R.id.action_account -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_quick -> showQuickMenu()
-            R.id.action_youtube -> openYouTube()
         }
         return true
-    }
-
-    /**
-     * Abre la app oficial de YouTube. Este botón es el único acceso: no hay
-     * icono propio ni entrada en el lanzador, solo cuelga de acá adentro del
-     * menú de PlayMix.
-     *
-     * Si YouTube está instalada, se abre directo. Si no, se manda a la Play
-     * Store a instalarla (o al navegador si la Play Store tampoco está).
-     */
-    private fun openYouTube() {
-        val paquete = "com.google.android.youtube"
-        val intentApp = packageManager.getLaunchIntentForPackage(paquete)
-        if (intentApp != null) {
-            startActivity(intentApp)
-            return
-        }
-        try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$paquete")))
-        } catch (e: ActivityNotFoundException) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$paquete")))
-        }
     }
 
     /**
