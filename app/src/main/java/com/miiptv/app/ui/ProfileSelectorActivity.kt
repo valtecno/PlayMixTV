@@ -44,11 +44,22 @@ class ProfileSelectorActivity : AppCompatActivity() {
     companion object {
         /** true = viene de Ajustes (el Back vuelve ahí en vez de cerrar la app). */
         private const val EXTRA_FROM_SETTINGS = "from_settings"
+        /** true = abre directo el diálogo de edición del perfil activo. */
+        private const val EXTRA_EDIT_ACTIVE = "edit_active"
 
         fun start(context: Context, fromSettings: Boolean = false) {
             context.startActivity(
                 Intent(context, ProfileSelectorActivity::class.java)
                     .putExtra(EXTRA_FROM_SETTINGS, fromSettings)
+            )
+        }
+
+        /** Abre el editor (nombre + avatar) del perfil activo desde Ajustes. */
+        fun startEditActive(context: Context) {
+            context.startActivity(
+                Intent(context, ProfileSelectorActivity::class.java)
+                    .putExtra(EXTRA_FROM_SETTINGS, true)
+                    .putExtra(EXTRA_EDIT_ACTIVE, true)
             )
         }
     }
@@ -65,6 +76,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
 
         setupGrid()
+
+        if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
+            val activo = Profiles.active(this)
+            if (activo != null && !activo.isKids) showEditDialog(activo)
+        }
     }
 
     private fun setupGrid() {
@@ -146,6 +162,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
             .setView(dialogView)
             .create()
 
+        // Si se abrió solo para editar desde Ajustes, al cerrar se vuelve atrás
+        if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
+            dialog.setOnDismissListener { finish() }
+        }
+
         dialogView.findViewById<View>(R.id.btnCancelEdit).setOnClickListener { dialog.dismiss() }
         dialogView.findViewById<View>(R.id.btnSaveEdit).setOnClickListener {
             val nombre = etName.text?.toString()?.trim()?.ifBlank { profile.name } ?: profile.name
@@ -174,6 +195,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
             val tvEmoji: TextView    = view.findViewById(R.id.tvAvatarEmoji)
             val tvName:  TextView    = view.findViewById(R.id.tvProfileName)
             val ivEdit:  ImageView   = view.findViewById(R.id.ivEditOverlay)
+            val ivBadge: ImageView   = view.findViewById(R.id.ivEditBadge)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
@@ -195,7 +217,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
             // Toque corto → seleccionar
             holder.itemView.setOnClickListener { onSelect(profile) }
 
-            // Toque largo → editar (no aplica a Niños)
+            // Botón de lápiz visible → editar (no aplica a Niños)
+            holder.ivBadge.visibility = if (profile.isKids) View.GONE else View.VISIBLE
+            holder.ivBadge.setOnClickListener { onEdit(profile) }
+
+            // Toque largo → editar (atajo; también para el mando de TV)
             if (!profile.isKids) {
                 holder.itemView.setOnLongClickListener {
                     holder.ivEdit.visibility = View.VISIBLE

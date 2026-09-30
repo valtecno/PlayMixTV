@@ -42,6 +42,19 @@
             android:background="#88000000"
             android:padding="28dp"/>
 
+        <!-- Botón visible de editar (nombre / avatar). No perfil Niños. -->
+        <ImageView
+            android:id="@+id/ivEditBadge"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="bottom|end"
+            android:background="@drawable/bg_edit_badge"
+            android:src="@drawable/ic_edit_overlay"
+            android:padding="7dp"
+            android:clickable="true"
+            android:focusable="false"
+            android:contentDescription="@string/profile_edit_title"/>
+
     </FrameLayout>
 
     <!-- Nombre del perfil -->
