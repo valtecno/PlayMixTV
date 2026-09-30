@@ -1404,13 +1404,16 @@ class MainActivity : AppCompatActivity() {
         selectSection(Section.HOME)
     }
 
-    /** Oculta lo que no es apto (PPV, Radios, Historial, Favoritos, Inicio) mientras dura el perfil. */
+    /** Oculta lo que no es apto (PPV, Radios, Historial, Inicio) mientras dura el perfil.
+     *  Favoritos sí se muestra en modo niños: el storage ya es exclusivo del perfil Niños
+     *  (clave miiptv_favorites_..._kids) así que están completamente aislados. */
     private fun applyKidsVisibility() {
         val visibility = if (kidsMode) View.GONE else View.VISIBLE
         binding.navHome.visibility = visibility
         binding.navPpv.visibility = visibility
         binding.navRadio.visibility = visibility
-        binding.navFavorites.visibility = visibility
+        // navFavorites permanece visible en kidsMode: los favoritos del perfil
+        // Niños se guardan aparte y no mezclan con los de otros perfiles.
         invalidateOptionsMenu()
         if (::adapter.isInitialized) highlightNav()
     }
@@ -2395,7 +2398,10 @@ class MainActivity : AppCompatActivity() {
 
         data class Grupo(val etiqueta: String, val grupo: EspacioGrupo)
         val grupos = mutableListOf<Grupo>()
-        if (itemsContinuarTodo().isNotEmpty() || itemsVistas().isNotEmpty()) {
+        // En modo niños no se expone el historial ni Continuar viendo: la
+        // experiencia es más sencilla (solo Favoritos), y el historial de
+        // visualización de un menor no debe quedar accesible en esa pantalla.
+        if (!kidsMode && (itemsContinuarTodo().isNotEmpty() || itemsVistas().isNotEmpty())) {
             grupos += Grupo(getString(R.string.espacio_group_recent), EspacioGrupo.RECIENTE)
         }
         grupos += Grupo(getString(R.string.espacio_group_favorites), EspacioGrupo.FAVORITOS)
@@ -2449,7 +2455,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             filtros += Filtro(getString(R.string.fav_all), EspacioModo.FAVORITOS, null, false)
             filtros += Filtro(getString(R.string.tab_live), EspacioModo.FAVORITOS, ContentType.LIVE, false)
-            filtros += Filtro(getString(R.string.fav_radios), EspacioModo.FAVORITOS, ContentType.LIVE, true)
+            // En modo niños no se ofrece el chip de Radios
+            if (!kidsMode) filtros += Filtro(getString(R.string.fav_radios), EspacioModo.FAVORITOS, ContentType.LIVE, true)
             filtros += Filtro(getString(R.string.tab_movies), EspacioModo.FAVORITOS, ContentType.MOVIE, false)
             filtros += Filtro(getString(R.string.tab_series), EspacioModo.FAVORITOS, ContentType.SERIES, false)
         }

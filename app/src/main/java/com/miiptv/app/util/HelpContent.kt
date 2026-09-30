@@ -201,9 +201,19 @@ object HelpContent {
             "¿Cómo activo el Perfil de niños?",
             "Toca Niños en el menú. Si todavía no tienes PIN, primero te pide crear uno. Después eliges " +
                 "la edad: Hasta 5 años o Hasta 10 años. Mientras está activo solo se ve contenido " +
-                "infantil en Canales, Películas y Series, y se ocultan Inicio, Deportes - PPV, Radios y " +
-                "Favoritos.",
+                "infantil en Canales, Películas y Series, y se ocultan Inicio, Deportes - PPV y Radios. " +
+                "Mi Espacio (Favoritos) sí aparece y muestra los favoritos exclusivos del perfil Niños.",
             listOf("niños", "ninos", "infantil", "hijos", "kids", "perfil", "edad", "dibujos")
+        ),
+        Pregunta(
+            Tema.NINOS,
+            "¿Los niños pueden guardar sus propios favoritos?",
+            "Sí. Mientras el Perfil de niños está activo, el corazón ❤ que aparece en cada canal, " +
+                "película o serie guarda el contenido en los favoritos exclusivos de ese perfil. " +
+                "Están completamente separados de los favoritos del resto de perfiles: nadie más los " +
+                "ve ni los modifica. Encuéntralos en Mi Espacio (el corazón del menú).",
+            listOf("favoritos niños", "guardar niños", "mi espacio niños", "favoritos perfil", "corazon niños",
+                "ninos favoritos", "kids favoritos", "favoritos infantil")
         ),
         Pregunta(
             Tema.NINOS,
