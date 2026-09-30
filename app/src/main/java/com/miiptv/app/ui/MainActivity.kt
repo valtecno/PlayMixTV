@@ -1116,7 +1116,12 @@ class MainActivity : AppCompatActivity() {
         // Muestra el avatar del perfil activo en el ícono de cuenta (solo en TV,
         // donde ese ícono vive en la barra; en móvil está dentro del menú rápido)
         if (!movil) {
-            menu.findItem(R.id.action_account)?.icon = perfilAvatarIcon()
+            menu.findItem(R.id.action_account)?.let { item ->
+                item.icon = perfilAvatarIcon()
+                // menu_main.xml aplica iconTint blanco a este ítem: sin quitarlo,
+                // el tinte pinta todo el bitmap de blanco y se ve un círculo liso.
+                androidx.core.view.MenuItemCompat.setIconTintList(item, null)
+            }
         }
 
         fijarBajadaDelToolbar()
