@@ -93,6 +93,10 @@
     <string name="contact_no_whatsapp">No se encontró WhatsApp instalado</string>
     <string name="nav_kids_exit">Salir</string>
     <string name="kids_mode_on">Perfil de niños activado. Tramo de edad: %1$s</string>
+    <!-- Aviso de vencimiento próximo. %1$d = días restantes. -->
+    <string name="expiry_today">⚠️ Tu suscripción vence hoy. Renueva para seguir disfrutando del servicio.</string>
+    <string name="expiry_tomorrow">⚠️ Tu suscripción vence mañana. Renueva para seguir disfrutando del servicio.</string>
+    <string name="expiry_days">⚠️ Tu suscripción vence en %1$d días. Renueva para seguir disfrutando del servicio.</string>
     <string name="kids_mode_off">Saliste del perfil de niños</string>
     <string name="kids_mode_need_pin">Primero creá un PIN: hará falta para salir del perfil de niños</string>
     <string name="kids_mode_blocked">Salí del perfil de niños para acceder a esto</string>

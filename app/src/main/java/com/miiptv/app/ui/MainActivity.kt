@@ -321,6 +321,46 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
         }
+
+        mostrarAvisoVencimientoSiCorresponde()
+    }
+
+    /**
+     * Muestra un banner semi-transparente en la parte inferior si la suscripción
+     * vence en 3 días o menos. El banner desaparece solo a los 5 segundos,
+     * igual que un Toast largo pero con más presencia visual.
+     *
+     * El servidor actualiza exp_date en cada login / refresco; el aviso
+     * desaparece cuando exp_date ya no esté en el rango crítico.
+     */
+    private fun mostrarAvisoVencimientoSiCorresponde() {
+        val diasRestantes = com.miiptv.app.api.Session.daysUntilExpiry(this) ?: return
+        if (diasRestantes > 3) return
+
+        val mensaje = when (diasRestantes) {
+            0L   -> getString(R.string.expiry_today)
+            1L   -> getString(R.string.expiry_tomorrow)
+            else -> getString(R.string.expiry_days, diasRestantes.toInt())
+        }
+
+        binding.tvExpiryMessage.text = mensaje
+        binding.bannerExpiry.visibility = android.view.View.VISIBLE
+        binding.bannerExpiry.alpha = 0f
+        binding.bannerExpiry.animate()
+            .alpha(1f)
+            .setDuration(400)
+            .withEndAction {
+                binding.bannerExpiry.postDelayed({
+                    binding.bannerExpiry.animate()
+                        .alpha(0f)
+                        .setDuration(600)
+                        .withEndAction {
+                            binding.bannerExpiry.visibility = android.view.View.GONE
+                        }
+                        .start()
+                }, 5_000)
+            }
+            .start()
     }
 
     /**
