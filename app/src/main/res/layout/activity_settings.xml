@@ -23,7 +23,43 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- ===== Ayuda: primero, para que se encuentre sin buscarla ===== -->
+            <!-- ===== Mi Perfil: primero, acceso rápido a perfiles y cuenta ===== -->
+            <LinearLayout android:id="@+id/rowSwitchProfile" style="@style/SettingsRow">
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_account"
+                    android:tint="@color/brand_primary"
+                    android:scaleType="centerInside"
+                    android:contentDescription="@null" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_manage"
+                        android:textColor="@color/text_light"
+                        android:textSize="15sp" />
+                    <TextView
+                        android:id="@+id/tvServer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_muted"
+                        android:textSize="12sp" />
+                </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="›"
+                    android:textColor="@color/text_muted"
+                    android:textSize="22sp" />
+            </LinearLayout>
+
+            <!-- ===== Ayuda: para que se encuentre sin buscarla ===== -->
             <LinearLayout android:id="@+id/rowHelp" style="@style/SettingsRow">
                 <ImageView
                     android:id="@+id/ivHelpVanessa"
@@ -109,42 +145,6 @@
             <LinearLayout android:id="@+id/rowDeviceMode" style="@style/SettingsRow">
                 <TextView style="@style/SettingsLabel" android:text="@string/setting_device_mode" />
                 <TextView android:id="@+id/tvDeviceMode" style="@style/SettingsValue" />
-            </LinearLayout>
-
-            <!-- Botón unificado de perfil: ocupa el lugar donde estaba Personalizar apariencia -->
-            <LinearLayout android:id="@+id/rowSwitchProfile" style="@style/SettingsRow">
-                <ImageView
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="12dp"
-                    android:src="@drawable/ic_account"
-                    android:tint="@color/brand_primary"
-                    android:scaleType="centerInside"
-                    android:contentDescription="@null" />
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/profile_manage"
-                        android:textColor="@color/text_light"
-                        android:textSize="15sp" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/profile_manage_desc"
-                        android:textColor="@color/text_muted"
-                        android:textSize="12sp" />
-                </LinearLayout>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="›"
-                    android:textColor="@color/text_muted"
-                    android:textSize="22sp" />
             </LinearLayout>
 
             <!-- ===== Contenido ===== -->
@@ -268,22 +268,68 @@
 
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/rowClearCache" style="@style/SettingsRow">
-                <TextView style="@style/SettingsLabel" android:text="@string/setting_clear_cache" />
+            <!-- Fila dividida: Vaciar caché | Código de errores -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_glass_card"
+                android:layout_marginBottom="8dp">
+
+                <LinearLayout
+                    android:id="@+id/rowClearCache"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="14dp"
+                    android:focusable="true"
+                    android:clickable="true">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/setting_clear_cache"
+                        android:textColor="@color/text_light"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0.6dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/glass_border" />
+
+                <LinearLayout
+                    android:id="@+id/rowCrashLog"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="14dp"
+                    android:focusable="true"
+                    android:clickable="true">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/setting_crash_log"
+                        android:textColor="@color/text_light"
+                        android:textSize="14sp" />
+                    <TextView
+                        android:id="@+id/tvCrashLogState"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_muted"
+                        android:textSize="13sp"
+                        android:layout_marginStart="4dp" />
+                </LinearLayout>
+
             </LinearLayout>
 
             <!-- ===== Cuenta ===== -->
             <TextView style="@style/SettingsHeader" android:text="@string/settings_account" />
-
-            <!-- Servidor actual: mensaje descriptivo en vez de la URL -->
-            <LinearLayout style="@style/SettingsRow">
-                <TextView
-                    android:id="@+id/tvServer"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_light"
-                    android:textSize="14sp" />
-            </LinearLayout>
 
             <!-- tvAccountCount se mantiene oculto para compatibilidad con el binding;
                  la lógica de cuenta y audio ahora vive en el menú del botón Perfiles. -->
@@ -298,13 +344,6 @@
             <LinearLayout android:id="@+id/rowUpdate" style="@style/SettingsRow">
                 <TextView style="@style/SettingsLabel" android:text="@string/setting_update" />
                 <TextView android:id="@+id/tvUpdateState" style="@style/SettingsValue" />
-            </LinearLayout>
-
-            <!-- Código de errores: para equipos (sobre todo TV box) donde no hay
-                 forma práctica de sacar un logcat. Ver CrashLogger. -->
-            <LinearLayout android:id="@+id/rowCrashLog" style="@style/SettingsRow">
-                <TextView style="@style/SettingsLabel" android:text="@string/setting_crash_log" />
-                <TextView android:id="@+id/tvCrashLogState" style="@style/SettingsValue" />
             </LinearLayout>
 
             <!-- Copia de seguridad de Favoritos/Continuar viendo/Historial. Ver DataSync. -->
