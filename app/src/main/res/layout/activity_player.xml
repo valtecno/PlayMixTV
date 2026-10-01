@@ -160,6 +160,7 @@
                     <TextView
                         android:id="@+id/btnRadioHome"
                         style="@style/NavItem"
+                        android:minWidth="110dp"
                         android:text="@string/nav_home"
                         android:drawableStart="@drawable/ic_home" />
 
@@ -167,6 +168,7 @@
                         android:id="@+id/btnRadioFavorite"
                         style="@style/NavItem"
                         android:layout_marginStart="10dp"
+                        android:minWidth="110dp"
                         android:text="@string/tab_favorites"
                         android:drawableStart="@drawable/ic_favorite" />
                 </LinearLayout>
