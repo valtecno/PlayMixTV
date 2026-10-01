@@ -350,6 +350,7 @@
     <string name="preview_mute">Silenciar previsualización</string>
     <string name="setting_refresh_action">Actualizar</string>
     <string name="setting_update">Buscar actualización manual</string>
+    <string name="setting_current_version_label">Versión actual</string>
     <string name="update_checking">Buscando actualizaciones…</string>
     <string name="update_up_to_date">Ya tienes la última versión</string>
     <string name="update_not_configured">No hay repositorio configurado para actualizaciones</string>

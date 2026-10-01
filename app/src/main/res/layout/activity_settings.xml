@@ -271,7 +271,7 @@
             <!-- Fila dividida: Vaciar caché | Código de errores -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="56dp"
                 android:orientation="horizontal"
                 android:background="@drawable/bg_glass_card"
                 android:layout_marginBottom="8dp">
@@ -279,20 +279,22 @@
                 <LinearLayout
                     android:id="@+id/rowClearCache"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="14dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="12dp"
                     android:focusable="true"
                     android:clickable="true">
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:text="@string/setting_clear_cache"
                         android:textColor="@color/text_light"
-                        android:textSize="14sp" />
+                        android:textSize="13sp"
+                        android:gravity="center"
+                        android:maxLines="2"
+                        android:ellipsize="end" />
                 </LinearLayout>
 
                 <View
@@ -303,27 +305,28 @@
                 <LinearLayout
                     android:id="@+id/rowCrashLog"
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="14dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:padding="12dp"
                     android:focusable="true"
                     android:clickable="true">
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:text="@string/setting_crash_log"
                         android:textColor="@color/text_light"
-                        android:textSize="14sp" />
+                        android:textSize="13sp"
+                        android:gravity="center" />
                     <TextView
                         android:id="@+id/tvCrashLogState"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/text_muted"
-                        android:textSize="13sp"
-                        android:layout_marginStart="4dp" />
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"
+                        android:gravity="center" />
                 </LinearLayout>
 
             </LinearLayout>
@@ -343,7 +346,22 @@
                  refresca el contenido del servidor) -->
             <LinearLayout android:id="@+id/rowUpdate" style="@style/SettingsRow">
                 <TextView style="@style/SettingsLabel" android:text="@string/setting_update" />
-                <TextView android:id="@+id/tvUpdateState" style="@style/SettingsValue" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="end">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/setting_current_version_label"
+                        android:textColor="@color/text_muted"
+                        android:textSize="10sp"
+                        android:gravity="end" />
+                    <TextView
+                        android:id="@+id/tvUpdateState"
+                        style="@style/SettingsValue" />
+                </LinearLayout>
             </LinearLayout>
 
             <!-- Copia de seguridad de Favoritos/Continuar viendo/Historial. Ver DataSync. -->
@@ -361,14 +379,12 @@
                 android:textColor="@color/text_light"
                 android:text="@string/setting_logout" />
 
+            <!-- tvVersion oculto: la versión ya aparece en la fila "Buscar actualización manual" -->
             <TextView
                 android:id="@+id/tvVersion"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:gravity="center"
-                android:textColor="@color/text_muted"
-                android:textSize="12sp" />
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
 
         </LinearLayout>
     </ScrollView>
