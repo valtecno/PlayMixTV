@@ -65,6 +65,8 @@ import com.squareup.picasso.Picasso
 import android.Manifest
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import androidx.core.app.ActivityCompat
 
@@ -1459,6 +1461,47 @@ class PlayerActivity : AppCompatActivity() {
 
     // ---------------- Reproducción ----------------
 
+    /**
+     * Devuelve un mensaje en español que describe la causa del error de
+     * reproducción de forma comprensible para el usuario final.
+     *
+     * Distingue tres situaciones:
+     *  1. Sin internet en absoluto → "el problema es tu conexión"
+     *  2. Error de red de Media3 (IO timeout / fallo de conexión) pero con
+     *     internet disponible → "la conexión es inestable o lenta"
+     *  3. Cualquier otro error (fuente, decodificador, DRM…) → "el problema
+     *     es del origen, no de tu internet"
+     *
+     * Los códigos de error de Media3 se agrupan por rango:
+     *   1000–1999  reproducción / estado
+     *   2000–2999  E/S de red (IO)
+     *   3000–3999  contenido / fuente
+     *   4000–4999  decodificación
+     *   5000–5999  DRM
+     * La subcategoría "timeout" es ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT (2002).
+     */
+    private fun clasificarError(error: PlaybackException): String {
+        val sinInternet = !hayInternet()
+        if (sinInternet) return getString(R.string.player_error_no_internet)
+
+        // Rango IO de red: 2000–2999
+        val esErrorDeRed = error.errorCode in 2000..2999
+        return if (esErrorDeRed) {
+            getString(R.string.player_error_weak_connection)
+        } else {
+            getString(R.string.player_error_source)
+        }
+    }
+
+    /** true si el dispositivo tiene conectividad de red activa en este momento. */
+    private fun hayInternet(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val net = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(net) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
     private fun startPlayback(url: String, resumeAtMs: Long) {
         val (minBuffer, maxBuffer) = PlayerPrefs.bufferMillis(PlayerPrefs.getBuffer(this))
         val loadControl = DefaultLoadControl.Builder()
@@ -1604,7 +1647,7 @@ class PlayerActivity : AppCompatActivity() {
                         binding.progressBar.visibility = View.GONE
                         Toast.makeText(
                             this@PlayerActivity,
-                            getString(R.string.player_error, error.errorCodeName),
+                            clasificarError(error),
                             Toast.LENGTH_LONG
                         ).show()
                     }
