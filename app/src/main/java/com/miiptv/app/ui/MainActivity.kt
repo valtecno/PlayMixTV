@@ -1401,6 +1401,9 @@ class MainActivity : AppCompatActivity() {
         kidsMode = false
         KidsMode.setActive(this, false)
         applyKidsVisibility()
+        // Restaurar los datos del adulto desde la nube por si hubo cambios
+        // en otro dispositivo mientras el modo niños estaba activo.
+        DataSync.restore(applicationContext) { refrescarEspacioSiEstaVisible() }
         Toast.makeText(this, R.string.kids_mode_off, Toast.LENGTH_SHORT).show()
         selectSection(Section.HOME)
     }

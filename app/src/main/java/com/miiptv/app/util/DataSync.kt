@@ -81,6 +81,18 @@ object DataSync {
     private fun haySesion(context: Context) =
         Session.server(context).isNotBlank() && Session.username(context).isNotBlank()
 
+    /**
+     * El perfil de Niños NO participa en la sincronización con la nube.
+     *
+     * La nube guarda un único blob por cuenta (servidor + usuario), sin
+     * distinguir perfiles. Si se sincronizara mientras el perfil kids está
+     * activo, los favoritos del adulto (que viven en ese blob) se mezclarían
+     * con los del niño — exactamente lo que se quiere evitar. Los datos del
+     * perfil Niños son exclusivamente locales.
+     */
+    private fun esPerfilNinos(context: Context): Boolean =
+        Profiles.active(context)?.isKids == true
+
     // ---------------- Última sincronización (para mostrarla en Ajustes) ----------------
 
     private const val PREFS_ESTADO = "miiptv_datasync_estado"
@@ -117,7 +129,7 @@ object DataSync {
 
     @Synchronized
     fun scheduleBackup(context: Context) {
-        if (!haySesion(context)) return
+        if (!haySesion(context) || esPerfilNinos(context)) return
         val app = context.applicationContext
         val cuenta = accountKey(context)
         pendingPush?.let { ui.removeCallbacks(it) }
@@ -144,7 +156,7 @@ object DataSync {
      * de la cuenta nueva contra la clave de la vieja.
      */
     fun backupNow(context: Context, cuentaEsperada: String? = null, onDone: (Boolean) -> Unit = {}) {
-        if (!haySesion(context)) {
+        if (!haySesion(context) || esPerfilNinos(context)) {
             onDone(false)
             return
         }
@@ -194,7 +206,7 @@ object DataSync {
      * para avisar si realmente no se pudo actualizar.
      */
     fun restore(context: Context, onDone: (ok: Boolean) -> Unit) {
-        if (!haySesion(context)) {
+        if (!haySesion(context) || esPerfilNinos(context)) {
             onDone(true)
             return
         }
