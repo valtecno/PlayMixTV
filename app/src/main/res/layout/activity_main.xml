@@ -221,30 +221,34 @@
                 <!-- Flecha izquierda películas -->
                 <ImageButton
                     android:id="@+id/btnMoviePrev"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:layout_gravity="center_vertical|start"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:background="@drawable/bg_home_arrow"
-                    android:src="@drawable/ic_arrow_back"
+                    android:src="@drawable/ic_chevron_left"
                     android:tint="@color/text_light"
                     android:contentDescription="@string/home_nav_prev"
                     android:focusable="true"
-                    android:padding="10dp" />
+                    android:focusableInTouchMode="false"
+                    android:padding="12dp"
+                    android:elevation="4dp" />
 
                 <!-- Flecha derecha películas -->
                 <ImageButton
                     android:id="@+id/btnMovieNext"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:layout_gravity="center_vertical|end"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_home_arrow"
-                    android:src="@drawable/ic_arrow_forward"
+                    android:src="@drawable/ic_chevron_right"
                     android:tint="@color/text_light"
                     android:contentDescription="@string/home_nav_next"
                     android:focusable="true"
-                    android:padding="10dp" />
+                    android:focusableInTouchMode="false"
+                    android:padding="12dp"
+                    android:elevation="4dp" />
 
             </FrameLayout>
         </LinearLayout>
@@ -295,30 +299,34 @@
                 <!-- Flecha izquierda series -->
                 <ImageButton
                     android:id="@+id/btnSeriesPrev"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:layout_gravity="center_vertical|start"
-                    android:layout_marginStart="6dp"
+                    android:layout_marginStart="8dp"
                     android:background="@drawable/bg_home_arrow"
-                    android:src="@drawable/ic_arrow_back"
+                    android:src="@drawable/ic_chevron_left"
                     android:tint="@color/text_light"
                     android:contentDescription="@string/home_nav_prev"
                     android:focusable="true"
-                    android:padding="10dp" />
+                    android:focusableInTouchMode="false"
+                    android:padding="12dp"
+                    android:elevation="4dp" />
 
                 <!-- Flecha derecha series -->
                 <ImageButton
                     android:id="@+id/btnSeriesNext"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:layout_gravity="center_vertical|end"
-                    android:layout_marginEnd="6dp"
+                    android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_home_arrow"
-                    android:src="@drawable/ic_arrow_forward"
+                    android:src="@drawable/ic_chevron_right"
                     android:tint="@color/text_light"
                     android:contentDescription="@string/home_nav_next"
                     android:focusable="true"
-                    android:padding="10dp" />
+                    android:focusableInTouchMode="false"
+                    android:padding="12dp"
+                    android:elevation="4dp" />
 
             </FrameLayout>
         </LinearLayout>

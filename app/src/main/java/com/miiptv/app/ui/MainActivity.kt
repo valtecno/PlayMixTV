@@ -1076,15 +1076,27 @@ class MainActivity : AppCompatActivity() {
         binding.btnSeriesPrev.setOnClickListener { recientes.stepBack() }
         binding.btnSeriesNext.setOnClickListener { recientes.stepForward() }
 
-        // Encadenado de foco D-pad entre las cuatro flechas para navegación
-        // horizontal con control remoto (izq ↔ der dentro de cada columna;
-        // der película → izq serie para cruzar el divisor)
+        // Encadenado de foco D-pad entre las cuatro flechas
         binding.btnMoviePrev.nextFocusRightId  = R.id.btnMovieNext
         binding.btnMovieNext.nextFocusLeftId   = R.id.btnMoviePrev
         binding.btnMovieNext.nextFocusRightId  = R.id.btnSeriesPrev
         binding.btnSeriesPrev.nextFocusLeftId  = R.id.btnMovieNext
         binding.btnSeriesPrev.nextFocusRightId = R.id.btnSeriesNext
         binding.btnSeriesNext.nextFocusLeftId  = R.id.btnSeriesPrev
+
+        // Efecto visual de foco para TV: escala suave al recibir/perder foco
+        listOf(
+            binding.btnMoviePrev, binding.btnMovieNext,
+            binding.btnSeriesPrev, binding.btnSeriesNext
+        ).forEach { btn ->
+            btn.setOnFocusChangeListener { v, hasFocus ->
+                v.animate()
+                    .scaleX(if (hasFocus) 1.18f else 1f)
+                    .scaleY(if (hasFocus) 1.18f else 1f)
+                    .setDuration(150)
+                    .start()
+            }
+        }
 
         /*
          * El catálogo se carga una sola vez y lo reutiliza también el buscador.
