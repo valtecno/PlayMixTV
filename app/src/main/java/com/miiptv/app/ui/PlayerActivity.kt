@@ -27,6 +27,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Toast
+import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
@@ -1645,10 +1646,10 @@ class PlayerActivity : AppCompatActivity() {
                         exo.playWhenReady = true
                     } else {
                         binding.progressBar.visibility = View.GONE
-                        Toast.makeText(
-                            this@PlayerActivity,
+                        Snackbar.make(
+                            binding.root,
                             clasificarError(error),
-                            Toast.LENGTH_LONG
+                            Snackbar.LENGTH_LONG
                         ).show()
                     }
                 }
