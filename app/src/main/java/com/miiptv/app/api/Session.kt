@@ -176,6 +176,20 @@ object Session {
     fun getExpDate(context: Context): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("exp_date", null)
 
+    /**
+     * Días que faltan para que venza la suscripción, o null si no hay fecha
+     * o la cuenta es ilimitada (exp_date vacío / "0" / "unlimited").
+     * Devuelve 0 si ya venció, y un número negativo NO ocurre porque se
+     * limita a 0.
+     */
+    fun daysUntilExpiry(context: Context): Long? {
+        val raw = getExpDate(context)?.trim()
+        if (raw.isNullOrBlank() || raw == "0" || raw.equals("unlimited", ignoreCase = true)) return null
+        val epochSec = raw.toLongOrNull() ?: return null
+        val nowSec = System.currentTimeMillis() / 1000L
+        return maxOf(0L, epochSec - nowSec) / 86400L
+    }
+
     fun invalidateApi() {
         synchronized(this) {
             cachedApi = null

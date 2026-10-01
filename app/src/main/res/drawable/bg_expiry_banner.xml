@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo semi-transparente del aviso de vencimiento próximo.
+     Color ámbar oscuro con transparencia del 88 % para que el
+     contenido de detrás sea levemente visible. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#E0B25000" />
+    <corners android:radius="12dp" />
+</shape>

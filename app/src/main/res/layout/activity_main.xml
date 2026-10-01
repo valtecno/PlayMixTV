@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -710,3 +714,32 @@
     </LinearLayout>
 
 </LinearLayout>
+
+<!-- ===== Aviso de vencimiento próximo ===== -->
+<!-- Visible solo si faltan ≤3 días; desaparece solo a los 5 s (ver MainActivity). -->
+<LinearLayout
+    android:id="@+id/bannerExpiry"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginBottom="24dp"
+    android:background="@drawable/bg_expiry_banner"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="14dp"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/tvExpiryMessage"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/text_light"
+        android:textSize="14sp"
+        android:lineSpacingMultiplier="1.25" />
+
+</LinearLayout>
+
+</FrameLayout>
