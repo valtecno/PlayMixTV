@@ -193,7 +193,7 @@
     <string name="setting_refresh">Actualizar catálogo</string>
     <string name="setting_clear_cache">Vaciar caché de imágenes</string>
     <string name="setting_server">Servidor</string>
-    <string name="settings_on_server">Actualmente en: %1$s</string>
+    <string name="settings_on_server">Usted está usando el sistema: %1$s</string>
     <string name="setting_logout">Cerrar sesión</string>
     <string name="settings_version">Versión %1$s</string>
 
@@ -345,7 +345,7 @@
     <string name="preview_error">No se pudo previsualizar este canal</string>
     <string name="preview_mute">Silenciar previsualización</string>
     <string name="setting_refresh_action">Actualizar</string>
-    <string name="setting_update">Buscar actualizaciones</string>
+    <string name="setting_update">Buscar actualización manual</string>
     <string name="update_checking">Buscando actualizaciones…</string>
     <string name="update_up_to_date">Ya tienes la última versión</string>
     <string name="update_not_configured">No hay repositorio configurado para actualizaciones</string>
