@@ -1,20 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fondo semitransparente de las flechas de navegación del carrusel de inicio.
-     Se ilumina al recibir el foco del control remoto/teclado. -->
+<!-- Fondo de las flechas de navegación del carrusel de inicio.
+     Sin foco: píldora muy traslúcida con borde sutil.
+     Con foco (control remoto / D-pad): fondo blanco con tinte naranja + borde luminoso.
+     Pressed: más oscuro que el foco para dar respuesta táctil. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- FOCO — estado principal en TV con control remoto -->
     <item android:state_focused="true">
-        <shape android:shape="oval">
-            <solid android:color="#CCF97316" />
-        </shape>
+        <layer-list>
+            <!-- Halo exterior difuso para que el ojo lo encuentre rápido -->
+            <item
+                android:left="-4dp"
+                android:top="-4dp"
+                android:right="-4dp"
+                android:bottom="-4dp">
+                <shape android:shape="oval">
+                    <solid android:color="#30F97316" />
+                </shape>
+            </item>
+            <!-- Relleno principal semiopaco naranja -->
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="#E6F97316" />
+                    <stroke android:width="1.5dp" android:color="#FFF97316" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
+
+    <!-- PRESSED (toque táctil o OK en control) -->
     <item android:state_pressed="true">
         <shape android:shape="oval">
-            <solid android:color="#CCF97316" />
+            <solid android:color="#CCE85D0D" />
+            <stroke android:width="1dp" android:color="#FFF97316" />
         </shape>
     </item>
+
+    <!-- ESTADO NORMAL — muy traslúcido, no interrumpe la imagen -->
     <item>
         <shape android:shape="oval">
-            <solid android:color="#66000000" />
+            <solid android:color="#28FFFFFF" />
+            <stroke android:width="0.8dp" android:color="#40FFFFFF" />
         </shape>
     </item>
+
 </selector>
