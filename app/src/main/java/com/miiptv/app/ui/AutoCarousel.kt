@@ -141,6 +141,37 @@ class AutoCarousel(
         ui.removeCallbacks(tick)
     }
 
+    /**
+     * Avanza un ítem hacia adelante (botón ▶ / flecha derecha).
+     * Resetea el temporizador automático para que no salte justo después del toque manual.
+     */
+    fun stepForward() {
+        stop()
+        advance()
+        start()
+    }
+
+    /**
+     * Retrocede un ítem (botón ◀ / flecha izquierda).
+     * Resetea el temporizador automático igual que stepForward.
+     */
+    fun stepBack() {
+        stop()
+        val count = adapter.itemCount
+        if (count <= perPage) return
+        page = if (page - perPage < 0) {
+            // Volver al último: salto directo para no hacer scroll largo
+            val last = ((count - 1) / perPage) * perPage
+            layoutManager.scrollToPositionWithOffset(last, 0)
+            last
+        } else {
+            val prev = page - perPage
+            smoothScrollToStart(prev)
+            prev
+        }
+        start()
+    }
+
     private fun advance() {
         val count = adapter.itemCount
         if (count <= perPage) return

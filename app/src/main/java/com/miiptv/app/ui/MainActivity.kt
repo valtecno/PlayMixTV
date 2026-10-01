@@ -970,10 +970,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // Fila 1: lo más nuevo. Fila 2: lo que sigue, sin repetir nada de la primera.
-        val todo = Catalog.newest(this, limit = 40)
-        val fila1 = todo.take(20)
-        val fila2 = todo.drop(20)
+        // Columna izquierda: últimas películas. Columna derecha: últimas series.
+        val fila1 = Catalog.newestMovies(this, limit = 20)
+        val fila2 = Catalog.newestSeries(this, limit = 20)
 
         novedades.submit(fila1)
         recientes.submit(fila2)
@@ -1070,6 +1069,22 @@ class MainActivity : AppCompatActivity() {
         recientes = AutoCarousel(binding.recyclerRecent, recentAdapter, delayMs = 5000L)
         novedades.attach()
         recientes.attach()
+
+        // Flechas de navegación manual del carrusel (también usables con D-pad / control remoto)
+        binding.btnMoviePrev.setOnClickListener { novedades.stepBack() }
+        binding.btnMovieNext.setOnClickListener { novedades.stepForward() }
+        binding.btnSeriesPrev.setOnClickListener { recientes.stepBack() }
+        binding.btnSeriesNext.setOnClickListener { recientes.stepForward() }
+
+        // Encadenado de foco D-pad entre las cuatro flechas para navegación
+        // horizontal con control remoto (izq ↔ der dentro de cada columna;
+        // der película → izq serie para cruzar el divisor)
+        binding.btnMoviePrev.nextFocusRightId  = R.id.btnMovieNext
+        binding.btnMovieNext.nextFocusLeftId   = R.id.btnMoviePrev
+        binding.btnMovieNext.nextFocusRightId  = R.id.btnSeriesPrev
+        binding.btnSeriesPrev.nextFocusLeftId  = R.id.btnMovieNext
+        binding.btnSeriesPrev.nextFocusRightId = R.id.btnSeriesNext
+        binding.btnSeriesNext.nextFocusLeftId  = R.id.btnSeriesPrev
 
         /*
          * El catálogo se carga una sola vez y lo reutiliza también el buscador.
