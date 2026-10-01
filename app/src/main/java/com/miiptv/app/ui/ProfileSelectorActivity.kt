@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -76,6 +77,13 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
 
         setupGrid()
+
+        // Mostrar hint de edición con mando solo en dispositivos TV
+        val uiMode = resources.configuration.uiMode and
+            android.content.res.Configuration.UI_MODE_TYPE_MASK
+        if (uiMode == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
+            binding.tvTvHint.visibility = View.VISIBLE
+        }
 
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
             val activo = Profiles.active(this)
@@ -214,21 +222,44 @@ class ProfileSelectorActivity : AppCompatActivity() {
             val bg = holder.vCircle.background?.mutate() as? GradientDrawable
             bg?.setColor(avatar.color) ?: holder.vCircle.background?.setTint(avatar.color)
 
-            // Toque corto → seleccionar
+            // Toque corto / OK en D-pad → seleccionar
             holder.itemView.setOnClickListener { onSelect(profile) }
+
+            // En TV: resaltar nombre al recibir foco
+            holder.itemView.setOnFocusChangeListener { _, hasFocus ->
+                holder.tvName.setTextColor(
+                    if (hasFocus) 0xFFFFFFFF.toInt() else 0xFFCCCCCC.toInt()
+                )
+            }
 
             // Botón de lápiz visible → editar (no aplica a Niños)
             holder.ivBadge.visibility = if (profile.isKids) View.GONE else View.VISIBLE
             holder.ivBadge.setOnClickListener { onEdit(profile) }
 
-            // Toque largo → editar (atajo; también para el mando de TV)
             if (!profile.isKids) {
+                // Toque largo (táctil) → editar
                 holder.itemView.setOnLongClickListener {
-                    holder.ivEdit.visibility = View.VISIBLE
-                    holder.itemView.postDelayed({ holder.ivEdit.visibility = View.GONE }, 200)
                     onEdit(profile)
                     true
                 }
+
+                // Mando de TV: tecla MENU o mantener OK → abrir edición
+                holder.itemView.setOnKeyListener { _, keyCode, event ->
+                    if (event.action == KeyEvent.ACTION_DOWN &&
+                        (keyCode == KeyEvent.KEYCODE_MENU ||
+                         keyCode == KeyEvent.KEYCODE_SETTINGS ||
+                         (keyCode == KeyEvent.KEYCODE_DPAD_CENTER && event.repeatCount > 0) ||
+                         (keyCode == KeyEvent.KEYCODE_ENTER && event.repeatCount > 0))
+                    ) {
+                        onEdit(profile)
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                holder.itemView.setOnLongClickListener(null)
+                holder.itemView.setOnKeyListener(null)
             }
         }
 

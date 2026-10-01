@@ -8,7 +8,8 @@
     android:padding="12dp"
     android:focusable="true"
     android:clickable="true"
-    android:background="?attr/selectableItemBackgroundBorderless">
+    android:background="@android:color/transparent"
+    android:stateListAnimator="@animator/scale_on_focus">
 
     <!-- Círculo de color con emoji del avatar -->
     <FrameLayout

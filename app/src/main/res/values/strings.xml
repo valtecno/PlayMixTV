@@ -296,6 +296,7 @@
     <string name="playback_stop">Detener</string>
     <string name="setting_autoplay_next">Reproducir siguiente episodio</string>
     <string name="player_error">No se pudo reproducir (%1$s)</string>
+    <string name="profile_tv_edit_hint">Mantén pulsado OK en el perfil para editarlo</string>
     <string name="player_error_no_internet">Sin conexión a internet. Comprueba tu red y vuelve a intentarlo.</string>
     <string name="player_error_weak_connection">La conexión a internet es inestable o demasiado lenta para reproducir este contenido.</string>
     <string name="player_error_source">El servidor no responde. Tu internet está bien. Avisa a tu soporte.</string>

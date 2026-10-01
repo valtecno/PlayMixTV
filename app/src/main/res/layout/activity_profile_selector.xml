@@ -21,6 +21,20 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="52dp"/>
 
+    <!-- Hint para TV: cómo editar con mando -->
+    <TextView
+        android:id="@+id/tvTvHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/profile_tv_edit_hint"
+        android:textColor="#88FFFFFF"
+        android:textSize="13sp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/tvProfileTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"/>
+
     <!-- Grid de perfiles -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvProfiles"
@@ -28,11 +42,12 @@
         android:layout_height="wrap_content"
         android:clipToPadding="false"
         android:paddingHorizontal="24dp"
-        app:layout_constraintTop_toBottomOf="@id/tvProfileTitle"
+        android:descendantFocusability="afterDescendants"
+        app:layout_constraintTop_toBottomOf="@id/tvTvHint"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="32dp"
         android:layout_marginBottom="60dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
