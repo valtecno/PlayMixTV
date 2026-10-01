@@ -296,6 +296,9 @@
     <string name="playback_stop">Detener</string>
     <string name="setting_autoplay_next">Reproducir siguiente episodio</string>
     <string name="player_error">No se pudo reproducir (%1$s)</string>
+    <string name="player_error_no_internet">Sin conexión a internet. Comprueba tu red y vuelve a intentarlo.</string>
+    <string name="player_error_weak_connection">La conexión a internet es inestable o demasiado lenta para reproducir este contenido.</string>
+    <string name="player_error_source">El contenido no está disponible en este momento. El problema es del origen, no de tu internet.</string>
 
     <string name="catalog_error">No se pudo cargar el catálogo (%1$s). Prueba en Ajustes → Actualizar catálogo.</string>
     <string name="diag_title">Diagnóstico del servidor</string>
