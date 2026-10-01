@@ -298,7 +298,7 @@
     <string name="player_error">No se pudo reproducir (%1$s)</string>
     <string name="player_error_no_internet">Sin conexión a internet. Comprueba tu red y vuelve a intentarlo.</string>
     <string name="player_error_weak_connection">La conexión a internet es inestable o demasiado lenta para reproducir este contenido.</string>
-    <string name="player_error_source">El servidor presenta un problema en este momento. Tu internet está bien. Toma una foto de la pantalla y avisa a tu soporte.</string>
+    <string name="player_error_source">El servidor no responde. Tu internet está bien. Avisa a tu soporte.</string>
 
     <string name="catalog_error">No se pudo cargar el catálogo (%1$s). Prueba en Ajustes → Actualizar catálogo.</string>
     <string name="diag_title">Diagnóstico del servidor</string>
