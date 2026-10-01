@@ -500,6 +500,28 @@ object Catalog {
         }
     }
 
+    /** Las [limit] películas más recientes, excluyendo categorías con control parental. */
+    fun newestMovies(context: Context, limit: Int = 20): List<ContentItem> {
+        val visible = movies.filter { !Parental.isCategoryLocked(context, it.categoryId) }
+        val conFecha = visible.filter { it.added > 0 }
+        return if (conFecha.isNotEmpty()) {
+            conFecha.sortedByDescending { it.added }.take(limit)
+        } else {
+            visible.sortedByDescending { it.id }.take(limit)
+        }
+    }
+
+    /** Las [limit] series más recientes, excluyendo categorías con control parental. */
+    fun newestSeries(context: Context, limit: Int = 20): List<ContentItem> {
+        val visible = series.filter { !Parental.isCategoryLocked(context, it.categoryId) }
+        val conFecha = visible.filter { it.added > 0 }
+        return if (conFecha.isNotEmpty()) {
+            conFecha.sortedByDescending { it.added }.take(limit)
+        } else {
+            visible.sortedByDescending { it.id }.take(limit)
+        }
+    }
+
     /** Vacía la caché (al cerrar sesión o al forzar una actualización manual). */
     fun clear() {
         hardReset()
