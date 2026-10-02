@@ -290,7 +290,7 @@
     <string name="mode_tv_desc">Android TV o pantalla grande con control remoto. Las secciones del inicio se muestran lado a lado.</string>
     <string name="mode_continue">Continuar</string>
     <string name="mode_changeable">Puedes cambiarlo cuando quieras desde Cuenta.</string>
-    <string name="setting_device_mode">Modo de pantalla</string>
+    <string name="setting_device_mode">Modo de aplicación</string>
     <string name="app_author">by @valtecno</string>
     <string name="setting_background">Seguir sonando en segundo plano</string>
     <string name="playback_channel">Reproducción</string>
