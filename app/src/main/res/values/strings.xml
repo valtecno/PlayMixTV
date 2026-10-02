@@ -322,7 +322,7 @@
     <string name="espacio_sync_done">Actualizado</string>
     <string name="espacio_sync_failed">No se pudo actualizar (revisa la conexión)</string>
 
-    <string name="setting_data_sync">Copia de seguridad</string>
+    <string name="setting_data_sync">Respaldo de mi perfil</string>
     <string name="data_sync_never">Nunca • Toca para sincronizar</string>
     <string name="data_sync_syncing">Sincronizando…</string>
     <string name="data_sync_ok">Sincronizado hace %1$s</string>
@@ -352,7 +352,7 @@
     <string name="preview_mute">Silenciar previsualización</string>
     <string name="setting_refresh_action">Actualizar</string>
     <string name="setting_update">Buscar actualización manual</string>
-    <string name="setting_current_version_label">Versión actual</string>
+    <string name="setting_current_version_label">Actual</string>
     <string name="update_checking">Buscando actualizaciones…</string>
     <string name="update_up_to_date">Ya tienes la última versión</string>
     <string name="update_not_configured">No hay repositorio configurado para actualizaciones</string>
