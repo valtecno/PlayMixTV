@@ -3,6 +3,9 @@ package com.miiptv.app.ui
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.KeyEvent
@@ -13,6 +16,7 @@ import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -35,6 +39,8 @@ import com.miiptv.app.ui.WelcomeActivity
  *
  * Toque corto → selecciona el perfil y navega a MainActivity.
  * Toque largo → abre el diálogo de edición (nombre + avatar).
+ * Ícono papelera → elimina el perfil (con confirmación).
+ * Tarjeta "+" → crea un perfil nuevo.
  * El perfil de Niños activa KidsMode automáticamente.
  */
 class ProfileSelectorActivity : AppCompatActivity() {
@@ -72,14 +78,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         val fromSettings = intent.getBooleanExtra(EXTRA_FROM_SETTINGS, false)
         if (!fromSettings) {
-            // Ocultar la barra de acción si la hubiera (pantalla inmersiva)
             supportActionBar?.hide()
         }
 
         setupGrid()
 
-        // El hint de edición se muestra siempre: en TV con mando es la instrucción
-        // principal; en móvil recuerda que el toque largo también abre la edición.
         binding.tvTvHint.visibility = View.VISIBLE
 
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
@@ -90,38 +93,40 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
     private fun setupGrid() {
         val profiles = Profiles.getAll(this)
+        val canAdd   = profiles.size < 6
+
         adapter = ProfileAdapter(
-            profiles = profiles,
-            onSelect = { profile -> selectProfile(profile) },
-            onEdit   = { profile -> showEditDialog(profile) }
+            profiles  = profiles,
+            canAdd    = canAdd,
+            onSelect  = { profile -> selectProfile(profile) },
+            onEdit    = { profile -> showEditDialog(profile) },
+            onDelete  = { profile -> confirmDelete(profile) },
+            onAddNew  = { showAddDialog() }
         )
 
-        // Dos columnas en móvil, hasta cuatro en tablet/TV
         val cols = if (resources.displayMetrics.widthPixels >= 1200) 4 else 2
         binding.rvProfiles.layoutManager = GridLayoutManager(this, cols)
         binding.rvProfiles.adapter = adapter
 
-        // Animación de entrada: los ítems caen de arriba
         val anim = AnimationUtils.loadLayoutAnimation(this, R.anim.layout_fall_down)
         binding.rvProfiles.layoutAnimation = anim
     }
 
+    private fun refreshGrid() {
+        val profiles = Profiles.getAll(this)
+        val canAdd   = profiles.size < 6
+        adapter.updateAll(profiles, canAdd)
+    }
+
     private fun selectProfile(profile: Profiles.Profile) {
         Profiles.setActive(this, profile)
-
-        // El perfil de niños activa KidsMode; los demás lo desactivan
         KidsMode.setActive(this, profile.isKids)
-
-        // Restaurar la copia de seguridad de este perfil desde la nube
-        DataSync.restore(this) { /* mejor esfuerzo: no bloquea */ }
+        DataSync.restore(this) { }
 
         val fromSettings = intent.getBooleanExtra(EXTRA_FROM_SETTINGS, false)
         if (fromSettings) {
-            // Vuelve a donde estaba (MainActivity) con el perfil ya cambiado
             finish()
         } else {
-            // Primera vez en este arranque: si es la primera instalación, pasa
-            // por WelcomeActivity; si no, directo a MainActivity.
             val destino = if (WelcomeActivity.debesMostrar(this))
                 WelcomeActivity::class.java else MainActivity::class.java
             startActivity(Intent(this, destino))
@@ -130,7 +135,6 @@ class ProfileSelectorActivity : AppCompatActivity() {
     }
 
     private fun showEditDialog(profile: Profiles.Profile) {
-        // El perfil de Niños no es editable (nombre fijo, avatar fijo)
         if (profile.isKids) return
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_profile_edit, null)
@@ -143,31 +147,29 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         fun refreshAvatar(av: Avatar) {
             selectedAvatar = av
+            // Mostrar letra del avatar centrada
             tvEmoji.text = av.emoji
             (vCircle.background as? GradientDrawable)?.setColor(av.color)
                 ?: vCircle.background?.setTint(av.color)
         }
 
-        // Inicializar con el avatar actual
         refreshAvatar(selectedAvatar)
         etName.setText(profile.name)
         etName.setSelection(profile.name.length)
 
-        // Galería de avatares (excluye KIDS — solo para el perfil de niños)
         val availableAvatars = Avatar.entries.filter { it != Avatar.KIDS }
         val avatarAdapter = AvatarPickerAdapter(
             avatars  = availableAvatars,
             selected = selectedAvatar,
             onPick   = { av -> refreshAvatar(av) }
         )
-        rvAvatars.layoutManager = GridLayoutManager(this, 5)
+        rvAvatars.layoutManager = GridLayoutManager(this, 6)
         rvAvatars.adapter = avatarAdapter
 
         val dialog = AlertDialog.Builder(this, R.style.AppDialog)
             .setView(dialogView)
             .create()
 
-        // Si se abrió solo para editar desde Ajustes, al cerrar se vuelve atrás
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
             dialog.setOnDismissListener { finish() }
         }
@@ -184,63 +186,186 @@ class ProfileSelectorActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    private fun showAddDialog() {
+        if (Profiles.getAll(this).size >= 6) {
+            Toast.makeText(this, R.string.profile_max_reached, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_profile_edit, null)
+        val tvEmoji    = dialogView.findViewById<TextView>(R.id.tvEditAvatarEmoji)
+        val vCircle    = dialogView.findViewById<View>(R.id.vEditAvatarCircle)
+        val rvAvatars  = dialogView.findViewById<RecyclerView>(R.id.rvAvatarPicker)
+        val etName     = dialogView.findViewById<TextInputEditText>(R.id.etProfileName)
+
+        // Avatar inicial por defecto (el A2 — un color distinto al de los perfiles ya creados)
+        var selectedAvatar: Avatar = Avatar.A2
+
+        fun refreshAvatar(av: Avatar) {
+            selectedAvatar = av
+            tvEmoji.text = av.emoji
+            (vCircle.background as? GradientDrawable)?.setColor(av.color)
+                ?: vCircle.background?.setTint(av.color)
+        }
+
+        refreshAvatar(selectedAvatar)
+        etName.hint = getString(R.string.profile_default_new_name)
+
+        val availableAvatars = Avatar.entries.filter { it != Avatar.KIDS }
+        val avatarAdapter = AvatarPickerAdapter(
+            avatars  = availableAvatars,
+            selected = selectedAvatar,
+            onPick   = { av -> refreshAvatar(av) }
+        )
+        rvAvatars.layoutManager = GridLayoutManager(this, 6)
+        rvAvatars.adapter = avatarAdapter
+
+        val dialog = AlertDialog.Builder(this, R.style.AppDialog)
+            .setTitle(getString(R.string.profile_add_title))
+            .setView(dialogView)
+            .create()
+
+        dialogView.findViewById<View>(R.id.btnCancelEdit).setOnClickListener { dialog.dismiss() }
+        dialogView.findViewById<View>(R.id.btnSaveEdit).setOnClickListener {
+            val nombre = etName.text?.toString()?.trim()
+                ?.ifBlank { getString(R.string.profile_default_new_name) }
+                ?: getString(R.string.profile_default_new_name)
+            val newProfile = Profiles.add(this, nombre, selectedAvatar.id)
+            if (newProfile != null) {
+                dialog.dismiss()
+                refreshGrid()
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun confirmDelete(profile: Profiles.Profile) {
+        AlertDialog.Builder(this, R.style.AppDialog)
+            .setMessage(getString(R.string.profile_delete_confirm, profile.name))
+            .setPositiveButton(R.string.profile_delete) { _, _ ->
+                val ok = Profiles.delete(this, profile)
+                if (ok) {
+                    Toast.makeText(this, R.string.profile_deleted, Toast.LENGTH_SHORT).show()
+                    refreshGrid()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     // =========================================================================
     // Adapter de perfiles
     // =========================================================================
 
-    private class ProfileAdapter(
-        private var profiles: List<Profiles.Profile>,
-        private val onSelect: (Profiles.Profile) -> Unit,
-        private val onEdit:   (Profiles.Profile) -> Unit
-    ) : RecyclerView.Adapter<ProfileAdapter.VH>() {
+    private inner class ProfileAdapter(
+        profiles: List<Profiles.Profile>,
+        canAdd:   Boolean,
+        private val onSelect:  (Profiles.Profile) -> Unit,
+        private val onEdit:    (Profiles.Profile) -> Unit,
+        private val onDelete:  (Profiles.Profile) -> Unit,
+        private val onAddNew:  () -> Unit
+    ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-        inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val flBg:    FrameLayout = view.findViewById(R.id.flAvatarBg)
-            val vCircle: View        = view.findViewById(R.id.vAvatarCircle)
-            val tvEmoji: TextView    = view.findViewById(R.id.tvAvatarEmoji)
-            val tvName:  TextView    = view.findViewById(R.id.tvProfileName)
-            val ivEdit:  ImageView   = view.findViewById(R.id.ivEditOverlay)
-            val ivBadge: ImageView   = view.findViewById(R.id.ivEditBadge)
+        private var items: List<Profiles.Profile?> = buildItems(profiles, canAdd)
+
+        private fun buildItems(profiles: List<Profiles.Profile>, canAdd: Boolean): List<Profiles.Profile?> {
+            // null = tarjeta "Agregar perfil"
+            return if (canAdd) profiles + listOf(null) else profiles
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            VH(LayoutInflater.from(parent.context).inflate(R.layout.item_profile, parent, false))
+        companion object {
+            private const val TYPE_PROFILE = 0
+            private const val TYPE_ADD     = 1
+        }
 
-        override fun getItemCount() = profiles.size
+        override fun getItemViewType(position: Int) =
+            if (items[position] == null) TYPE_ADD else TYPE_PROFILE
 
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val profile = profiles[position]
-            val avatar  = profile.avatar
+        // --- ViewHolder para perfiles normales ---
+        inner class ProfileVH(view: View) : RecyclerView.ViewHolder(view) {
+            val flBg:      FrameLayout = view.findViewById(R.id.flAvatarBg)
+            val vCircle:   View        = view.findViewById(R.id.vAvatarCircle)
+            val tvEmoji:   TextView    = view.findViewById(R.id.tvAvatarEmoji)
+            val tvName:    TextView    = view.findViewById(R.id.tvProfileName)
+            val ivEdit:    ImageView   = view.findViewById(R.id.ivEditOverlay)
+            val ivBadge:   ImageView   = view.findViewById(R.id.ivEditBadge)
+            val ivDelete:  ImageView   = view.findViewById(R.id.ivDeleteBadge)
+        }
 
-            holder.tvEmoji.text = avatar.emoji
-            holder.tvName.text  = profile.name
+        // --- ViewHolder para la tarjeta "+" ---
+        inner class AddVH(view: View) : RecyclerView.ViewHolder(view) {
+            val tvEmoji: TextView  = view.findViewById(R.id.tvAvatarEmoji)
+            val tvName:  TextView  = view.findViewById(R.id.tvProfileName)
+            val vCircle: View      = view.findViewById(R.id.vAvatarCircle)
+        }
 
-            // Color del círculo
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_profile, parent, false)
+            return if (viewType == TYPE_PROFILE) ProfileVH(view) else AddVH(view)
+        }
+
+        override fun getItemCount() = items.size
+
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            val profile = items[position]
+
+            if (holder is AddVH && profile == null) {
+                // Tarjeta de "Agregar perfil"
+                holder.tvEmoji.text = "+"
+                holder.tvEmoji.textSize = 42f
+                holder.tvName.text = getString(R.string.profile_add)
+                holder.tvName.setTextColor(0xFFAAAAAA.toInt())
+                // Círculo gris con borde punteado visual
+                (holder.vCircle.background as? GradientDrawable)?.let {
+                    it.setColor(0xFF2A2A2A.toInt())
+                    it.setStroke(3, 0xFF666666.toInt())
+                } ?: holder.vCircle.background?.setTint(0xFF2A2A2A.toInt())
+
+                holder.itemView.setOnClickListener { onAddNew() }
+                holder.itemView.setOnFocusChangeListener { _, hasFocus ->
+                    holder.tvName.setTextColor(
+                        if (hasFocus) 0xFFFFFFFF.toInt() else 0xFFAAAAAA.toInt()
+                    )
+                }
+                return
+            }
+
+            if (holder !is ProfileVH || profile == null) return
+
+            val avatar = profile.avatar
+            holder.tvEmoji.text  = avatar.emoji
+            // Para avatares de letras, ajustar tamaño de texto
+            holder.tvEmoji.textSize = if (avatar == Avatar.KIDS) 54f else 42f
+            holder.tvName.text   = profile.name
+
             val bg = holder.vCircle.background?.mutate() as? GradientDrawable
             bg?.setColor(avatar.color) ?: holder.vCircle.background?.setTint(avatar.color)
 
-            // Toque corto / OK en D-pad → seleccionar
             holder.itemView.setOnClickListener { onSelect(profile) }
 
-            // En TV: resaltar nombre al recibir foco
             holder.itemView.setOnFocusChangeListener { _, hasFocus ->
                 holder.tvName.setTextColor(
                     if (hasFocus) 0xFFFFFFFF.toInt() else 0xFFCCCCCC.toInt()
                 )
             }
 
-            // Botón de lápiz visible → editar (no aplica a Niños)
-            holder.ivBadge.visibility = if (profile.isKids) View.GONE else View.VISIBLE
+            // Badge de editar y papelera — no aplica a Niños
+            val nonKidsProfiles = items.filterNotNull().filter { !it.isKids }
+            val canDelete = !profile.isKids && nonKidsProfiles.size > 1
+
+            holder.ivBadge.visibility  = if (profile.isKids) View.GONE else View.VISIBLE
+            holder.ivDelete.visibility = if (canDelete) View.VISIBLE else View.GONE
+
             holder.ivBadge.setOnClickListener { onEdit(profile) }
+            holder.ivDelete.setOnClickListener { onDelete(profile) }
 
             if (!profile.isKids) {
-                // Toque largo (táctil) → editar
                 holder.itemView.setOnLongClickListener {
                     onEdit(profile)
                     true
                 }
-
-                // Mando de TV: tecla MENU o mantener OK → abrir edición
                 holder.itemView.setOnKeyListener { _, keyCode, event ->
                     if (event.action == KeyEvent.ACTION_DOWN &&
                         (keyCode == KeyEvent.KEYCODE_MENU ||
@@ -261,11 +386,16 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
 
         fun updateProfile(updated: Profiles.Profile) {
-            val idx = profiles.indexOfFirst { it.profileId == updated.profileId }
+            val idx = items.indexOfFirst { it?.profileId == updated.profileId }
             if (idx >= 0) {
-                profiles = profiles.toMutableList().also { it[idx] = updated }
+                items = items.toMutableList().also { it[idx] = updated }
                 notifyItemChanged(idx)
             }
+        }
+
+        fun updateAll(profiles: List<Profiles.Profile>, canAdd: Boolean) {
+            items = buildItems(profiles, canAdd)
+            notifyDataSetChanged()
         }
     }
 
@@ -295,6 +425,8 @@ class ProfileSelectorActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val av = avatars[position]
             holder.tvEmoji.text = av.emoji
+            // Letra del avatar en tamaño adecuado para el picker
+            holder.tvEmoji.textSize = if (av == Avatar.KIDS) 20f else 15f
             val bg = holder.vCircle.background?.mutate() as? GradientDrawable
             bg?.setColor(av.color) ?: holder.vCircle.background?.setTint(av.color)
             holder.vSelected.visibility = if (av.id == selectedId) View.VISIBLE else View.GONE
