@@ -21,13 +21,21 @@
             android:layout_height="match_parent"
             android:background="@drawable/bg_profile_avatar"/>
 
+        <ImageView
+            android:id="@+id/ivEditAvatarImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"/>
+
         <TextView
             android:id="@+id/tvEditAvatarEmoji"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:textSize="36sp"
-            android:includeFontPadding="false"/>
+            android:includeFontPadding="false"
+            android:visibility="gone"/>
 
     </FrameLayout>
 

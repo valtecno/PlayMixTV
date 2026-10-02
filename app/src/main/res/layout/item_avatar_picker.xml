@@ -14,13 +14,21 @@
         android:layout_height="match_parent"
         android:background="@drawable/bg_profile_avatar"/>
 
+    <ImageView
+        android:id="@+id/ivPickerImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone"/>
+
     <TextView
         android:id="@+id/tvPickerEmoji"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
         android:textSize="20sp"
-        android:includeFontPadding="false"/>
+        android:includeFontPadding="false"
+        android:visibility="gone"/>
 
     <!-- Borde de selección -->
     <View

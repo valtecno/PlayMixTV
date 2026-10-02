@@ -35,25 +35,27 @@ object Profiles {
 
     enum class Avatar(
         val id: String,
-        /** Letra o símbolo que se muestra dentro del círculo. */
+        /** Nombre del recurso drawable que contiene la imagen del avatar. Null = usar emoji. */
+        val drawableRes: String?,
+        /** Emoji de fallback (solo para KIDS o si el drawable no carga). */
         val emoji: String,
         /** Color de fondo del círculo (ARGB hex). */
         val color: Int
     ) {
-        // Colores modernos y sofisticados — paleta adulta
-        A1  ("a1",  "A", 0xFF5C6BC0.toInt()),  // índigo medio
-        A2  ("a2",  "B", 0xFF26A69A.toInt()),  // teal
-        A3  ("a3",  "C", 0xFFEF5350.toInt()),  // rojo coral
-        A4  ("a4",  "D", 0xFF42A5F5.toInt()),  // azul cielo
-        A5  ("a5",  "E", 0xFF66BB6A.toInt()),  // verde salvia
-        A6  ("a6",  "F", 0xFFAB47BC.toInt()),  // morado amable
-        A7  ("a7",  "G", 0xFFFF7043.toInt()),  // naranja cálido
-        A8  ("a8",  "H", 0xFF78909C.toInt()),  // gris azulado
-        A9  ("a9",  "I", 0xFF26C6DA.toInt()),  // cian eléctrico
-        A10 ("a10", "J", 0xFFD4E157.toInt()),  // lima sofisticado
-        A11 ("a11", "K", 0xFFEC407A.toInt()),  // rosa fuerte
-        A12 ("a12", "L", 0xFF7E57C2.toInt()),  // violeta profundo
-        KIDS("kids","🧒", 0xFF4DB6AC.toInt()); // turquesa suave (Niños)
+        // 12 avatares con imagen de persona estilizada
+        A1  ("a1",  "avatar_p1",  "👤", 0xFF3D5AFE.toInt()),  // chico azul
+        A2  ("a2",  "avatar_p2",  "👤", 0xFFE91E63.toInt()),  // chica rosa
+        A3  ("a3",  "avatar_p3",  "👤", 0xFF00897B.toInt()),  // chico teal barba
+        A4  ("a4",  "avatar_p4",  "👤", 0xFF7B1FA2.toInt()),  // chica morado
+        A5  ("a5",  "avatar_p5",  "👤", 0xFFF57C00.toInt()),  // chico gorra
+        A6  ("a6",  "avatar_p6",  "👤", 0xFF0097A7.toInt()),  // chica cola
+        A7  ("a7",  "avatar_p7",  "👤", 0xFFC62828.toInt()),  // chico cresta
+        A8  ("a8",  "avatar_p8",  "👤", 0xFF558B2F.toInt()),  // chica moño
+        A9  ("a9",  "avatar_p9",  "👤", 0xFF4527A0.toInt()),  // chico gafas
+        A10 ("a10", "avatar_p10", "👤", 0xFF00695C.toInt()),  // chica afro
+        A11 ("a11", "avatar_p11", "👤", 0xFFE65100.toInt()),  // chico capucha
+        A12 ("a12", "avatar_p12", "👤", 0xFF6A1B9A.toInt()),  // astronauta
+        KIDS("kids", null,        "🧒", 0xFF4DB6AC.toInt()); // turquesa (Niños)
 
         companion object {
             fun fromId(id: String): Avatar = entries.firstOrNull { it.id == id } ?: A1
