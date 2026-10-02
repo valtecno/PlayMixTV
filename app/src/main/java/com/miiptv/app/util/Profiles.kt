@@ -35,25 +35,28 @@ object Profiles {
 
     enum class Avatar(
         val id: String,
-        /** Emoji que se usa como fallback y en el selector pequeño. */
+        /** Letra o símbolo que se muestra dentro del círculo. */
         val emoji: String,
         /** Color de fondo del círculo (ARGB hex). */
         val color: Int
     ) {
-        STAR    ("star",    "⭐", 0xFF6C3FD4.toInt()),  // morado
-        FLAME   ("flame",   "🔥", 0xFFD4533F.toInt()),  // rojo
-        WAVE    ("wave",    "🌊", 0xFF3F8FD4.toInt()),  // azul
-        LEAF    ("leaf",    "🌿", 0xFF3FAD5C.toInt()),  // verde
-        MOON    ("moon",    "🌙", 0xFF2C2C54.toInt()),  // índigo oscuro
-        SUN     ("sun",     "☀️", 0xFFD4A93F.toInt()),  // naranja
-        BOLT    ("bolt",    "⚡", 0xFFD4D43F.toInt()),  // amarillo
-        HEART   ("heart",   "❤️", 0xFFD43F6C.toInt()),  // rosa
-        ROCKET  ("rocket",  "🚀", 0xFF3F5FD4.toInt()),  // azul marino
-        PLANET  ("planet",  "🪐", 0xFF8F3FD4.toInt()),  // violeta
-        KIDS    ("kids",    "🧒", 0xFF3FD4C4.toInt());  // turquesa (reservado para Niños)
+        // Colores modernos y sofisticados — paleta adulta
+        A1  ("a1",  "A", 0xFF5C6BC0.toInt()),  // índigo medio
+        A2  ("a2",  "B", 0xFF26A69A.toInt()),  // teal
+        A3  ("a3",  "C", 0xFFEF5350.toInt()),  // rojo coral
+        A4  ("a4",  "D", 0xFF42A5F5.toInt()),  // azul cielo
+        A5  ("a5",  "E", 0xFF66BB6A.toInt()),  // verde salvia
+        A6  ("a6",  "F", 0xFFAB47BC.toInt()),  // morado amable
+        A7  ("a7",  "G", 0xFFFF7043.toInt()),  // naranja cálido
+        A8  ("a8",  "H", 0xFF78909C.toInt()),  // gris azulado
+        A9  ("a9",  "I", 0xFF26C6DA.toInt()),  // cian eléctrico
+        A10 ("a10", "J", 0xFFD4E157.toInt()),  // lima sofisticado
+        A11 ("a11", "K", 0xFFEC407A.toInt()),  // rosa fuerte
+        A12 ("a12", "L", 0xFF7E57C2.toInt()),  // violeta profundo
+        KIDS("kids","🧒", 0xFF4DB6AC.toInt()); // turquesa suave (Niños)
 
         companion object {
-            fun fromId(id: String): Avatar = entries.firstOrNull { it.id == id } ?: STAR
+            fun fromId(id: String): Avatar = entries.firstOrNull { it.id == id } ?: A1
         }
     }
 
@@ -87,9 +90,9 @@ object Profiles {
     // -------------------------------------------------------------------------
 
     private fun defaultProfiles(): List<Profile> = listOf(
-        Profile("p1",    "Perfil 1", Avatar.STAR.id),
-        Profile("p2",    "Perfil 2", Avatar.FLAME.id),
-        Profile("p3",    "Perfil 3", Avatar.WAVE.id),
+        Profile("p1",    "Perfil 1", Avatar.A1.id),
+        Profile("p2",    "Perfil 2", Avatar.A3.id),
+        Profile("p3",    "Perfil 3", Avatar.A4.id),
         Profile("kids",  "Niños",    Avatar.KIDS.id, isKids = true)
     )
 
@@ -159,6 +162,37 @@ object Profiles {
     fun update(context: Context, updated: Profile) {
         val list = getAll(context).map { if (it.profileId == updated.profileId) updated else it }
         save(context, list)
+    }
+
+    /**
+     * Agrega un nuevo perfil. Genera un profileId único basado en timestamp.
+     * No se puede agregar si ya hay 6 perfiles (Kids incluido).
+     */
+    fun add(context: Context, name: String, avatarId: String): Profile? {
+        val current = getAll(context)
+        if (current.size >= 6) return null
+        val newId = "p_${System.currentTimeMillis()}"
+        val profile = Profile(newId, name, avatarId)
+        save(context, current + profile)
+        return profile
+    }
+
+    /**
+     * Elimina un perfil. No permite eliminar el perfil de Niños ni el perfil activo
+     * si es el único perfil no-Kids. Devuelve true si se eliminó.
+     */
+    fun delete(context: Context, profile: Profile): Boolean {
+        if (profile.isKids) return false
+        val current = getAll(context)
+        val nonKids = current.filter { !it.isKids }
+        if (nonKids.size <= 1) return false   // debe quedar al menos 1 perfil no-Kids
+        val updated = current.filter { it.profileId != profile.profileId }
+        save(context, updated)
+        // Si era el perfil activo, limpiar la sesión activa
+        if (active(context)?.profileId == profile.profileId) {
+            clearActive(context)
+        }
+        return true
     }
 
     // -------------------------------------------------------------------------

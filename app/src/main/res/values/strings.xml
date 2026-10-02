@@ -424,5 +424,12 @@
     <string name="profile_manage">Mi perfil</string>
     <string name="profile_manage_desc">Perfiles, apariencia, cuenta y audio</string>
     <string name="profile_switch_or_edit">Cambiar / Editar perfil</string>
+    <string name="profile_delete">Eliminar perfil</string>
+    <string name="profile_delete_confirm">¿Eliminar el perfil "%s"? Se borrarán sus favoritos e historial.</string>
+    <string name="profile_deleted">Perfil eliminado</string>
+    <string name="profile_add">Agregar perfil</string>
+    <string name="profile_add_title">Nuevo perfil</string>
+    <string name="profile_max_reached">Ya tienes el máximo de perfiles (6)</string>
+    <string name="profile_default_new_name">Mi perfil</string>
     <string name="save">Guardar</string>
 </resources>

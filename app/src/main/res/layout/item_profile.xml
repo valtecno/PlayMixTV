@@ -56,6 +56,21 @@
             android:focusable="false"
             android:contentDescription="@string/profile_edit_title"/>
 
+        <!-- Botón de eliminar (papelera), esquina superior izquierda. No perfil Niños. -->
+        <ImageView
+            android:id="@+id/ivDeleteBadge"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="4dp"
+            android:background="@drawable/bg_edit_badge"
+            android:src="@drawable/ic_delete"
+            android:padding="6dp"
+            android:clickable="true"
+            android:focusable="false"
+            android:contentDescription="@string/profile_delete"
+            android:visibility="gone"/>
+
     </FrameLayout>
 
     <!-- Nombre del perfil -->
