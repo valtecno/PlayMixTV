@@ -526,7 +526,7 @@ class MainActivity : AppCompatActivity() {
         binding.favGroupScroll.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
         binding.btnEspacioSync.visibility =
-            if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
+            if (newSection == Section.FAVORITES && !kidsMode) View.VISIBLE else View.GONE
         binding.favFilterScroll.visibility =
             if (newSection == Section.FAVORITES) View.VISIBLE else View.GONE
         if (newSection != Section.PPV) {
@@ -1182,6 +1182,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPrepareOptionsMenu(menu: Menu): Boolean {
         val movil = DeviceMode.isMobile(this)
 
+        menu.findItem(R.id.action_refresh)?.isVisible = !kidsMode
         menu.findItem(R.id.action_search)?.isVisible = !kidsMode
         // El engranaje solo existe en móvil
         menu.findItem(R.id.action_quick)?.isVisible = movil && !kidsMode
