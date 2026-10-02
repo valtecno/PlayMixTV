@@ -78,12 +78,9 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         setupGrid()
 
-        // Mostrar hint de edición con mando solo en dispositivos TV
-        val uiMode = resources.configuration.uiMode and
-            android.content.res.Configuration.UI_MODE_TYPE_MASK
-        if (uiMode == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION) {
-            binding.tvTvHint.visibility = View.VISIBLE
-        }
+        // El hint de edición se muestra siempre: en TV con mando es la instrucción
+        // principal; en móvil recuerda que el toque largo también abre la edición.
+        binding.tvTvHint.visibility = View.VISIBLE
 
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
             val activo = Profiles.active(this)
