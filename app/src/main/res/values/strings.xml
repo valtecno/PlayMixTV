@@ -190,7 +190,7 @@
     <!-- Ajustes del sistema -->
     <string name="settings_title">Ajustes del sistema</string>
     <string name="settings_player">Reproductor</string>
-    <string name="settings_content">Contenido</string>
+    <string name="settings_content">Sistema</string>
     <string name="settings_account">Cuenta</string>
     <string name="setting_buffer">Buffer</string>
     <string name="setting_aspect">Relación de aspecto</string>
@@ -350,7 +350,7 @@
     <string name="preview_locked">Categoría bloqueada. Usa el PIN para verla.</string>
     <string name="preview_error">No se pudo previsualizar este canal</string>
     <string name="preview_mute">Silenciar previsualización</string>
-    <string name="setting_refresh_action">Actualizar</string>
+    <string name="setting_refresh_action">Actualizar contenido</string>
     <string name="setting_update">Buscar actualización manual</string>
     <string name="setting_current_version_label">Actual</string>
     <string name="update_checking">Buscando actualizaciones…</string>
