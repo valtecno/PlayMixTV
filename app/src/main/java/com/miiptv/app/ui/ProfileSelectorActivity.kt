@@ -21,6 +21,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.miiptv.app.R
 import com.miiptv.app.databinding.ActivityProfileSelectorBinding
 import com.miiptv.app.util.DataSync
+import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Profiles
 import com.miiptv.app.util.Profiles.Avatar
@@ -260,6 +261,27 @@ class ProfileSelectorActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    /**
+     * En modo TV: menú contextual que aparece al mantener pulsado un perfil.
+     * Ofrece "Editar perfil" y, si el perfil puede borrarse, "Eliminar perfil".
+     * Reemplaza los badges de lápiz y papelera que no son navegables con mando.
+     */
+    private fun showTvProfileMenu(profile: Profiles.Profile, canDelete: Boolean) {
+        val opciones = mutableListOf(getString(R.string.profile_edit_title))
+        if (canDelete) opciones.add(getString(R.string.profile_delete))
+
+        AlertDialog.Builder(this, R.style.AppDialog)
+            .setTitle(profile.name)
+            .setItems(opciones.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> showEditDialog(profile)
+                    1 -> confirmDelete(profile)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun confirmDelete(profile: Profiles.Profile) {
         AlertDialog.Builder(this, R.style.AppDialog)
             .setMessage(getString(R.string.profile_delete_confirm, profile.name))
@@ -368,19 +390,29 @@ class ProfileSelectorActivity : AppCompatActivity() {
                 )
             }
 
-            // Badge de editar y papelera — no aplica a Niños
+            val isTv = DeviceMode.isTv(holder.itemView.context)
             val nonKidsProfiles = items.filterNotNull().filter { !it.isKids }
             val canDelete = !profile.isKids && nonKidsProfiles.size > 1
 
-            holder.ivBadge.visibility  = if (profile.isKids) View.GONE else View.VISIBLE
-            holder.ivDelete.visibility = if (canDelete) View.VISIBLE else View.GONE
-
-            holder.ivBadge.setOnClickListener { onEdit(profile) }
-            holder.ivDelete.setOnClickListener { onDelete(profile) }
+            // En TV: los badges no se muestran — la edición y borrado van por long-press/tecla
+            if (isTv) {
+                holder.ivBadge.visibility  = View.GONE
+                holder.ivDelete.visibility = View.GONE
+            } else {
+                holder.ivBadge.visibility  = if (profile.isKids) View.GONE else View.VISIBLE
+                holder.ivDelete.visibility = if (canDelete) View.VISIBLE else View.GONE
+                holder.ivBadge.setOnClickListener { onEdit(profile) }
+                holder.ivDelete.setOnClickListener { onDelete(profile) }
+            }
 
             if (!profile.isKids) {
                 holder.itemView.setOnLongClickListener {
-                    onEdit(profile)
+                    if (isTv) {
+                        // En TV: long-press abre menú con Editar y (si aplica) Eliminar
+                        showTvProfileMenu(profile, canDelete)
+                    } else {
+                        onEdit(profile)
+                    }
                     true
                 }
                 holder.itemView.setOnKeyListener { _, keyCode, event ->
@@ -390,7 +422,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
                          (keyCode == KeyEvent.KEYCODE_DPAD_CENTER && event.repeatCount > 0) ||
                          (keyCode == KeyEvent.KEYCODE_ENTER && event.repeatCount > 0))
                     ) {
-                        onEdit(profile)
+                        if (isTv) showTvProfileMenu(profile, canDelete) else onEdit(profile)
                         true
                     } else {
                         false
