@@ -3,9 +3,6 @@ package com.miiptv.app.ui
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.KeyEvent
@@ -274,13 +271,8 @@ class ProfileSelectorActivity : AppCompatActivity() {
             return if (canAdd) profiles + listOf(null) else profiles
         }
 
-        companion object {
-            private const val TYPE_PROFILE = 0
-            private const val TYPE_ADD     = 1
-        }
-
         override fun getItemViewType(position: Int) =
-            if (items[position] == null) TYPE_ADD else TYPE_PROFILE
+            if (items[position] == null) 1 else 0
 
         // --- ViewHolder para perfiles normales ---
         inner class ProfileVH(view: View) : RecyclerView.ViewHolder(view) {
@@ -303,7 +295,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_profile, parent, false)
-            return if (viewType == TYPE_PROFILE) ProfileVH(view) else AddVH(view)
+            return if (viewType == 0) ProfileVH(view) else AddVH(view)
         }
 
         override fun getItemCount() = items.size

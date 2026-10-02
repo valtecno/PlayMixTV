@@ -1220,7 +1220,7 @@ class MainActivity : AppCompatActivity() {
     private fun perfilAvatarIcon(): BitmapDrawable {
         val perfil = Profiles.active(this)
         val avatar = perfil?.let { Profiles.Avatar.fromId(it.avatarId) }
-            ?: Profiles.Avatar.STAR
+            ?: Profiles.Avatar.A1
 
         val dp = resources.displayMetrics.density
         val size = (40 * dp).toInt()
