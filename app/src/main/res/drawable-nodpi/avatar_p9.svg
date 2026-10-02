@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Fondo circular -->
+  <circle cx="100" cy="100" r="100" fill="#4527A0"/>
+
+  <!-- Cuerpo / hombros -->
+  <path d="M30,200 Q30,148 100,148 Q170,148 170,200 Z" fill="#1A0078"/>
+
+  <!-- Cuello -->
+  <rect x="89" y="122" width="22" height="28" rx="6" fill="#FFCCBC"/>
+
+  <!-- Cabeza -->
+  <ellipse cx="100" cy="95" rx="33" ry="36" fill="#FFCCBC"/>
+
+  <!-- Pelo (detrás de la cabeza, se dibuja antes) -->
+  
+        <!-- Pelo corto -->
+        <ellipse cx="100" cy="72" rx="32" ry="10" fill="#2C1810"/>
+        <rect x="68" y="62" width="64" height="20" rx="10" fill="#2C1810"/>
+        
+
+  <!-- Cara (encima del pelo) -->
+  <ellipse cx="100" cy="97" rx="30" ry="32" fill="#FFCCBC"/>
+
+  <!-- Orejas -->
+  <ellipse cx="69" cy="97" rx="5" ry="7" fill="#FFCCBC"/>
+  <ellipse cx="131" cy="97" rx="5" ry="7" fill="#FFCCBC"/>
+
+  <!-- Ojos -->
+  <ellipse cx="88" cy="90" rx="5" ry="6" fill="#1A1A1A"/>
+  <ellipse cx="112" cy="90" rx="5" ry="6" fill="#1A1A1A"/>
+  <circle cx="90" cy="88" r="1.5" fill="white"/>
+  <circle cx="114" cy="88" r="1.5" fill="white"/>
+
+  <!-- Cejas -->
+  <path d="M82,82 Q88,79 94,82" fill="none" stroke="#2C1810" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M106,82 Q112,79 118,82" fill="none" stroke="#2C1810" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Nariz -->
+  <path d="M98,96 Q96,104 100,107 Q104,104 102,96" fill="none" stroke="#FFCCBC" stroke-width="0"/>
+  <ellipse cx="100" cy="105" rx="4" ry="2.5" fill="#FFCCBC" opacity="0.4"/>
+
+  <!-- Boca -->
+  <path d="M90,116 Q100,123 110,116" fill="none" stroke="#B0726A" stroke-width="2.5" stroke-linecap="round"/>
+
+  
+  
+        <!-- Gafas -->
+        <rect x="76" y="86" width="20" height="14" rx="5" fill="none" stroke="#37474F" stroke-width="3"/>
+        <rect x="104" y="86" width="20" height="14" rx="5" fill="none" stroke="#37474F" stroke-width="3"/>
+        <line x1="96" y1="93" x2="104" y2="93" stroke="#37474F" stroke-width="2.5"/>
+        <line x1="70" y1="92" x2="76" y2="92" stroke="#37474F" stroke-width="2.5"/>
+        <line x1="124" y1="92" x2="130" y2="92" stroke="#37474F" stroke-width="2.5"/>
+        
+</svg>

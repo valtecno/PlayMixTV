@@ -131,10 +131,37 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
     }
 
+    /** Carga el drawable del avatar en un ImageView + TextView de fallback. */
+    private fun bindAvatar(
+        ivImage: ImageView,
+        tvEmoji: TextView,
+        vCircle: View,
+        av: Avatar
+    ) {
+        val resId = if (av.drawableRes != null)
+            resources.getIdentifier(av.drawableRes, "drawable", packageName)
+        else 0
+
+        if (resId != 0) {
+            ivImage.visibility = View.VISIBLE
+            tvEmoji.visibility = View.GONE
+            ivImage.setImageResource(resId)
+            // Fondo sin color para no tapar la imagen (la imagen ya incluye fondo)
+            vCircle.background?.setTint(av.color)
+        } else {
+            ivImage.visibility = View.GONE
+            tvEmoji.visibility = View.VISIBLE
+            tvEmoji.text = av.emoji
+            (vCircle.background as? GradientDrawable)?.setColor(av.color)
+                ?: vCircle.background?.setTint(av.color)
+        }
+    }
+
     private fun showEditDialog(profile: Profiles.Profile) {
         if (profile.isKids) return
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_profile_edit, null)
+        val ivImage    = dialogView.findViewById<ImageView>(R.id.ivEditAvatarImage)
         val tvEmoji    = dialogView.findViewById<TextView>(R.id.tvEditAvatarEmoji)
         val vCircle    = dialogView.findViewById<View>(R.id.vEditAvatarCircle)
         val rvAvatars  = dialogView.findViewById<RecyclerView>(R.id.rvAvatarPicker)
@@ -144,10 +171,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         fun refreshAvatar(av: Avatar) {
             selectedAvatar = av
-            // Mostrar letra del avatar centrada
-            tvEmoji.text = av.emoji
-            (vCircle.background as? GradientDrawable)?.setColor(av.color)
-                ?: vCircle.background?.setTint(av.color)
+            bindAvatar(ivImage, tvEmoji, vCircle, av)
         }
 
         refreshAvatar(selectedAvatar)
@@ -190,6 +214,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
 
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_profile_edit, null)
+        val ivImage    = dialogView.findViewById<ImageView>(R.id.ivEditAvatarImage)
         val tvEmoji    = dialogView.findViewById<TextView>(R.id.tvEditAvatarEmoji)
         val vCircle    = dialogView.findViewById<View>(R.id.vEditAvatarCircle)
         val rvAvatars  = dialogView.findViewById<RecyclerView>(R.id.rvAvatarPicker)
@@ -200,9 +225,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         fun refreshAvatar(av: Avatar) {
             selectedAvatar = av
-            tvEmoji.text = av.emoji
-            (vCircle.background as? GradientDrawable)?.setColor(av.color)
-                ?: vCircle.background?.setTint(av.color)
+            bindAvatar(ivImage, tvEmoji, vCircle, av)
         }
 
         refreshAvatar(selectedAvatar)
@@ -278,6 +301,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
         inner class ProfileVH(view: View) : RecyclerView.ViewHolder(view) {
             val flBg:      FrameLayout = view.findViewById(R.id.flAvatarBg)
             val vCircle:   View        = view.findViewById(R.id.vAvatarCircle)
+            val ivImage:   ImageView   = view.findViewById(R.id.ivAvatarImage)
             val tvEmoji:   TextView    = view.findViewById(R.id.tvAvatarEmoji)
             val tvName:    TextView    = view.findViewById(R.id.tvProfileName)
             val ivEdit:    ImageView   = view.findViewById(R.id.ivEditOverlay)
@@ -305,6 +329,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
             if (holder is AddVH && profile == null) {
                 // Tarjeta de "Agregar perfil"
+                holder.tvEmoji.visibility = View.VISIBLE
                 holder.tvEmoji.text = "+"
                 holder.tvEmoji.textSize = 42f
                 holder.tvName.text = getString(R.string.profile_add)
@@ -327,10 +352,10 @@ class ProfileSelectorActivity : AppCompatActivity() {
             if (holder !is ProfileVH || profile == null) return
 
             val avatar = profile.avatar
-            holder.tvEmoji.text  = avatar.emoji
-            // Para avatares de letras, ajustar tamaño de texto
-            holder.tvEmoji.textSize = if (avatar == Avatar.KIDS) 54f else 42f
-            holder.tvName.text   = profile.name
+            holder.tvName.text = profile.name
+
+            // Mostrar imagen o emoji según el tipo de avatar
+            bindAvatar(holder.ivImage, holder.tvEmoji, holder.vCircle, avatar)
 
             val bg = holder.vCircle.background?.mutate() as? GradientDrawable
             bg?.setColor(avatar.color) ?: holder.vCircle.background?.setTint(avatar.color)
@@ -404,9 +429,10 @@ class ProfileSelectorActivity : AppCompatActivity() {
         private var selectedId = selected.id
 
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
-            val vCircle:   View     = view.findViewById(R.id.vPickerCircle)
-            val tvEmoji:   TextView = view.findViewById(R.id.tvPickerEmoji)
-            val vSelected: View     = view.findViewById(R.id.vPickerSelected)
+            val vCircle:   View      = view.findViewById(R.id.vPickerCircle)
+            val ivImage:   ImageView = view.findViewById(R.id.ivPickerImage)
+            val tvEmoji:   TextView  = view.findViewById(R.id.tvPickerEmoji)
+            val vSelected: View      = view.findViewById(R.id.vPickerSelected)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
@@ -416,11 +442,26 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val av = avatars[position]
-            holder.tvEmoji.text = av.emoji
-            // Letra del avatar en tamaño adecuado para el picker
-            holder.tvEmoji.textSize = if (av == Avatar.KIDS) 20f else 15f
+            val ctx = holder.itemView.context
             val bg = holder.vCircle.background?.mutate() as? GradientDrawable
             bg?.setColor(av.color) ?: holder.vCircle.background?.setTint(av.color)
+
+            // Mostrar imagen o emoji según disponibilidad
+            val resId = if (av.drawableRes != null)
+                ctx.resources.getIdentifier(av.drawableRes, "drawable", ctx.packageName)
+            else 0
+
+            if (resId != 0) {
+                holder.ivImage.visibility = View.VISIBLE
+                holder.tvEmoji.visibility = View.GONE
+                holder.ivImage.setImageResource(resId)
+            } else {
+                holder.ivImage.visibility = View.GONE
+                holder.tvEmoji.visibility = View.VISIBLE
+                holder.tvEmoji.text = av.emoji
+                holder.tvEmoji.textSize = if (av == Avatar.KIDS) 20f else 15f
+            }
+
             holder.vSelected.visibility = if (av.id == selectedId) View.VISIBLE else View.GONE
 
             holder.itemView.setOnClickListener {

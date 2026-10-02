@@ -24,14 +24,23 @@
             android:layout_height="match_parent"
             android:background="@drawable/bg_profile_avatar"/>
 
-        <!-- Emoji del avatar centrado -->
+        <!-- Imagen del avatar (persona/ilustración) -->
+        <ImageView
+            android:id="@+id/ivAvatarImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"/>
+
+        <!-- Emoji del avatar (fallback para KIDS u otros sin drawable) -->
         <TextView
             android:id="@+id/tvAvatarEmoji"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
             android:textSize="54sp"
-            android:includeFontPadding="false"/>
+            android:includeFontPadding="false"
+            android:visibility="gone"/>
 
         <!-- Ícono de editar (lápiz), solo visible en modo edición) -->
         <ImageView
