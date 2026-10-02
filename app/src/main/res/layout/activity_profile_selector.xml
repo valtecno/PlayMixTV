@@ -67,14 +67,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Ícono de control remoto -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🎮"
-            android:textSize="13sp"
-            android:layout_marginEnd="6dp" />
-
         <TextView
             android:id="@+id/tvTvHint"
             android:layout_width="wrap_content"
