@@ -156,6 +156,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
+                android:textColor="@color/text_light"
                 android:text="@string/setting_refresh_action" />
 
             <!-- Recuento desglosado por tipo con iconos -->
