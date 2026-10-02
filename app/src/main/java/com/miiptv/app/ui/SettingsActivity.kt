@@ -107,10 +107,7 @@ class SettingsActivity : AppCompatActivity() {
         // ANTES de applyFocusToTree (ver el comentario de más abajo): es una
         // fila normal, alcanzable con el control remoto igual que el resto.
         binding.rowCrashLog.setOnClickListener { showCrashLog() }
-        // Copia de seguridad en la nube de Favoritos/Continuar viendo/Historial:
-        // ver DataSync. Se sube sola en segundo plano con cada cambio, pero
-        // esta fila deja forzarla a mano y ver cuándo fue la última vez.
-        binding.rowDataSync.setOnClickListener { forceDataSync() }
+        // rowDataSync oculto: "Respaldo de mi perfil" se movió al menú de Mi Perfil (showProfileMenu).
 
         /*
          * Resalte del foco con control remoto.
@@ -183,14 +180,7 @@ class SettingsActivity : AppCompatActivity() {
             ?.let { Servers.labelFor(it) } ?: "—"
         binding.tvServer.text = getString(R.string.settings_on_server, sistemaActual)
 
-        binding.tvCrashLogState.text = getString(
-            if (com.miiptv.app.util.CrashLogger.lastCrash(this).isNullOrBlank())
-                R.string.crash_log_state_empty
-            else
-                R.string.crash_log_state_available
-        )
-
-        binding.tvDataSyncState.text = dataSyncStateLabel()
+        // tvCrashLogState y tvDataSyncState están ocultos (gone): no se actualizan.
     }
 
     /** Texto de la fila "Copia de seguridad": cuándo fue la última subida exitosa. */
@@ -207,17 +197,13 @@ class SettingsActivity : AppCompatActivity() {
         return getString(R.string.data_sync_ok, hace)
     }
 
-    /** Fuerza una subida ya mismo, con feedback visible (a diferencia de la que se hace sola en segundo plano). */
+    /** Fuerza una subida ya mismo, con feedback visible via Toast (se llama desde el menú de Mi Perfil). */
     private fun forceDataSync() {
-        binding.tvDataSyncState.text = getString(R.string.data_sync_syncing)
+        Toast.makeText(this, R.string.data_sync_syncing, Toast.LENGTH_SHORT).show()
         DataSync.backupNow(this) { ok ->
-            // La respuesta puede llegar después de salir de esta pantalla
-            // (o de un segundo toque mientras la primera subida seguía en
-            // curso): sin este chequeo, tocar binding acá podía escribir
-            // sobre una Activity ya destruida.
             if (isFinishing || isDestroyed) return@backupNow
-            binding.tvDataSyncState.text =
-                if (ok) dataSyncStateLabel() else getString(R.string.data_sync_failed)
+            val msg = if (ok) dataSyncStateLabel() else getString(R.string.data_sync_failed)
+            runOnUiThread { Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
         }
     }
 
@@ -230,13 +216,14 @@ class SettingsActivity : AppCompatActivity() {
      * como tarjeta, marca la activa, y "Agregar otra cuenta" es un botón real
      * con el degradado de la app, no un texto suelto.
      */
-    /** Menú unificado de perfil: cambiar, editar, apariencia, cuenta y audio. */
+    /** Menú unificado de perfil: cambiar, editar, apariencia, cuenta, audio y respaldo. */
     private fun showProfileMenu() {
         val opciones = arrayOf(
             "👤  ${getString(R.string.profile_switch_or_edit)}",
             "🎨  ${getString(R.string.setting_personalize)}",
             "🔄  ${getString(R.string.switch_account)}",
-            "🔊  ${getString(R.string.setting_audio)}"
+            "🔊  ${getString(R.string.setting_audio)}",
+            "💾  ${getString(R.string.setting_data_sync)}"
         )
         AlertDialog.Builder(this, R.style.AppDialog)
             .setTitle(getString(R.string.profile_manage))
@@ -246,6 +233,7 @@ class SettingsActivity : AppCompatActivity() {
                     1 -> startActivity(Intent(this, PersonalizeActivity::class.java))
                     2 -> switchAccount()
                     3 -> showAudioDialog()
+                    4 -> forceDataSync()
                 }
             }
             .show()
