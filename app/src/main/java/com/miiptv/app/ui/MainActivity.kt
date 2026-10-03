@@ -2611,14 +2611,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Densidad de "Mi Espacio": "Todos" (dentro de Favoritos) sigue en lista,
-     * igual que siempre. El resto -- Continuar viendo, Vistas, y las demás
-     * pestañas de Favoritos (Canales/Radios/Películas/Series) -- se muestra
-     * en grilla de carátulas chicas, con la misma densidad por defecto que
-     * usa el resto de la app según el aparato (ver Appearance.getEspacioColumns).
+     * Densidad de "Mi Espacio": "Todos" y "Canales" (dentro de Favoritos) se
+     * muestran en lista de 1 columna, igual que la sección Canales principal,
+     * para que el mini-reproductor quede bien. El resto -- Continuar viendo,
+     * Vistas, Radios, Películas y Series -- se muestra en grilla de carátulas,
+     * con la densidad por defecto según el aparato (ver Appearance.getEspacioColumns).
      */
     private fun applyEspacioLayoutMode() {
-        val esLista = espacioModo == EspacioModo.FAVORITOS && favFilter == null
+        // "Todos" y "Canales" en Favoritos se muestran en lista (1 columna),
+        // igual que la sección Canales. El resto (Películas, Series, etc.) usa grilla.
+        val esCanalesFav = espacioModo == EspacioModo.FAVORITOS &&
+            favFilter == ContentType.LIVE && !favIsRadio
+        val esLista = (espacioModo == EspacioModo.FAVORITOS && favFilter == null) || esCanalesFav
         val columns = if (esLista) 1 else Appearance.getEspacioColumns(this)
         adapter.posterMode = columns > 1
         // Igual que en applyLayoutMode(): no se pisa el LayoutManager si las

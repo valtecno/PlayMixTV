@@ -356,11 +356,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
                 holder.tvEmoji.textSize = 42f
                 holder.tvName.text = getString(R.string.profile_add)
                 holder.tvName.setTextColor(0xFFAAAAAA.toInt())
-                // Círculo gris con borde punteado visual
-                (holder.vCircle.background as? GradientDrawable)?.let {
+                // Círculo gris neutro sin color llamativo
+                (holder.vCircle.background?.mutate() as? GradientDrawable)?.let {
                     it.setColor(0xFF2A2A2A.toInt())
                     it.setStroke(3, 0xFF666666.toInt())
-                } ?: holder.vCircle.background?.setTint(0xFF2A2A2A.toInt())
+                } ?: holder.vCircle.background?.mutate()?.setTint(0xFF2A2A2A.toInt())
 
                 holder.itemView.setOnClickListener { onAddNew() }
                 holder.itemView.setOnFocusChangeListener { _, hasFocus ->
