@@ -606,7 +606,7 @@ class MainActivity : AppCompatActivity() {
      * MainActivity.applyEspacioLayoutMode), igual que Películas/Series, así
      * que se abre directo al tocarla y ya no necesita este panel.
      */
-    private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV
+    private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV || s == Section.FAVORITES
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
