@@ -102,12 +102,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
             onAddNew  = { showAddDialog() }
         )
 
-        // Número de columnas = total de ítems (perfiles + botón "+") para
-        // que siempre queden en una sola fila centrada. Máximo 4 en TV ancha.
-        val totalItems = adapter.itemCount
-        val maxCols = if (resources.displayMetrics.widthPixels >= 1200) 4 else totalItems.coerceAtLeast(1)
-        val cols = totalItems.coerceIn(1, maxCols)
-        binding.rvProfiles.layoutManager = GridLayoutManager(this, cols)
+        binding.rvProfiles.layoutManager = GridLayoutManager(this, calcProfileCols())
         binding.rvProfiles.adapter = adapter
 
         val anim = AnimationUtils.loadLayoutAnimation(this, R.anim.layout_fall_down)
@@ -118,11 +113,22 @@ class ProfileSelectorActivity : AppCompatActivity() {
         val profiles = Profiles.getAll(this)
         val canAdd   = profiles.size < 6
         adapter.updateAll(profiles, canAdd)
-        // Recalcular columnas para mantener la fila única centrada
-        val totalItems = adapter.itemCount
-        val maxCols = if (resources.displayMetrics.widthPixels >= 1200) 4 else totalItems.coerceAtLeast(1)
-        val cols = totalItems.coerceIn(1, maxCols)
-        (binding.rvProfiles.layoutManager as? GridLayoutManager)?.spanCount = cols
+        (binding.rvProfiles.layoutManager as? GridLayoutManager)?.spanCount = calcProfileCols()
+    }
+
+    /**
+     * Calcula las columnas del grid de perfiles.
+     * TV  → fila única, máximo 4 perfiles por fila.
+     * Móvil → máximo 3 columnas para que los ítems no queden aplastados.
+     */
+    private fun calcProfileCols(): Int {
+        val isTv = DeviceMode.isTv(this)
+        val totalItems = adapter.itemCount.coerceAtLeast(1)
+        return if (isTv) {
+            totalItems.coerceIn(1, 4)
+        } else {
+            totalItems.coerceIn(1, 3)
+        }
     }
 
     private fun selectProfile(profile: Profiles.Profile) {
