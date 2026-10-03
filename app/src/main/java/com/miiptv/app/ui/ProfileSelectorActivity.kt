@@ -102,7 +102,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
             onAddNew  = { showAddDialog() }
         )
 
-        val cols = if (resources.displayMetrics.widthPixels >= 1200) 4 else 2
+        // Número de columnas = total de ítems (perfiles + botón "+") para
+        // que siempre queden en una sola fila centrada. Máximo 4 en TV ancha.
+        val totalItems = adapter.itemCount
+        val maxCols = if (resources.displayMetrics.widthPixels >= 1200) 4 else totalItems.coerceAtLeast(1)
+        val cols = totalItems.coerceIn(1, maxCols)
         binding.rvProfiles.layoutManager = GridLayoutManager(this, cols)
         binding.rvProfiles.adapter = adapter
 
@@ -114,6 +118,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
         val profiles = Profiles.getAll(this)
         val canAdd   = profiles.size < 6
         adapter.updateAll(profiles, canAdd)
+        // Recalcular columnas para mantener la fila única centrada
+        val totalItems = adapter.itemCount
+        val maxCols = if (resources.displayMetrics.widthPixels >= 1200) 4 else totalItems.coerceAtLeast(1)
+        val cols = totalItems.coerceIn(1, maxCols)
+        (binding.rvProfiles.layoutManager as? GridLayoutManager)?.spanCount = cols
     }
 
     private fun selectProfile(profile: Profiles.Profile) {
@@ -356,11 +365,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
                 holder.tvEmoji.textSize = 42f
                 holder.tvName.text = getString(R.string.profile_add)
                 holder.tvName.setTextColor(0xFFAAAAAA.toInt())
-                // Círculo gris neutro sin color llamativo
+                // Círculo semi-transparente sin color de fondo
                 (holder.vCircle.background?.mutate() as? GradientDrawable)?.let {
-                    it.setColor(0xFF2A2A2A.toInt())
-                    it.setStroke(3, 0xFF666666.toInt())
-                } ?: holder.vCircle.background?.mutate()?.setTint(0xFF2A2A2A.toInt())
+                    it.setColor(0x22FFFFFF.toInt())   // blanco muy tenue, casi invisible
+                    it.setStroke(2, 0x55FFFFFF.toInt())  // borde blanco suave
+                } ?: holder.vCircle.background?.mutate()?.setTint(0x22FFFFFF.toInt())
 
                 holder.itemView.setOnClickListener { onAddNew() }
                 holder.itemView.setOnFocusChangeListener { _, hasFocus ->
