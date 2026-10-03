@@ -93,4 +93,19 @@
         android:layout_marginTop="28dp"
         android:layout_marginBottom="60dp" />
 
+    <!-- Solo móvil: restaura los perfiles ocultos en este dispositivo -->
+    <TextView
+        android:id="@+id/tvShowHidden"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
+        android:textColor="#AAFFFFFF"
+        android:textSize="13sp"
+        android:visibility="gone"
+        android:focusable="true"
+        android:clickable="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

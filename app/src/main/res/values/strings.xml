@@ -427,6 +427,10 @@
     <string name="profile_delete">Eliminar perfil</string>
     <string name="profile_delete_confirm">¿Eliminar el perfil "%s"? Se borrarán sus favoritos e historial.</string>
     <string name="profile_deleted">Perfil eliminado</string>
+    <string name="profile_hide">Ocultar perfil</string>
+    <string name="profile_hide_confirm">¿Ocultar el perfil "%s" en este dispositivo? No se borra nada: sus favoritos e historial se conservan y puedes volver a mostrarlo.</string>
+    <string name="profile_hidden">Perfil oculto</string>
+    <string name="profile_show_hidden">Mostrar perfiles ocultos (%d)</string>
     <string name="profile_add">Agregar perfil</string>
     <string name="profile_add_title">Nuevo perfil</string>
     <string name="profile_max_reached">Ya tienes el máximo de perfiles (6)</string>
