@@ -599,14 +599,22 @@ class MainActivity : AppCompatActivity() {
      * Panel de previsualización: foto grande + botón "Ampliar" al lado de la
      * lista, en vez de abrir el reproductor de una.
      *
-     * Corre en Canales y PPV siempre. Antes también corría en Mi Espacio
-     * cuando el filtro activo era "Canales" (esa pestaña era una lista, igual
-     * que Canales de verdad). Ahora esa pestaña -- como el resto de Favoritos
-     * salvo "Todos" -- se muestra en grilla de carátulas chicas (ver
-     * MainActivity.applyEspacioLayoutMode), igual que Películas/Series, así
-     * que se abre directo al tocarla y ya no necesita este panel.
+     * Activo en: Canales, PPV, y Favoritos → pestaña Canales.
+     * Inactivo en: todo lo demás de Mi Espacio (Continuar viendo, Vistas,
+     * Radios, Películas, Series, Todos) para que las carátulas se vean
+     * completas sin partirse con el panel lateral.
      */
-    private fun showPreviewFor(s: Section): Boolean = s == Section.LIVE || s == Section.PPV || s == Section.FAVORITES
+    private fun showPreviewFor(s: Section): Boolean {
+        if (s == Section.LIVE || s == Section.PPV) return true
+        // En Mi Espacio solo mostramos preview cuando estamos en la pestaña
+        // Favoritos → Canales (no en Radios, Películas, Series, Todos,
+        // Continuar viendo ni Vistas).
+        if (s == Section.FAVORITES) {
+            return espacioModo == EspacioModo.FAVORITOS &&
+                favFilter == ContentType.LIVE && !favIsRadio
+        }
+        return false
+    }
 
     /** Canal de TV en vivo (no radio): las radios también son ContentType.LIVE pero traen su propia streamUrl. */
     private fun esCanalTv(item: ContentItem) = item.type == ContentType.LIVE && item.streamUrl == null
