@@ -84,6 +84,7 @@ object Profiles {
     private const val PREFS_SESSION  = "miiptv_prefs"
     private const val KEY_ACTIVE_ID  = "active_profile_id"
     private const val KEY_PROFILES   = "profiles"
+    private const val KEY_HIDDEN     = "hidden_profile_ids"
 
     private val gson = Gson()
 
@@ -164,6 +165,32 @@ object Profiles {
     fun update(context: Context, updated: Profile) {
         val list = getAll(context).map { if (it.profileId == updated.profileId) updated else it }
         save(context, list)
+    }
+
+    // -------------------------------------------------------------------------
+    // Ocultar perfiles (solo móvil): no borra nada, solo deja de mostrarlo en este dispositivo
+    // -------------------------------------------------------------------------
+
+    fun hiddenIds(context: Context): Set<String> =
+        prefs(context).getStringSet(KEY_HIDDEN, emptySet()) ?: emptySet()
+
+    /** Perfiles no ocultos (los que muestra el selector en móvil). */
+    fun getVisible(context: Context): List<Profile> {
+        val hidden = hiddenIds(context)
+        return getAll(context).filter { it.profileId !in hidden }
+    }
+
+    /** Oculta un perfil. No oculta Niños ni el último perfil visible que no sea de niños. */
+    fun hide(context: Context, profile: Profile): Boolean {
+        if (profile.isKids) return false
+        if (getVisible(context).count { !it.isKids } <= 1) return false
+        prefs(context).edit()
+            .putStringSet(KEY_HIDDEN, hiddenIds(context) + profile.profileId).apply()
+        return true
+    }
+
+    fun unhideAll(context: Context) {
+        prefs(context).edit().remove(KEY_HIDDEN).apply()
     }
 
     /**

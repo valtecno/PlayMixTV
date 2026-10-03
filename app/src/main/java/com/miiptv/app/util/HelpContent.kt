@@ -191,7 +191,9 @@ object HelpContent {
             Tema.FAVORITOS,
             "¿Dónde encuentro mis favoritos?",
             "En la sección Favoritos del menú. Arriba puedes filtrar por Canales, Radios, Películas o " +
-                "Series. Para quitar uno, toca de nuevo su estrella.",
+                "Series. Para quitar uno, toca de nuevo su estrella. Los canales favoritos se ven en " +
+                "lista con el mini reproductor al lado; en las demás pestañas (Continuar viendo, Vistas, " +
+                "Radios, Películas, Series) no hay mini reproductor, para que las carátulas se vean completas.",
             listOf("favoritos", "mis canales", "quitar favorito", "borrar favorito")
         ),
 
@@ -295,10 +297,29 @@ object HelpContent {
             Tema.CUENTA,
             "¿Cómo cambio de perfil, edito mi nombre o elijo otro avatar?",
             "Toca el ícono de la barra superior (muestra tu avatar actual) y elige Perfiles. Desde " +
-                "ahí puedes cambiar de perfil tocando uno, o editar el nombre y avatar del perfil activo " +
-                "tocando el lápiz. También está en Ajustes → Perfiles.",
+                "ahí puedes cambiar de perfil tocando uno. Para editar el nombre y el avatar, mantén " +
+                "presionado el perfil y elige Editar perfil. También está en Ajustes → Perfiles.",
             listOf("perfil", "perfiles", "avatar", "nombre perfil", "editar perfil", "cambiar perfil",
-                "lapiz", "icono perfil", "emoji")
+                "mantener presionado", "icono perfil", "emoji")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Cómo oculto o elimino un perfil que no uso?",
+            "Mantén presionado el perfil en la pantalla ¿Quién está viendo? y elige la opción. En el " +
+                "celular dice Ocultar perfil: solo deja de verse en ese teléfono, no borra nada, y " +
+                "puedes volver a mostrarlo con Mostrar perfiles ocultos (abajo en la misma pantalla). " +
+                "En la TV dice Eliminar perfil y sí borra sus favoritos e historial. El perfil de " +
+                "Niños y el último perfil que no sea de niños no se pueden ocultar ni eliminar.",
+            listOf("ocultar perfil", "eliminar perfil", "borrar perfil", "quitar perfil", "esconder",
+                "perfiles ocultos", "mostrar perfiles")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Por qué los perfiles se ven más chicos en el celular?",
+            "En el celular los perfiles se muestran de a dos por fila, con el botón + centrado debajo. " +
+                "Si tienes muchos, los círculos se achican para que todos se vean. Oculta los que no " +
+                "uses (mantén presionado → Ocultar perfil) y volverán a verse más grandes.",
+            listOf("perfiles chicos", "perfiles pequeños", "agregar perfil", "mas perfiles", "maximo perfiles")
         ),
         Pregunta(
             Tema.CUENTA,
@@ -389,7 +410,7 @@ object HelpContent {
         Pregunta(
             Tema.PROBLEMAS,
             "No se ven las imágenes o se ven raras",
-            "Ve a Ajustes → Vaciar caché de imágenes. Se vuelven a bajar la próxima vez que las veas.",
+            "Ve a Ajustes → Borrar caché. Se vuelven a bajar la próxima vez que las veas.",
             listOf("imagenes", "caratulas", "logos", "fotos", "cache", "no cargan imagenes")
         ),
         Pregunta(

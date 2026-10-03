@@ -81,6 +81,12 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
         setupGrid()
 
+        binding.tvShowHidden.setOnClickListener {
+            Profiles.unhideAll(this)
+            refreshGrid()
+        }
+        updateHiddenLink()
+
         binding.tvTvHint.visibility = View.VISIBLE
 
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
@@ -90,8 +96,8 @@ class ProfileSelectorActivity : AppCompatActivity() {
     }
 
     private fun setupGrid() {
-        val profiles = Profiles.getAll(this)
-        val canAdd   = profiles.size < 6
+        val profiles = visibleProfiles()
+        val canAdd   = Profiles.getAll(this).size < 6
 
         adapter = ProfileAdapter(
             profiles  = profiles,
@@ -110,10 +116,21 @@ class ProfileSelectorActivity : AppCompatActivity() {
     }
 
     private fun refreshGrid() {
-        val profiles = Profiles.getAll(this)
-        val canAdd   = profiles.size < 6
+        val profiles = visibleProfiles()
+        val canAdd   = Profiles.getAll(this).size < 6
         adapter.updateAll(profiles, canAdd)
         binding.rvProfiles.layoutManager = buildLayoutManager()
+        updateHiddenLink()
+    }
+
+    /** En móvil se respetan los perfiles ocultos; en TV siempre se ven todos. */
+    private fun visibleProfiles(): List<Profiles.Profile> =
+        if (isMobile()) Profiles.getVisible(this) else Profiles.getAll(this)
+
+    private fun updateHiddenLink() {
+        val n = if (isMobile()) Profiles.hiddenIds(this).size else 0
+        binding.tvShowHidden.visibility = if (n > 0) View.VISIBLE else View.GONE
+        binding.tvShowHidden.text = getString(R.string.profile_show_hidden, n)
     }
 
     private fun isMobile() = !DeviceMode.isTv(this)
@@ -310,14 +327,30 @@ class ProfileSelectorActivity : AppCompatActivity() {
      */
     private fun showTvProfileMenu(profile: Profiles.Profile, canDelete: Boolean) {
         val opciones = mutableListOf(getString(R.string.profile_edit_title))
-        if (canDelete) opciones.add(getString(R.string.profile_delete))
+        if (canDelete) opciones.add(
+            getString(if (isMobile()) R.string.profile_hide else R.string.profile_delete)
+        )
 
         AlertDialog.Builder(this, R.style.AppDialog)
             .setTitle(profile.name)
             .setItems(opciones.toTypedArray()) { _, which ->
                 when (which) {
                     0 -> showEditDialog(profile)
-                    1 -> confirmDelete(profile)
+                    1 -> if (isMobile()) confirmHide(profile) else confirmDelete(profile)
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Móvil: solo oculta el perfil en este dispositivo; no borra favoritos ni historial. */
+    private fun confirmHide(profile: Profiles.Profile) {
+        AlertDialog.Builder(this, R.style.AppDialog)
+            .setMessage(getString(R.string.profile_hide_confirm, profile.name))
+            .setPositiveButton(R.string.profile_hide) { _, _ ->
+                if (Profiles.hide(this, profile)) {
+                    Toast.makeText(this, R.string.profile_hidden, Toast.LENGTH_SHORT).show()
+                    refreshGrid()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
