@@ -102,7 +102,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
             onAddNew  = { showAddDialog() }
         )
 
-        binding.rvProfiles.layoutManager = GridLayoutManager(this, calcProfileCols())
+        binding.rvProfiles.layoutManager = buildLayoutManager()
         binding.rvProfiles.adapter = adapter
 
         val anim = AnimationUtils.loadLayoutAnimation(this, R.anim.layout_fall_down)
@@ -113,22 +113,49 @@ class ProfileSelectorActivity : AppCompatActivity() {
         val profiles = Profiles.getAll(this)
         val canAdd   = profiles.size < 6
         adapter.updateAll(profiles, canAdd)
-        (binding.rvProfiles.layoutManager as? GridLayoutManager)?.spanCount = calcProfileCols()
+        binding.rvProfiles.layoutManager = buildLayoutManager()
     }
 
+    private fun isMobile() = !DeviceMode.isTv(this)
+
     /**
-     * Calcula las columnas del grid de perfiles.
      * TV  → fila única, máximo 4 perfiles por fila.
-     * Móvil → máximo 3 columnas para que los ítems no queden aplastados.
+     * Móvil → 2 columnas centradas; si el último ítem queda solo (p. ej. el "+")
+     * ocupa toda la fila y queda centrado debajo de los demás.
      */
-    private fun calcProfileCols(): Int {
-        val isTv = DeviceMode.isTv(this)
-        val totalItems = adapter.itemCount.coerceAtLeast(1)
-        return if (isTv) {
-            totalItems.coerceIn(1, 4)
-        } else {
-            totalItems.coerceIn(1, 3)
+    private fun buildLayoutManager(): GridLayoutManager {
+        val total = adapter.itemCount.coerceAtLeast(1)
+        if (!isMobile()) return GridLayoutManager(this, total.coerceIn(1, 4))
+        return GridLayoutManager(this, 2).also { lm ->
+            lm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                override fun getSpanSize(position: Int): Int =
+                    if (position == adapter.itemCount - 1 && position % 2 == 0) 2 else 1
+            }
         }
+    }
+
+    /** Diámetro del círculo en móvil: se encoge según la cantidad de perfiles para que todos quepan. */
+    private fun mobileAvatarPx(): Int {
+        val dm = resources.displayMetrics
+        val d = dm.density
+        val rows = ((adapter.itemCount + 1) / 2).coerceAtLeast(1)
+        val availH = dm.heightPixels - 300 * d            // cabecera + márgenes
+        val byHeight = availH / rows - 64 * d             // nombre + padding por fila
+        val byWidth = (dm.widthPixels - 48 * d) / 2 - 24 * d
+        return minOf(130 * d, byHeight, byWidth).coerceAtLeast(52 * d).toInt()
+    }
+
+    private fun applyMobileSize(itemView: View) {
+        if (!isMobile()) return
+        val size = mobileAvatarPx()
+        val d = resources.displayMetrics.density
+        itemView.findViewById<View>(R.id.flAvatarBg).layoutParams =
+            (itemView.findViewById<View>(R.id.flAvatarBg).layoutParams).also { it.width = size; it.height = size }
+        itemView.findViewById<TextView>(R.id.tvProfileName).let { tv ->
+            tv.layoutParams = tv.layoutParams.also { it.width = (size + 24 * d).toInt() }
+            tv.textSize = if (size < 90 * d) 12f else 16f
+        }
+        itemView.findViewById<TextView>(R.id.tvAvatarEmoji).textSize = size / d * 0.4f
     }
 
     private fun selectProfile(profile: Profiles.Profile) {
@@ -342,8 +369,6 @@ class ProfileSelectorActivity : AppCompatActivity() {
             val tvEmoji:   TextView    = view.findViewById(R.id.tvAvatarEmoji)
             val tvName:    TextView    = view.findViewById(R.id.tvProfileName)
             val ivEdit:    ImageView   = view.findViewById(R.id.ivEditOverlay)
-            val ivBadge:   ImageView   = view.findViewById(R.id.ivEditBadge)
-            val ivDelete:  ImageView   = view.findViewById(R.id.ivDeleteBadge)
         }
 
         // --- ViewHolder para la tarjeta "+" ---
@@ -364,11 +389,13 @@ class ProfileSelectorActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             val profile = items[position]
 
+            applyMobileSize(holder.itemView)
+
             if (holder is AddVH && profile == null) {
                 // Tarjeta de "Agregar perfil"
                 holder.tvEmoji.visibility = View.VISIBLE
                 holder.tvEmoji.text = "+"
-                holder.tvEmoji.textSize = 42f
+                if (!isMobile()) holder.tvEmoji.textSize = 42f
                 holder.tvName.text = getString(R.string.profile_add)
                 holder.tvName.setTextColor(0xFFAAAAAA.toInt())
                 // Círculo semi-transparente sin color de fondo
@@ -405,29 +432,13 @@ class ProfileSelectorActivity : AppCompatActivity() {
                 )
             }
 
-            val isTv = DeviceMode.isTv(holder.itemView.context)
             val nonKidsProfiles = items.filterNotNull().filter { !it.isKids }
             val canDelete = !profile.isKids && nonKidsProfiles.size > 1
 
-            // En TV: los badges no se muestran — la edición y borrado van por long-press/tecla
-            if (isTv) {
-                holder.ivBadge.visibility  = View.GONE
-                holder.ivDelete.visibility = View.GONE
-            } else {
-                holder.ivBadge.visibility  = if (profile.isKids) View.GONE else View.VISIBLE
-                holder.ivDelete.visibility = if (canDelete) View.VISIBLE else View.GONE
-                holder.ivBadge.setOnClickListener { onEdit(profile) }
-                holder.ivDelete.setOnClickListener { onDelete(profile) }
-            }
-
             if (!profile.isKids) {
                 holder.itemView.setOnLongClickListener {
-                    if (isTv) {
-                        // En TV: long-press abre menú con Editar y (si aplica) Eliminar
-                        showTvProfileMenu(profile, canDelete)
-                    } else {
-                        onEdit(profile)
-                    }
+                    // Mantener presionado: menú con Editar y (si aplica) Eliminar
+                    showTvProfileMenu(profile, canDelete)
                     true
                 }
                 holder.itemView.setOnKeyListener { _, keyCode, event ->
@@ -437,7 +448,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
                          (keyCode == KeyEvent.KEYCODE_DPAD_CENTER && event.repeatCount > 0) ||
                          (keyCode == KeyEvent.KEYCODE_ENTER && event.repeatCount > 0))
                     ) {
-                        if (isTv) showTvProfileMenu(profile, canDelete) else onEdit(profile)
+                        showTvProfileMenu(profile, canDelete)
                         true
                     } else {
                         false
