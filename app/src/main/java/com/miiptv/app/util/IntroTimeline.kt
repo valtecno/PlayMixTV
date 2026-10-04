@@ -52,7 +52,7 @@ object IntroTimeline {
 
     fun lineAlpha(t: Float) = if (t >= LINE_END) 0f else kf(t, 0f to 0f, 0.2f to 0.9f, 0.58f to 1f, LINE_END to 0f)
 
-    fun lineScaleX(t: Float) = if (t >= LINE_END) 1.08f else (t / LINE_END) * 1.08f
+    fun lineScaleX(t: Float) = if (t >= LINE_END) 1.08f else maxOf(0.02f, (t / LINE_END) * 1.08f)
 
     fun flashAlpha(t: Float) = kf(t, 0f to 0f, 0.612f to 0f, 0.648f to 0.85f, 1.116f to 0f)
 
