@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Destello blanco-anaranjado del golpe de la intro. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="50%p"
+        android:centerX="0.5"
+        android:centerY="0.5"
+        android:startColor="#FFFFFFFF"
+        android:centerColor="#CCFFC878"
+        android:endColor="#00FFFFFF" />
+</shape>

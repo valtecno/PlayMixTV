@@ -179,9 +179,8 @@ class ProfileSelectorActivity : AppCompatActivity() {
         if (fromSettings) {
             finish()
         } else {
-            val destino = if (WelcomeActivity.debesMostrar(this))
-                WelcomeActivity::class.java else MainActivity::class.java
-            startActivity(Intent(this, destino))
+            // Intro con sonido y luego Bienvenida (solo la primera vez) o la app
+            IntroActivity.start(this, WelcomeActivity.debesMostrar(this))
             finish()
         }
     }

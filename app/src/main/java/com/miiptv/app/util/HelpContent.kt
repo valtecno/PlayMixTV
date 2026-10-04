@@ -304,6 +304,14 @@ object HelpContent {
         ),
         Pregunta(
             Tema.CUENTA,
+            "¿Puedo saltar la intro con sonido?",
+            "Sí. La intro aparece unos 3 segundos después de elegir tu perfil. Toca la pantalla " +
+                "(o pulsa OK en el control remoto o Atrás) y entras directo a la app. Si no quieres oírla, " +
+                "baja el volumen multimedia del equipo.",
+            listOf("intro", "sonido inicio", "saltar intro", "animacion", "logo", "volumen inicio")
+        ),
+        Pregunta(
+            Tema.CUENTA,
             "¿Cómo oculto un perfil que no uso?",
             "Mantén presionado el perfil en la pantalla ¿Quién está viendo? y elige Ocultar perfil. " +
                 "Solo deja de verse en ese equipo: no se borra el perfil ni sus favoritos e historial, " +

@@ -102,6 +102,10 @@
 
         <activity android:name=".ui.WelcomeActivity" android:exported="false" />
         <activity android:name=".ui.ProfileSelectorActivity" android:exported="false" />
+        <activity
+            android:name=".ui.IntroActivity"
+            android:exported="false"
+            android:theme="@style/Theme.MiIPTV.Splash" />
 
         <activity
             android:name=".ui.SplashActivity"

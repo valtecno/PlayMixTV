@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Intro de PlayMix TV tras elegir perfil. Los tamaños y la animación los pone IntroActivity. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/introRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    android:clickable="true"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/introGlow"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_intro_glow"
+        android:alpha="0" />
+
+    <View
+        android:id="@+id/introLine"
+        android:layout_width="0dp"
+        android:layout_height="2dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_intro_line"
+        android:alpha="0" />
+
+    <View
+        android:id="@+id/introRing"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_intro_ring"
+        android:alpha="0" />
+
+    <com.miiptv.app.ui.IntroLogoView
+        android:id="@+id/introLogo"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:contentDescription="@string/app_name"
+        android:alpha="0" />
+
+    <View
+        android:id="@+id/introFlash"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_intro_flash"
+        android:alpha="0" />
+
+</FrameLayout>

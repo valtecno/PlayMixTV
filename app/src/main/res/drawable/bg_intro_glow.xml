@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resplandor de la intro: magenta al centro, naranja al medio, violeta transparente al borde. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="50%p"
+        android:centerX="0.5"
+        android:centerY="0.5"
+        android:startColor="#8CFF2D78"
+        android:centerColor="#47FF8A00"
+        android:endColor="#007A2BFF" />
+</shape>
