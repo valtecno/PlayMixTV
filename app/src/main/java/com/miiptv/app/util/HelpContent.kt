@@ -318,7 +318,8 @@ object HelpContent {
             "¿Por qué los perfiles se ven más chicos en el celular?",
             "En el celular los perfiles se muestran de a dos por fila, con el botón + centrado debajo. " +
                 "Si tienes muchos, los círculos se achican para que todos se vean. Oculta los que no " +
-                "uses (mantén presionado → Ocultar perfil) y volverán a verse más grandes.",
+                "uses (mantén presionado → Ocultar perfil) y volverán a verse más grandes. El máximo es de " +
+                "6 perfiles a la vez y los ocultos no cuentan, así que ocultar uno libera un lugar.",
             listOf("perfiles chicos", "perfiles pequeños", "agregar perfil", "mas perfiles", "maximo perfiles")
         ),
         Pregunta(

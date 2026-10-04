@@ -303,6 +303,8 @@
     <string name="setting_autoplay_next">Reproducir siguiente episodio</string>
     <string name="player_error">No se pudo reproducir (%1$s)</string>
     <string name="profile_tv_edit_hint">Mantén presionado para editar tu perfil</string>
+    <string name="profile_hint_mobile">Mantén presionado un perfil para editarlo u ocultarlo</string>
+    <string name="profile_hint_tv">Mantén presionado un perfil para editarlo o eliminarlo</string>
     <string name="player_error_no_internet">Sin conexión a internet. Comprueba tu red y vuelve a intentarlo.</string>
     <string name="player_error_weak_connection">La conexión a internet es inestable o demasiado lenta para reproducir este contenido.</string>
     <string name="player_error_source">El servidor no responde. Tu internet está bien. Avisa a tu soporte.</string>
@@ -425,7 +427,7 @@
     <string name="profile_manage_desc">Perfiles, apariencia, cuenta y audio</string>
     <string name="profile_switch_or_edit">Cambiar / Editar perfil</string>
     <string name="profile_delete">Eliminar perfil</string>
-    <string name="profile_delete_confirm">¿Eliminar el perfil "%s"? Se borrarán sus favoritos e historial.</string>
+    <string name="profile_delete_confirm">¿Eliminar el perfil "%s" de la lista de perfiles?</string>
     <string name="profile_deleted">Perfil eliminado</string>
     <string name="profile_hide">Ocultar perfil</string>
     <string name="profile_hide_confirm">¿Ocultar el perfil "%s" en este dispositivo? No se borra nada: sus favoritos e historial se conservan y puedes volver a mostrarlo.</string>

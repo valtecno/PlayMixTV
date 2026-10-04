@@ -23,6 +23,7 @@ import com.miiptv.app.databinding.ActivityProfileSelectorBinding
 import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.KidsMode
+import com.miiptv.app.util.ProfileLayout
 import com.miiptv.app.util.Profiles
 import com.miiptv.app.util.Profiles.Avatar
 import com.miiptv.app.ui.WelcomeActivity
@@ -87,6 +88,9 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
         updateHiddenLink()
 
+        binding.tvTvHint.setText(
+            if (isMobile()) R.string.profile_hint_mobile else R.string.profile_hint_tv
+        )
         binding.tvTvHint.visibility = View.VISIBLE
 
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
@@ -97,7 +101,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
     private fun setupGrid() {
         val profiles = visibleProfiles()
-        val canAdd   = Profiles.getAll(this).size < 6
+        val canAdd   = Profiles.canAdd(profiles.size)
 
         adapter = ProfileAdapter(
             profiles  = profiles,
@@ -117,7 +121,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
 
     private fun refreshGrid() {
         val profiles = visibleProfiles()
-        val canAdd   = Profiles.getAll(this).size < 6
+        val canAdd   = Profiles.canAdd(profiles.size)
         adapter.updateAll(profiles, canAdd)
         binding.rvProfiles.layoutManager = buildLayoutManager()
         updateHiddenLink()
@@ -146,7 +150,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
         return GridLayoutManager(this, 2).also { lm ->
             lm.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                 override fun getSpanSize(position: Int): Int =
-                    if (position == adapter.itemCount - 1 && position % 2 == 0) 2 else 1
+                    ProfileLayout.spanSize(position, adapter.itemCount)
             }
         }
     }
@@ -154,12 +158,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
     /** Diámetro del círculo en móvil: se encoge según la cantidad de perfiles para que todos quepan. */
     private fun mobileAvatarPx(): Int {
         val dm = resources.displayMetrics
-        val d = dm.density
-        val rows = ((adapter.itemCount + 1) / 2).coerceAtLeast(1)
-        val availH = dm.heightPixels - 300 * d            // cabecera + márgenes
-        val byHeight = availH / rows - 64 * d             // nombre + padding por fila
-        val byWidth = (dm.widthPixels - 48 * d) / 2 - 24 * d
-        return minOf(130 * d, byHeight, byWidth).coerceAtLeast(52 * d).toInt()
+        return ProfileLayout.avatarSizePx(adapter.itemCount, dm.widthPixels, dm.heightPixels, dm.density)
     }
 
     private fun applyMobileSize(itemView: View) {
@@ -268,7 +267,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
     }
 
     private fun showAddDialog() {
-        if (Profiles.getAll(this).size >= 6) {
+        if (!Profiles.canAdd(visibleProfiles().size)) {
             Toast.makeText(this, R.string.profile_max_reached, Toast.LENGTH_SHORT).show()
             return
         }
@@ -465,8 +464,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
                 )
             }
 
-            val nonKidsProfiles = items.filterNotNull().filter { !it.isKids }
-            val canDelete = !profile.isKids && nonKidsProfiles.size > 1
+            val canDelete = Profiles.canRemove(profile, items.filterNotNull())
 
             if (!profile.isKids) {
                 holder.itemView.setOnLongClickListener {

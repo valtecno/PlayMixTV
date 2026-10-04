@@ -86,6 +86,23 @@ object Profiles {
     private const val KEY_PROFILES   = "profiles"
     private const val KEY_HIDDEN     = "hidden_profile_ids"
 
+    /** Máximo de perfiles visibles a la vez (Niños incluido). Los ocultos no cuentan. */
+    const val MAX_PROFILES = 6
+
+    // -------------------------------------------------------------------------
+    // Reglas puras (sin Android): se usan arriba y se prueban en los tests
+    // -------------------------------------------------------------------------
+
+    /**
+     * Un perfil se puede ocultar o eliminar si no es el de Niños y si después
+     * queda al menos otro perfil que no sea de niños entre los [mostrados].
+     */
+    fun canRemove(profile: Profile, shown: List<Profile>): Boolean =
+        !profile.isKids && shown.count { !it.isKids } > 1
+
+    /** Se puede agregar otro perfil mientras los visibles no lleguen al máximo. */
+    fun canAdd(visibleCount: Int): Boolean = visibleCount < MAX_PROFILES
+
     private val gson = Gson()
 
     // -------------------------------------------------------------------------
@@ -182,8 +199,7 @@ object Profiles {
 
     /** Oculta un perfil. No oculta Niños ni el último perfil visible que no sea de niños. */
     fun hide(context: Context, profile: Profile): Boolean {
-        if (profile.isKids) return false
-        if (getVisible(context).count { !it.isKids } <= 1) return false
+        if (!canRemove(profile, getVisible(context))) return false
         prefs(context).edit()
             .putStringSet(KEY_HIDDEN, hiddenIds(context) + profile.profileId).apply()
         return true
@@ -195,11 +211,12 @@ object Profiles {
 
     /**
      * Agrega un nuevo perfil. Genera un profileId único basado en timestamp.
-     * No se puede agregar si ya hay 6 perfiles (Kids incluido).
+     * No se puede agregar si ya hay [MAX_PROFILES] perfiles visibles (Kids incluido);
+     * los ocultos en este dispositivo no cuentan.
      */
     fun add(context: Context, name: String, avatarId: String): Profile? {
         val current = getAll(context)
-        if (current.size >= 6) return null
+        if (!canAdd(getVisible(context).size)) return null
         val newId = "p_${System.currentTimeMillis()}"
         val profile = Profile(newId, name, avatarId)
         save(context, current + profile)
@@ -211,10 +228,8 @@ object Profiles {
      * si es el único perfil no-Kids. Devuelve true si se eliminó.
      */
     fun delete(context: Context, profile: Profile): Boolean {
-        if (profile.isKids) return false
         val current = getAll(context)
-        val nonKids = current.filter { !it.isKids }
-        if (nonKids.size <= 1) return false   // debe quedar al menos 1 perfil no-Kids
+        if (!canRemove(profile, current)) return false   // debe quedar al menos 1 perfil no-Kids
         val updated = current.filter { it.profileId != profile.profileId }
         save(context, updated)
         // Si era el perfil activo, limpiar la sesión activa
