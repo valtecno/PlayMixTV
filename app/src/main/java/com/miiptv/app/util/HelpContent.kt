@@ -304,12 +304,11 @@ object HelpContent {
         ),
         Pregunta(
             Tema.CUENTA,
-            "¿Cómo oculto o elimino un perfil que no uso?",
-            "Mantén presionado el perfil en la pantalla ¿Quién está viendo? y elige la opción. En el " +
-                "celular dice Ocultar perfil: solo deja de verse en ese teléfono, no borra nada, y " +
-                "puedes volver a mostrarlo con Mostrar perfiles ocultos (abajo en la misma pantalla). " +
-                "En la TV dice Eliminar perfil y sí borra sus favoritos e historial. El perfil de " +
-                "Niños y el último perfil que no sea de niños no se pueden ocultar ni eliminar.",
+            "¿Cómo oculto un perfil que no uso?",
+            "Mantén presionado el perfil en la pantalla ¿Quién está viendo? y elige Ocultar perfil. " +
+                "Solo deja de verse en ese equipo: no se borra el perfil ni sus favoritos e historial, " +
+                "y puedes volver a mostrarlo con Mostrar perfiles ocultos (abajo en la misma pantalla). " +
+                "El perfil de Niños y el último perfil que no sea de niños no se pueden ocultar.",
             listOf("ocultar perfil", "eliminar perfil", "borrar perfil", "quitar perfil", "esconder",
                 "perfiles ocultos", "mostrar perfiles")
         ),

@@ -38,7 +38,7 @@ import com.miiptv.app.ui.WelcomeActivity
  *
  * Toque corto → selecciona el perfil y navega a MainActivity.
  * Toque largo → abre el diálogo de edición (nombre + avatar).
- * Ícono papelera → elimina el perfil (con confirmación).
+ * Mantener presionado → Editar u Ocultar perfil (ocultar no borra nada).
  * Tarjeta "+" → crea un perfil nuevo.
  * El perfil de Niños activa KidsMode automáticamente.
  */
@@ -88,9 +88,7 @@ class ProfileSelectorActivity : AppCompatActivity() {
         }
         updateHiddenLink()
 
-        binding.tvTvHint.setText(
-            if (isMobile()) R.string.profile_hint_mobile else R.string.profile_hint_tv
-        )
+        binding.tvTvHint.setText(R.string.profile_hint_mobile)
         binding.tvTvHint.visibility = View.VISIBLE
 
         if (intent.getBooleanExtra(EXTRA_EDIT_ACTIVE, false)) {
@@ -108,7 +106,6 @@ class ProfileSelectorActivity : AppCompatActivity() {
             canAdd    = canAdd,
             onSelect  = { profile -> selectProfile(profile) },
             onEdit    = { profile -> showEditDialog(profile) },
-            onDelete  = { profile -> confirmDelete(profile) },
             onAddNew  = { showAddDialog() }
         )
 
@@ -127,12 +124,11 @@ class ProfileSelectorActivity : AppCompatActivity() {
         updateHiddenLink()
     }
 
-    /** En móvil se respetan los perfiles ocultos; en TV siempre se ven todos. */
-    private fun visibleProfiles(): List<Profiles.Profile> =
-        if (isMobile()) Profiles.getVisible(this) else Profiles.getAll(this)
+    /** Perfiles a mostrar: los ocultos en este dispositivo no aparecen (en ningún equipo se borra nada). */
+    private fun visibleProfiles(): List<Profiles.Profile> = Profiles.getVisible(this)
 
     private fun updateHiddenLink() {
-        val n = if (isMobile()) Profiles.hiddenIds(this).size else 0
+        val n = Profiles.hiddenIds(this).size
         binding.tvShowHidden.visibility = if (n > 0) View.VISIBLE else View.GONE
         binding.tvShowHidden.text = getString(R.string.profile_show_hidden, n)
     }
@@ -326,43 +322,27 @@ class ProfileSelectorActivity : AppCompatActivity() {
      */
     private fun showTvProfileMenu(profile: Profiles.Profile, canDelete: Boolean) {
         val opciones = mutableListOf(getString(R.string.profile_edit_title))
-        if (canDelete) opciones.add(
-            getString(if (isMobile()) R.string.profile_hide else R.string.profile_delete)
-        )
+        if (canDelete) opciones.add(getString(R.string.profile_hide))
 
         AlertDialog.Builder(this, R.style.AppDialog)
             .setTitle(profile.name)
             .setItems(opciones.toTypedArray()) { _, which ->
                 when (which) {
                     0 -> showEditDialog(profile)
-                    1 -> if (isMobile()) confirmHide(profile) else confirmDelete(profile)
+                    1 -> confirmHide(profile)
                 }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
-    /** Móvil: solo oculta el perfil en este dispositivo; no borra favoritos ni historial. */
+    /** Solo oculta el perfil en este dispositivo; no borra el perfil, sus favoritos ni su historial. */
     private fun confirmHide(profile: Profiles.Profile) {
         AlertDialog.Builder(this, R.style.AppDialog)
             .setMessage(getString(R.string.profile_hide_confirm, profile.name))
             .setPositiveButton(R.string.profile_hide) { _, _ ->
                 if (Profiles.hide(this, profile)) {
                     Toast.makeText(this, R.string.profile_hidden, Toast.LENGTH_SHORT).show()
-                    refreshGrid()
-                }
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    private fun confirmDelete(profile: Profiles.Profile) {
-        AlertDialog.Builder(this, R.style.AppDialog)
-            .setMessage(getString(R.string.profile_delete_confirm, profile.name))
-            .setPositiveButton(R.string.profile_delete) { _, _ ->
-                val ok = Profiles.delete(this, profile)
-                if (ok) {
-                    Toast.makeText(this, R.string.profile_deleted, Toast.LENGTH_SHORT).show()
                     refreshGrid()
                 }
             }
@@ -379,7 +359,6 @@ class ProfileSelectorActivity : AppCompatActivity() {
         canAdd:   Boolean,
         private val onSelect:  (Profiles.Profile) -> Unit,
         private val onEdit:    (Profiles.Profile) -> Unit,
-        private val onDelete:  (Profiles.Profile) -> Unit,
         private val onAddNew:  () -> Unit
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 

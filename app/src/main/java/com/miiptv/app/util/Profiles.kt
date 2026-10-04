@@ -94,7 +94,7 @@ object Profiles {
     // -------------------------------------------------------------------------
 
     /**
-     * Un perfil se puede ocultar o eliminar si no es el de Niños y si después
+     * Un perfil se puede ocultar si no es el de Niños y si después
      * queda al menos otro perfil que no sea de niños entre los [mostrados].
      */
     fun canRemove(profile: Profile, shown: List<Profile>): Boolean =
@@ -185,7 +185,7 @@ object Profiles {
     }
 
     // -------------------------------------------------------------------------
-    // Ocultar perfiles (solo móvil): no borra nada, solo deja de mostrarlo en este dispositivo
+    // Ocultar perfiles: no borra nada, solo deja de mostrarlo en este dispositivo
     // -------------------------------------------------------------------------
 
     fun hiddenIds(context: Context): Set<String> =
@@ -221,22 +221,6 @@ object Profiles {
         val profile = Profile(newId, name, avatarId)
         save(context, current + profile)
         return profile
-    }
-
-    /**
-     * Elimina un perfil. No permite eliminar el perfil de Niños ni el perfil activo
-     * si es el único perfil no-Kids. Devuelve true si se eliminó.
-     */
-    fun delete(context: Context, profile: Profile): Boolean {
-        val current = getAll(context)
-        if (!canRemove(profile, current)) return false   // debe quedar al menos 1 perfil no-Kids
-        val updated = current.filter { it.profileId != profile.profileId }
-        save(context, updated)
-        // Si era el perfil activo, limpiar la sesión activa
-        if (active(context)?.profileId == profile.profileId) {
-            clearActive(context)
-        }
-        return true
     }
 
     // -------------------------------------------------------------------------
