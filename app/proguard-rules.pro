@@ -79,11 +79,13 @@
 #    ingresar el código de acceso, sin llegar nunca a la pantalla principal.
 -keep class com.miiptv.app.util.DataSync$Payload { *; }
 
-# Se guardan con Gson sin @SerializedName: sin esto R8 renombra sus campos en
-# release y una actualización que cambie esos nombres dejaría cuentas y
-# perfiles ilegibles (campos en null).
--keep class com.miiptv.app.util.Accounts$Account { *; }
--keep class com.miiptv.app.util.Profiles$Profile { *; }
+
+# NO agregar -keep para Accounts$Account ni Profiles$Profile.
+# Se guardan con Gson sin @SerializedName y los datos YA guardados en los
+# aparatos usan los nombres de campo ofuscados por R8. Cambiar eso (con un
+# -keep) hace que Gson no encuentre ningún campo al leer lo guardado y la app
+# se cierra al abrir (pasó en la v1.0.150). Si algún día se quiere protegerlos,
+# primero hay que migrar los datos guardados.
 
 # Igual para el modelo de las radios, que también viaja por Gson.
 -keep class com.miiptv.app.api.RadioStation { *; }
