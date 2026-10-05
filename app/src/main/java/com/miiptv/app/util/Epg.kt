@@ -79,11 +79,17 @@ object Epg {
             .enqueue(object : Callback<EpgResponse> {
                 override fun onResponse(call: Call<EpgResponse>, response: Response<EpgResponse>) {
                     val listados = response.body()?.epgListings.orEmpty()
-                    cache[streamId] = Entry(listados, System.currentTimeMillis())
+                    // Un HTTP 4xx/5xx no es "sin programación": se reintenta pronto.
+                    val frescura = if (response.isSuccessful) System.currentTimeMillis()
+                        else System.currentTimeMillis() - TTL_MS + 30_000L
+                    cache[streamId] = Entry(listados, frescura)
                     pending.remove(streamId).orEmpty().forEach { it(listados) }
                 }
 
                 override fun onFailure(call: Call<EpgResponse>, t: Throwable) {
+                    // Fallo recordado ~30 s: sin esto cada fila que se enfoca o se
+                    // recicla repetía el pedido contra un panel caído.
+                    cache[streamId] = Entry(emptyList(), System.currentTimeMillis() - TTL_MS + 30_000L)
                     pending.remove(streamId).orEmpty().forEach { it(emptyList()) }
                 }
             })
@@ -111,11 +117,17 @@ object Epg {
             .enqueue(object : Callback<EpgResponse> {
                 override fun onResponse(call: Call<EpgResponse>, response: Response<EpgResponse>) {
                     val listados = response.body()?.epgListings.orEmpty()
-                    cache[streamId] = Entry(listados, System.currentTimeMillis())
+                    // Un HTTP 4xx/5xx no es "sin programación": se reintenta pronto.
+                    val frescura = if (response.isSuccessful) System.currentTimeMillis()
+                        else System.currentTimeMillis() - TTL_MS + 30_000L
+                    cache[streamId] = Entry(listados, frescura)
                     pending.remove(streamId).orEmpty().forEach { it(listados) }
                 }
 
                 override fun onFailure(call: Call<EpgResponse>, t: Throwable) {
+                    // Fallo recordado ~30 s: sin esto cada fila que se enfoca o se
+                    // recicla repetía el pedido contra un panel caído.
+                    cache[streamId] = Entry(emptyList(), System.currentTimeMillis() - TTL_MS + 30_000L)
                     pending.remove(streamId).orEmpty().forEach { it(emptyList()) }
                 }
             })

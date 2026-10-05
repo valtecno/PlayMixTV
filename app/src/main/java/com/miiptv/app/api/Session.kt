@@ -119,6 +119,7 @@ object Session {
     fun save(context: Context, server: String, username: String, password: String) {
         val clean = normalize(server)
         val limpia = password.trim()
+        passwordCache = null
         // La contraseña se guarda cifrada con la clave del Android Keystore
         // (ver CryptoUtil). Si el aparato no lo soporta (API 21-22), se
         // guarda tal cual bajo la misma clave de antes para no romper el
@@ -147,10 +148,19 @@ object Session {
     fun username(context: Context): String =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("username", "") ?: ""
 
+    /**
+     * Contraseña ya descifrada, en memoria. Descifrar con el Keystore cuesta
+     * decenas de ms en un TV box barato y se pedía por cada fila de la lista
+     * (EPG), por cada URL de stream y por cada llamada a la API. Se invalida
+     * en [save] y [logout].
+     */
+    @Volatile private var passwordCache: String? = null
+
     fun password(context: Context): String {
+        passwordCache?.let { return it }
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs.getString(KEY_PASSWORD_ENC, null)?.let { cifrada ->
-            CryptoUtil.decrypt(cifrada)?.let { return it }
+            CryptoUtil.decrypt(cifrada)?.let { passwordCache = it; return it }
         }
         // Sesión de una versión anterior a este cambio (o aparato sin
         // Keystore compatible): todavía en texto plano bajo la clave vieja.
@@ -163,6 +173,7 @@ object Session {
         server(context).isNotBlank() && username(context).isNotBlank()
 
     fun logout(context: Context) {
+        passwordCache = null
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
         invalidateApi()
     }

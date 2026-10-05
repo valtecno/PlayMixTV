@@ -12,7 +12,7 @@
     ese archivo tal cual a la cuenta de Google Drive del usuario. Excluirlo
     evita subirlo sin necesidad.
 
-    Excluyendo miiptv_prefs, la credencial no viaja. El precio es que al
+    Excluyendo miiptv_prefs, la credencial no viaja (tampoco miiptv_accounts, que guarda las cuentas, ni miiptv_episode_progress, cuyas claves son URLs con usuario y contraseña, ni miiptv_device, que es propio de cada aparato). El precio es que al
     cambiar de teléfono hay que volver a escribir usuario y contraseña una vez,
     que es exactamente lo que hace cualquier app con sesión.
 
@@ -24,4 +24,7 @@
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="miiptv_prefs.xml" />
+    <exclude domain="sharedpref" path="miiptv_accounts.xml" />
+    <exclude domain="sharedpref" path="miiptv_episode_progress.xml" />
+    <exclude domain="sharedpref" path="miiptv_device.xml" />
 </full-backup-content>

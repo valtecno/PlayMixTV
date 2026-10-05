@@ -216,12 +216,17 @@ class PlayerActivity : AppCompatActivity() {
     private fun syncBufferingIndicator(p: Player?) {
         binding.progressBar.visibility =
             if (p?.playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
-        p?.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                binding.progressBar.visibility =
-                    if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
-            }
-        })
+        // Un único listener reutilizado: antes se sumaba uno nuevo en cada
+        // onCreate/onStart y todos retenían la Activity en el player estático.
+        p?.removeListener(bufferingListener)
+        p?.addListener(bufferingListener)
+    }
+
+    private val bufferingListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            binding.progressBar.visibility =
+                if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
+        }
     }
 
     private var locked = false
@@ -342,14 +347,22 @@ class PlayerActivity : AppCompatActivity() {
             player?.duration?.takeIf { it > 0 } ?: 0L
         )
 
-        val seguirSonando = PlayerPrefs.getBackground(this) && !isFinishing && player?.playWhenReady == true
+        // Cerrar la ventana de PiP con la X también llama a onStop: ahí no debe
+        // arrancar el servicio de segundo plano ni seguir sonando.
+        val enPip = android.os.Build.VERSION.SDK_INT >= 24 && isInPictureInPictureMode
+        val seguirSonando = PlayerPrefs.getBackground(this) && !isFinishing && !enPip &&
+            player?.playWhenReady == true
         if (seguirSonando) {
             // El servicio en primer plano lo mantiene vivo; la pantalla suelta la vista
             PlaybackHolder.currentTitle = contentTitle
             binding.playerView.player = null
-            PlaybackService.start(this)
+            // En Android 12+ el sistema puede negar el servicio en primer plano
+            // desde onStop; si pasa, se pausa en vez de cerrar la app.
+            runCatching { PlaybackService.start(this) }.onFailure { player?.pause() }
         } else {
             PlaybackService.stop(this)
+            // La vista no puede quedar apuntando a un player ya liberado.
+            binding.playerView.player = null
             PlaybackHolder.release()
             player = null
         }
@@ -838,7 +851,11 @@ class PlayerActivity : AppCompatActivity() {
      * onBackPressed.
      */
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (locked && event.keyCode != KeyEvent.KEYCODE_BACK) {
+        // El volumen físico siempre debe funcionar, aun con el candado puesto.
+        val esVolumen = event.keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+            event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN ||
+            event.keyCode == KeyEvent.KEYCODE_VOLUME_MUTE
+        if (locked && event.keyCode != KeyEvent.KEYCODE_BACK && !esVolumen) {
             if (event.action == KeyEvent.ACTION_DOWN) {
                 if (binding.btnUnlock.visibility != View.VISIBLE) {
                     showLockIconTemporarily()
@@ -1497,10 +1514,17 @@ class PlayerActivity : AppCompatActivity() {
     /** true si el dispositivo tiene conectividad de red activa en este momento. */
     private fun hayInternet(): Boolean {
         val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        // activeNetwork y NetworkCapabilities son de API 23: con minSdk 21 en
+        // Android 5.0/5.1 esto cerraba la app justo al reportar un error.
+        if (android.os.Build.VERSION.SDK_INT < 23) {
+            @Suppress("DEPRECATION")
+            return cm.activeNetworkInfo?.isConnected == true
+        }
         val net = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(net) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        // Sin exigir VALIDATED: en VPN o redes locales Android no la marca y
+        // la app decía "sin internet" aunque el panel respondiera.
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun startPlayback(url: String, resumeAtMs: Long) {
@@ -1612,6 +1636,20 @@ class PlayerActivity : AppCompatActivity() {
                     ) {
                         showNextBar()
                     }
+
+                    // Canal en vivo o radio cuyo servidor corta el stream de forma
+                    // limpia: no hay error que reintentar, el player queda congelado
+                    // en el último cuadro. Se reconecta igual que tras un error.
+                    if (state == Player.STATE_ENDED && (isRadio || itemType == ContentType.LIVE) &&
+                        PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES
+                    ) {
+                        retries++
+                        binding.progressBar.visibility = View.VISIBLE
+                        exo.stop()
+                        exo.setMediaItem(MediaItem.fromUri(url))
+                        exo.prepare()
+                        exo.playWhenReady = true
+                    }
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
@@ -1640,8 +1678,12 @@ class PlayerActivity : AppCompatActivity() {
                     if (PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES) {
                         retries++
                         binding.progressBar.visibility = View.VISIBLE
+                        // En películas y episodios se vuelve al mismo minuto; antes un
+                        // corte de red a mitad de película la reiniciaba desde 0.
+                        val retomar = if (isRadio || itemType == ContentType.LIVE)
+                            androidx.media3.common.C.TIME_UNSET else exo.currentPosition
                         exo.stop()
-                        exo.setMediaItem(MediaItem.fromUri(url))
+                        exo.setMediaItem(MediaItem.fromUri(url), retomar)
                         exo.prepare()
                         exo.playWhenReady = true
                     } else {

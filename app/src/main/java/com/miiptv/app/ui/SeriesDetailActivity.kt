@@ -82,6 +82,8 @@ class SeriesDetailActivity : AppCompatActivity() {
         Session.api(this).getSeriesInfo(Session.username(this), Session.password(this), seriesId = seriesId)
             .enqueue(object : Callback<SeriesInfoResponse> {
                 override fun onResponse(call: Call<SeriesInfoResponse>, response: Response<SeriesInfoResponse>) {
+                    // Si el usuario ya salió, no se debe abrir el reproductor "solo".
+                    if (isFinishing || isDestroyed) return
                     binding.progressBar.visibility = View.GONE
                     episodesBySeason = response.body()?.episodes ?: emptyMap()
                     renderSeasonChips()
@@ -101,6 +103,7 @@ class SeriesDetailActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<SeriesInfoResponse>, t: Throwable) {
+                    if (isFinishing || isDestroyed) return
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(this@SeriesDetailActivity, "Error: ${t.message}", Toast.LENGTH_LONG).show()
                 }

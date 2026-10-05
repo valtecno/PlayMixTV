@@ -79,6 +79,12 @@
 #    ingresar el código de acceso, sin llegar nunca a la pantalla principal.
 -keep class com.miiptv.app.util.DataSync$Payload { *; }
 
+# Se guardan con Gson sin @SerializedName: sin esto R8 renombra sus campos en
+# release y una actualización que cambie esos nombres dejaría cuentas y
+# perfiles ilegibles (campos en null).
+-keep class com.miiptv.app.util.Accounts$Account { *; }
+-keep class com.miiptv.app.util.Profiles$Profile { *; }
+
 # Igual para el modelo de las radios, que también viaja por Gson.
 -keep class com.miiptv.app.api.RadioStation { *; }
 

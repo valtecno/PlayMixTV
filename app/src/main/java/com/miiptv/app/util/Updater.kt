@@ -241,6 +241,10 @@ object Updater {
                         }
                     }
                 }
+                // El hash de un APK de decenas de MB se calcula AQUÍ, en el hilo de
+                // descarga: dentro de ui.post congelaba la pantalla varios segundos
+                // en un TV box.
+                val hashReal = if (release.sha256 != null) runCatching { sha256File(destino) }.getOrNull() else null
                 ui.post {
                     // Verificación de integridad: si la Release trae el .sha256
                     // (ver descargarSha), el APK bajado tiene que coincidir con
@@ -251,7 +255,7 @@ object Updater {
                     // red). Sin este chequeo, la única defensa era la firma del
                     // APK, que Android valida igual pero después de instalar.
                     if (release.sha256 != null) {
-                        val real = runCatching { sha256File(destino) }.getOrNull()
+                        val real = hashReal
                         if (real == null || !real.equals(release.sha256, ignoreCase = true)) {
                             destino.delete()
                             onError("verificación_fallida")

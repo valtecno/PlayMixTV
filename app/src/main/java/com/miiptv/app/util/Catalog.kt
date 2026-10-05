@@ -267,7 +267,12 @@ object Catalog {
      * necesita correr donde nadie más puede estar leyéndolo a la vez.
      */
     private fun aplicarLeidoDeDisco(context: Context, leido: CatalogoLeido) {
-        live.addAll(leido.live); movies.addAll(leido.movies); series.addAll(leido.series)
+        // Solo se rellena lo que siga vacío: si la descarga de red ya trajo un
+        // bloque, no se le suman encima los datos viejos del disco (duplicaba
+        // ítems en búsqueda, novedades y memoria al abrir con el caché en disco).
+        if (live.isEmpty()) live.addAll(leido.live)
+        if (movies.isEmpty()) movies.addAll(leido.movies)
+        if (series.isEmpty()) series.addAll(leido.series)
         liveVersion++
         stampServer = Session.server(context).trim().trimEnd('/')
         stampUser   = Session.username(context)
@@ -407,6 +412,8 @@ object Catalog {
                     return
                 }
 
+                // La red reemplaza lo que hubiera (p. ej. lo leído del disco): nunca se suma.
+                target.clear()
                 target.addAll(items)
                 if (block == Block.LIVE) liveVersion++
                 advance(context, block)

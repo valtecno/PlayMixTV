@@ -23,6 +23,8 @@ import com.miiptv.app.databinding.ActivityProfileSelectorBinding
 import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.KidsMode
+import com.miiptv.app.util.Parental
+import com.miiptv.app.util.PinDialog
 import com.miiptv.app.util.ProfileLayout
 import com.miiptv.app.util.Profiles
 import com.miiptv.app.util.Profiles.Avatar
@@ -171,6 +173,16 @@ class ProfileSelectorActivity : AppCompatActivity() {
     }
 
     private fun selectProfile(profile: Profiles.Profile) {
+        // Salir del perfil Niños exige el PIN (así lo promete la ayuda). Antes el
+        // selector, que se abre en cada arranque, dejaba salir sin pedirlo.
+        if (KidsMode.isActive(this) && !profile.isKids && Parental.hasPin(this)) {
+            PinDialog.ask(this) { aplicarPerfil(profile) }
+            return
+        }
+        aplicarPerfil(profile)
+    }
+
+    private fun aplicarPerfil(profile: Profiles.Profile) {
         Profiles.setActive(this, profile)
         KidsMode.setActive(this, profile.isKids)
         DataSync.restore(this) { }

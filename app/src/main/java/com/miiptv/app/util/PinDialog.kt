@@ -34,6 +34,12 @@ object PinDialog {
      * ese, se sigue con lo que se estaba haciendo (onSuccess).
      */
     fun ask(context: Context, onSuccess: () -> Unit) {
+        // Sin PIN configurado (p. ej. tras "Quitar PIN") no hay nada que pedir:
+        // antes las categorías bloqueadas quedaban cerradas para siempre.
+        if (!Parental.hasPin(context)) {
+            onSuccess()
+            return
+        }
         showKeypad(
             context,
             title = context.getString(R.string.pin_ask_title),

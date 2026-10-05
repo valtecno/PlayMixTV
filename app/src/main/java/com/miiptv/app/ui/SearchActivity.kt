@@ -248,13 +248,16 @@ class SearchActivity : AppCompatActivity() {
         val query = binding.etQuery.text?.toString()?.trim().orEmpty()
         val type = typeFilter
 
+        // La copia se toma AQUÍ, en el hilo principal: el catálogo se modifica ahí
+        // mismo, y copiarlo desde el hilo de fondo podía leerlo a medio escribir.
+        val source = when (type) {
+            ContentType.LIVE -> Catalog.live
+            ContentType.MOVIE -> Catalog.movies
+            ContentType.SERIES -> Catalog.series
+            null -> Catalog.all()
+        }.toList()
+
         worker.execute {
-            val source = when (type) {
-                ContentType.LIVE -> Catalog.live
-                ContentType.MOVIE -> Catalog.movies
-                ContentType.SERIES -> Catalog.series
-                null -> Catalog.all()
-            }.toList() // copia: la lista original puede seguir creciendo mientras carga
 
             val results = if (query.length < 2) {
                 emptyList()
@@ -285,10 +288,12 @@ class SearchActivity : AppCompatActivity() {
                     if (query.length < 2 && RecentSearches.getAll(this@SearchActivity).isNotEmpty())
                         View.VISIBLE else View.GONE
 
-                if (remoto && results.isNotEmpty()) {
+                // Solo si el foco estaba en la lista: si estaba en el cuadro de
+                // texto, moverlo cerraba el teclado a media escritura.
+                if (remoto && results.isNotEmpty() && posicionEnfocada != null) {
                     // Se repone el foco en la misma fila de antes si todavía
-                    // existe (la lista pudo achicarse), o si no en la primera.
-                    val destino = posicionEnfocada?.coerceIn(0, results.size - 1) ?: 0
+                    // existe (la lista pudo achicarse).
+                    val destino = posicionEnfocada.coerceIn(0, results.size - 1)
                     binding.recyclerResults.post {
                         binding.recyclerResults.layoutManager
                             ?.findViewByPosition(destino)

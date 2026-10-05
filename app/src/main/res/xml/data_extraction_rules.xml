@@ -20,8 +20,14 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="miiptv_prefs.xml" />
+        <exclude domain="sharedpref" path="miiptv_accounts.xml" />
+        <exclude domain="sharedpref" path="miiptv_episode_progress.xml" />
+        <exclude domain="sharedpref" path="miiptv_device.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="miiptv_prefs.xml" />
+        <exclude domain="sharedpref" path="miiptv_accounts.xml" />
+        <exclude domain="sharedpref" path="miiptv_episode_progress.xml" />
+        <exclude domain="sharedpref" path="miiptv_device.xml" />
     </device-transfer>
 </data-extraction-rules>

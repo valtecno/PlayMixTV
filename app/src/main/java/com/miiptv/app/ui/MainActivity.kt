@@ -541,7 +541,9 @@ class MainActivity : AppCompatActivity() {
         // buscador propio de la sección (etPpvSearch) hace ese trabajo.
         if (newSection != Section.LIVE) {
             binding.etChannelFilter.visibility = View.GONE
-            binding.etChannelFilter.setText("")
+            // setText dispara el TextWatcher aunque ya esté vacío y repintaba la
+            // lista de la sección anterior: solo se limpia si hay texto.
+            if (!binding.etChannelFilter.text.isNullOrEmpty()) binding.etChannelFilter.setText("")
         } else if (!kidsMode) {
             binding.etChannelFilter.visibility = View.VISIBLE
         }
@@ -1569,9 +1571,13 @@ class MainActivity : AppCompatActivity() {
             ContentType.MOVIE -> Session.api(this).getVodCategories(Session.username(this), Session.password(this))
             ContentType.SERIES -> Session.api(this).getSeriesCategories(Session.username(this), Session.password(this))
         }
+        // Si el usuario cambia de sección antes de que llegue la respuesta, esta no
+        // debe pisar la lista de la sección nueva con contenido de la anterior.
+        val seccionAlPedir = section
         call.enqueue(object : Callback<List<Category>> {
             override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
                 if (isFinishing || isDestroyed) return
+                if (section != seccionAlPedir) return
                 val crudo = response.body().orEmpty()
                 when (type) {
                     ContentType.MOVIE -> allMovieCategories = crudo
@@ -1600,7 +1606,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onFailure(call: Call<List<Category>>, t: Throwable) {
-                if (isFinishing) return
+                if (isFinishing || section != seccionAlPedir) return
                 setLoading(false)
                 Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
             }
@@ -3015,6 +3021,13 @@ class MainActivity : AppCompatActivity() {
         // Si mientras tanto cambió el día lógico, esto lo detecta y refresca.
         comprobarRefrescoDiario()
         if (::adapter.isInitialized) {
+            // Si en Ajustes se eligió otro perfil (p. ej. Niños), el modo en memoria
+            // quedaba viejo y la UI mostraba todo sin filtros hasta reiniciar la app.
+            if (KidsMode.isActive(this) != kidsMode) {
+                kidsMode = KidsMode.isActive(this)
+                applyKidsVisibility()
+                selectSection(seccionBase())
+            }
             applyHomeOrientation()
             binding.tvToolbarTitle.applyBrandGradient()
             highlightNav()

@@ -20,6 +20,9 @@
         <domain includeSubdomains="true">github.com</domain>
         <domain includeSubdomains="true">githubusercontent.com</domain>
 
+        <!-- Nuestro panel: entrega usuario y contraseña (PanelApi) y sincroniza datos (SyncApi) -->
+        <domain includeSubdomains="true">valtecno.cl</domain>
+
         <!-- Ubicación por IP y clima (WeatherService.kt) -->
         <domain includeSubdomains="true">ipwho.is</domain>
         <domain includeSubdomains="true">ipapi.co</domain>

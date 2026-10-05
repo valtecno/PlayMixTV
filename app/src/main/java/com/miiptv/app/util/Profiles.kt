@@ -120,11 +120,14 @@ object Profiles {
     // Clave de la cuenta activa (mismo patrón que Favorites/History/etc.)
     // -------------------------------------------------------------------------
 
+    // Una sola vez: compilar el Regex en cada consulta pesaba en cada fila de la lista.
+    private val NO_ALFANUMERICO = Regex("[^A-Za-z0-9]")
+
     private fun accountKey(context: Context): String {
         val server = Session.server(context)
         val user   = Session.username(context)
         return "$server|$user"
-            .replace(Regex("[^A-Za-z0-9]"), "_")
+            .replace(NO_ALFANUMERICO, "_")
             .take(80)
     }
 

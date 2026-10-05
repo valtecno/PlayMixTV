@@ -48,7 +48,9 @@ class AutoCarousel(
 
     private val tick = object : Runnable {
         override fun run() {
-            advance()
+            // Con el control remoto, si una tarjeta tiene el foco no se avanza:
+            // el carrusel la sacaba de pantalla y el foco se perdía.
+            if (!recycler.hasFocus()) advance()
             ui.postDelayed(this, delayMs)
         }
     }

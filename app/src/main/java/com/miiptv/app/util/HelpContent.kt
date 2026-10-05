@@ -70,13 +70,13 @@ object HelpContent {
             "¿Qué son Sistema L y Sistema XL?",
             "Son los dos servidores de PlayMix TV. Cada uno tiene su propio catálogo de canales, películas " +
                 "y series. El sistema se elige al iniciar sesión; para pasar al otro toca el ícono de " +
-                "perfil de la barra superior → Perfiles → Cambiar de cuenta.",
+                "perfil → Ajustes → Mi perfil → Cambiar de cuenta.",
             listOf("sistema", "servidor", "l", "xl", "cambiar servidor")
         ),
         Pregunta(
             Tema.PRIMEROS_PASOS,
             "¿Cómo cambio entre modo TV y modo celular?",
-            "Ve a Ajustes → Modo de pantalla. TV muestra las secciones lado a lado y está pensado para " +
+            "Ve a Ajustes → Modo de aplicación. TV muestra las secciones lado a lado y está pensado para " +
                 "control remoto; Móvil las apila y usa grillas más angostas.",
             listOf("modo", "tv", "celular", "movil", "tablet", "pantalla")
         ),
@@ -123,7 +123,7 @@ object HelpContent {
         Pregunta(
             Tema.CANALES,
             "¿Cómo escucho radios?",
-            "Entra a Radios. Arriba eliges la carpeta (Países, Tomorrowland o Electrónica) y debajo el " +
+            "Entra a Radios. Arriba eliges la carpeta (Países, Electrónica o Cristiana) y debajo el " +
                 "país o género. Con los botones de emisora anterior y siguiente pasas de una radio a otra " +
                 "sin volver a la lista.",
             listOf("radio", "radios", "musica", "emisora", "tomorrowland", "electronica")
@@ -143,14 +143,14 @@ object HelpContent {
             "¿Cómo veo una película?",
             "Entra a Películas, elige una categoría y después la película. Según cómo lo tengas " +
                 "configurado, empieza a reproducirse o primero muestra la ficha con sinopsis, reparto y " +
-                "director. Se cambia en Ajustes → Perfiles → Personalizar apariencia → Al tocar una película.",
+                "director. Se cambia en Ajustes → Mi perfil → Personalizar apariencia → Al tocar una película.",
             listOf("pelicula", "peliculas", "ver pelicula", "ficha", "sinopsis")
         ),
         Pregunta(
             Tema.PELICULAS,
             "¿Cómo veo una serie?",
             "Entra a Series, elige la serie, la temporada y el episodio. Al terminar un episodio, el " +
-                "siguiente arranca solo si tienes activado \"Reproducir siguiente episodio\" en Cuenta.",
+                "siguiente arranca solo si tienes activado \"Reproducir siguiente episodio\" en Ajustes.",
             listOf("serie", "series", "temporada", "capitulo", "episodio", "siguiente episodio")
         ),
         Pregunta(
@@ -167,14 +167,14 @@ object HelpContent {
             Tema.PELICULAS,
             "¿Cómo cambio el idioma del audio o pongo subtítulos?",
             "Mientras miras, usa los botones de pista de audio y de subtítulos del reproductor. Para " +
-                "dejar un idioma preferido fijo, ve a Ajustes → Perfiles → Audio: ahí eliges el idioma " +
+                "dejar un idioma preferido fijo, ve a Ajustes → Mi perfil → Audio: ahí eliges el idioma " +
                 "de audio y los subtítulos que se usan al abrir películas y series.",
             listOf("idioma", "audio", "subtitulos", "español", "ingles", "latino", "doblaje")
         ),
         Pregunta(
             Tema.PELICULAS,
             "¿Puedo cambiar cuántas películas o series se ven por fila?",
-            "Sí. Ve a Ajustes → Perfiles → Personalizar apariencia y elige las columnas de la vista " +
+            "Sí. Ve a Ajustes → Mi perfil → Personalizar apariencia y elige las columnas de la vista " +
                 "de películas y de series.",
             listOf("columnas", "grilla", "tamaño", "fila", "vista")
         ),
@@ -210,7 +210,7 @@ object HelpContent {
         Pregunta(
             Tema.NINOS,
             "¿Los niños pueden guardar sus propios favoritos?",
-            "Sí. Mientras el Perfil de niños está activo, el corazón ❤ que aparece en cada canal, " +
+            "Sí. Mientras el Perfil de niños está activo, la estrella ⭐ que aparece en cada canal, " +
                 "película o serie guarda el contenido en los favoritos exclusivos de ese perfil. " +
                 "Están completamente separados de los favoritos del resto de perfiles: nadie más los " +
                 "ve ni los modifica. Encuéntralos en Mi Espacio (el corazón del menú).",
@@ -252,7 +252,7 @@ object HelpContent {
         Pregunta(
             Tema.REPRODUCTOR,
             "La imagen se ve cortada o estirada",
-            "Ve a Ajustes → Relación de aspecto y prueba Ajustar (se ve completa), Rellenar, Zoom o Estirar.",
+            "Ve a Ajustes → Relación de aspecto y prueba Ajustar (se ve completa), Rellenar (recorta los bordes) o Estirar.",
             listOf("cortada", "estirada", "aspecto", "bordes", "negro", "zoom", "tamaño imagen")
         ),
         Pregunta(
@@ -267,7 +267,7 @@ object HelpContent {
             Tema.REPRODUCTOR,
             "Se escucha muy bajo o no se escucha",
             "Primero revisa el volumen del reproductor y que el mini reproductor no esté silenciado. En " +
-                "Ajustes → Perfiles → Audio está Normalizar volumen del sistema. Si aparece un aviso de " +
+                "Ajustes → Mi perfil → Audio está Normalizar volumen del sistema. Si aparece un aviso de " +
                 "audio no compatible, elige otra pista con el botón de audio.",
             listOf("bajo", "sin sonido", "no se escucha", "volumen", "audio")
         ),
@@ -287,8 +287,8 @@ object HelpContent {
         Pregunta(
             Tema.REPRODUCTOR,
             "El canal trae un solo idioma",
-            "En el botón de pista de audio elige \"Buscar más idiomas (probar otra señal)\". Algunos " +
-                "canales traen más idiomas por esa otra vía; el canal se reconecta al probarla.",
+            "Abre el botón de pista de audio: la app prueba sola otra señal en busca de más idiomas " +
+                "(el canal se reconecta un momento) y, si los hay, aparecen en la lista.",
             listOf("un idioma", "mas idiomas", "otra señal", "ingles", "español")
         ),
 
@@ -298,14 +298,14 @@ object HelpContent {
             "¿Cómo cambio de perfil, edito mi nombre o elijo otro avatar?",
             "Toca el ícono de la barra superior (muestra tu avatar actual) y elige Perfiles. Desde " +
                 "ahí puedes cambiar de perfil tocando uno. Para editar el nombre y el avatar, mantén " +
-                "presionado el perfil y elige Editar perfil. También está en Ajustes → Perfiles.",
+                "presionado el perfil y elige Editar perfil. También está en Ajustes → Mi perfil.",
             listOf("perfil", "perfiles", "avatar", "nombre perfil", "editar perfil", "cambiar perfil",
                 "mantener presionado", "icono perfil", "emoji")
         ),
         Pregunta(
             Tema.CUENTA,
             "¿Puedo saltar la intro con sonido?",
-            "Sí. La intro aparece unos 3 segundos después de elegir tu perfil. Toca la pantalla " +
+            "Sí. La intro aparece unos 4 segundos después de elegir tu perfil. Toca la pantalla " +
                 "(o pulsa OK en el control remoto o Atrás) y entras directo a la app. Si no quieres oírla, " +
                 "baja el volumen multimedia del equipo.",
             listOf("intro", "sonido inicio", "saltar intro", "animacion", "logo", "volumen inicio")
@@ -332,7 +332,7 @@ object HelpContent {
         Pregunta(
             Tema.CUENTA,
             "¿Cómo cambio de cuenta o agrego otra?",
-            "Toca el ícono de perfil en la barra superior (o ve a Ajustes → Perfiles) y elige " +
+            "Ve a Ajustes → Mi perfil y elige " +
                 "Cambiar de cuenta. Ahí están las cuentas guardadas (toca una para usarla) y la " +
                 "opción Agregar otra cuenta.",
             listOf("cuenta", "otra cuenta", "usuario", "cambiar cuenta", "agregar cuenta")
@@ -340,7 +340,7 @@ object HelpContent {
         Pregunta(
             Tema.CUENTA,
             "¿Puedo cambiar los colores o la apariencia de la app?",
-            "Sí. Toca el ícono de perfil en la barra superior (o ve a Ajustes → Perfiles) y elige " +
+            "Sí. Ve a Ajustes → Mi perfil y elige " +
                 "Personalizar apariencia. Ahí eliges el color principal, el tamaño de los subtítulos " +
                 "y cómo se ven películas y series.",
             listOf("color", "colores", "tema", "apariencia", "personalizar", "subtitulos grandes")
@@ -348,7 +348,7 @@ object HelpContent {
         Pregunta(
             Tema.CUENTA,
             "¿Cómo cambio el idioma de audio o los subtítulos predeterminados?",
-            "Toca el ícono de perfil en la barra superior (o ve a Ajustes → Perfiles) y elige Audio. " +
+            "Ve a Ajustes → Mi perfil y elige Audio. " +
                 "Ahí fijas el idioma de audio y de subtítulos que se usan al abrir películas y series.",
             listOf("idioma predeterminado", "audio preferido", "subtitulos fijos", "idioma default")
         ),
@@ -356,14 +356,14 @@ object HelpContent {
             Tema.CUENTA,
             "¿Cómo actualizo el contenido?",
             "Toca la flecha circular amarilla de la barra superior (Actualizar) o ve a Ajustes → " +
-                "Actualizar catálogo. Igual, la app baja el catálogo nuevo sola cada madrugada.",
+                "Actualizar contenido. Igual, la app baja el catálogo nuevo sola la primera vez que la abres cada día.",
             listOf("actualizar", "refrescar", "nuevo contenido", "recargar", "catalogo")
         ),
         Pregunta(
             Tema.CUENTA,
             "¿Cómo actualizo la aplicación?",
             "La app te avisa sola cuando hay una versión nueva. También puedes buscarla en Ajustes → " +
-                "Buscar actualizaciones. La primera vez Android te pide permiso para instalar aplicaciones " +
+                "Buscar actualización manual. La primera vez Android te pide permiso para instalar aplicaciones " +
                 "desde PlayMix TV.",
             listOf("version", "actualizacion", "actualizar app", "app", "nueva version", "instalar", "update")
         ),
@@ -377,17 +377,17 @@ object HelpContent {
             Tema.CUENTA,
             "¿Se pierden mis favoritos si cambio de equipo o reinstalo la app?",
             "No. Tus Favoritos, Continuar viendo e Historial se guardan también en la nube (no solo en " +
-                "el equipo), y se restauran solos al iniciar sesión de nuevo. En Ajustes hay una " +
-                "fila llamada \"Copia de seguridad\" con la fecha de la última vez que se guardó, y que " +
-                "también sirve para forzarla en el momento si no quieres esperar.",
+                "el equipo), y se restauran solos al iniciar sesión de nuevo. En Ajustes → Mi perfil → " +
+                "Respaldo de mi perfil puedes forzar el guardado en el momento (te avisa con un mensaje). " +
+                "Los favoritos del Perfil de niños no se suben a la nube.",
             listOf("perder favoritos", "cambio de equipo", "reinstalar", "reinstale", "nuevo celular",
                 "nueva tv", "copia de seguridad", "respaldo", "sincronizar", "sincronizacion", "nube")
         ),
         Pregunta(
             Tema.CUENTA,
             "¿Cómo renuevo mi acceso o contacto a soporte?",
-            "Escríbenos por WhatsApp con el botón de abajo. La fecha de vencimiento de tu acceso aparece " +
-                "en la pantalla de bienvenida.",
+            "Escríbenos por WhatsApp con el botón de abajo. La pantalla de bienvenida muestra la fecha de vencimiento " +
+                "de tu acceso la primera vez que entras, y la app te avisa cuando faltan 3 días o menos.",
             listOf("renovar", "renovar cuenta", "mi cuenta vence", "acceso", "vence", "vencimiento", "pagar", "soporte", "contacto", "whatsapp")
         ),
 
@@ -396,7 +396,7 @@ object HelpContent {
             Tema.PROBLEMAS,
             "La app no carga el contenido",
             "Revisa que el aparato tenga internet y toca Actualizar en la barra superior. Si sigue igual, " +
-                "en Cuenta mantén apretado el recuadro de Actualizar: corre un diagnóstico del servidor " +
+                "en Ajustes mantén apretado el recuadro con los números de canales, películas y series: corre un diagnóstico del servidor " +
                 "que puedes copiar y mandarnos por WhatsApp.",
             listOf("no carga", "no carga nada", "nada", "no funciona", "vacio", "pantalla vacia", "sin contenido", "error", "no aparece", "diagnostico")
         ),

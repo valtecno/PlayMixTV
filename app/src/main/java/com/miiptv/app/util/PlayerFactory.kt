@@ -99,6 +99,10 @@ object PlayerFactory {
         if (loadControl != null) builder.setLoadControl(loadControl)
 
         return builder.build().apply {
+            // Con la pantalla apagada (radio y audio en segundo plano) el CPU y el
+            // Wi-Fi entran en ahorro y el stream se cortaba. WAKE_LOCK ya estaba
+            // declarado en el manifest, pero nunca se usaba.
+            setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK)
             // Foco de audio: se pausa solo con una llamada y baja el volumen con avisos
             setAudioAttributes(
                 AudioAttributes.Builder()
