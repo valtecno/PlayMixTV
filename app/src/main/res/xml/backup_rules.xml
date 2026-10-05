@@ -16,6 +16,9 @@
     cambiar de teléfono hay que volver a escribir usuario y contraseña una vez,
     que es exactamente lo que hace cualquier app con sesión.
 
+    NOTA: allowBackup está en false en el Manifest, así que estas reglas hoy
+    no se aplican; quedan como segunda barrera.
+
     QUÉ SÍ SE SIGUE RESPALDANDO
 
     Todo lo demás: favoritos, historial, ajustes del reproductor, apariencia y

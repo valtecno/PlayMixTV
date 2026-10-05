@@ -59,17 +59,20 @@
     <!--
         COPIA DE SEGURIDAD
 
-        Sigue activada (favoritos, historial y ajustes se conservan al cambiar
-        de aparato), pero con reglas: miiptv_prefs queda excluido porque ahí
-        vive la contraseña del panel en texto plano. Sin estas dos lineas
-        Android la subiria a Google Drive.
+        Desactivada a propósito: ningún dato de la app debe guardarse en la
+        cuenta de Google del usuario. Lo único que se respalda es lo que la
+        propia app sube a su servidor privado (favoritos de los sistemas L y
+        XL y perfiles, ver DataSync). Al cambiar de aparato se vuelve a iniciar
+        sesión y esos datos se restauran desde ahí.
 
-        Hacen falta las dos: fullBackupContent lo lee Android 5.0-11 y
-        dataExtractionRules lo lee Android 12 en adelante.
+        backup_rules.xml y data_extraction_rules.xml se dejan referenciados
+        como segunda barrera: si alguien reactivara allowBackup por error, las
+        cuentas, el progreso de episodios y el modo de pantalla seguirían
+        excluidos.
     -->
     <application
         android:name=".PlayMixApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:largeHeap="true"
