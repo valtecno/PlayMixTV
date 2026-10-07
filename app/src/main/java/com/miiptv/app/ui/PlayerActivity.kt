@@ -149,6 +149,7 @@ class PlayerActivity : AppCompatActivity() {
     private var contentTitle: String = ""
     private var favoriteItem: ContentItem? = null
     private var retries = 0
+    private var endedReconnects = 0
     /** Evita repetir el aviso de audio incompatible en cada cambio de pistas. */
     private var audioAvisado = false
     /**
@@ -1640,15 +1641,21 @@ class PlayerActivity : AppCompatActivity() {
                     // Canal en vivo o radio cuyo servidor corta el stream de forma
                     // limpia: no hay error que reintentar, el player queda congelado
                     // en el último cuadro. Se reconecta igual que tras un error.
+                    // Con pausa de 2 s y tope de 3 por pantalla: un servidor que corta
+                    // el stream a propósito (tope de conexiones) no debe provocar una
+                    // cadena de conexiones nuevas, cada una contada por el panel.
                     if (state == Player.STATE_ENDED && (isRadio || itemType == ContentType.LIVE) &&
-                        PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES
+                        PlayerPrefs.getAutoReconnect(this@PlayerActivity) && endedReconnects < 3
                     ) {
-                        retries++
+                        endedReconnects++
                         binding.progressBar.visibility = View.VISIBLE
-                        exo.stop()
-                        exo.setMediaItem(MediaItem.fromUri(url))
-                        exo.prepare()
-                        exo.playWhenReady = true
+                        ui.postDelayed({
+                            if (isFinishing || isDestroyed || player !== exo) return@postDelayed
+                            exo.stop()
+                            exo.setMediaItem(MediaItem.fromUri(url))
+                            exo.prepare()
+                            exo.playWhenReady = true
+                        }, 2_000L)
                     }
                 }
 

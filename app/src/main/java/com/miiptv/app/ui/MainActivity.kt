@@ -863,6 +863,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playPreview(item: ContentItem) {
+        // Si el reproductor sigue sonando en segundo plano o en PiP, la preview
+        // no se conecta: serían dos canales a la vez desde el mismo equipo (y
+        // dos conexiones contra el panel).
+        if (PlaybackHolder.player != null) {
+            showPreviewIdle(loading = false)
+            return
+        }
         val exo = previewPlayer ?: buildPreviewPlayer().also { previewPlayer = it }
         binding.tvPreviewError.visibility = View.GONE
         exo.setMediaItem(MediaItem.fromUri(Session.liveStreamUrl(this, item.id)))
@@ -2683,6 +2690,10 @@ class MainActivity : AppCompatActivity() {
                     it == R.id.action_account || it == R.id.action_quick
                 }
                 idAlAbrirPantallaCompleta = if (idToolbarEnfoqueAntes == null) item.id else null
+                // La preview se corta ANTES de abrir el reproductor. Antes se soltaba
+                // en onStop, que llega cuando el reproductor ya conectó: durante ese
+                // rato había dos canales abiertos desde el mismo equipo.
+                releasePreview()
                 startActivity(liveIntent(item))
             }
             ContentType.MOVIE -> {
@@ -3096,6 +3107,10 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         stopCarousel()
+        // onPause de esta pantalla corre ANTES de que la siguiente (reproductor,
+        // multipantalla, búsqueda) se cree y conecte: cortar acá la preview evita
+        // tener dos canales abiertos a la vez. onResume la vuelve a armar.
+        releasePreview()
     }
 
     override fun onDestroy() {
