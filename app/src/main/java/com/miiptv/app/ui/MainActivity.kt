@@ -1010,7 +1010,9 @@ class MainActivity : AppCompatActivity() {
             !vacio -> binding.tvHomeEmpty.visibility = View.GONE
             // Mientras baja el catálogo se avisa, en vez de dejar el Inicio en
             // blanco sin explicación: en el Sistema XL puede tardar bastante.
-            Catalog.isLoading -> {
+            // También cuando todavía no terminó ninguna descarga (p. ej. recién
+            // cambiado de Sistema L a XL): no es "no hay contenido", es espera.
+            Catalog.isLoading || (!Catalog.hasCompletedLoad && motivo == null) -> {
                 binding.tvHomeEmpty.setText(R.string.home_loading)
                 binding.tvHomeEmpty.visibility = View.VISIBLE
             }

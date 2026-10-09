@@ -68,6 +68,16 @@ object Catalog {
     private var loadedAt = 0L
     private var loading = false
 
+    /**
+     * true cuando ya terminó al menos una descarga desde el último reinicio
+     * (cambio de Sistema L/XL, cierre de sesión). Mientras sea false y no haya
+     * contenido, el Inicio debe decir que está esperando la carga, no que no
+     * hay nada: entre el cambio de sistema y el primer pedido al panel,
+     * [isLoading] todavía es false.
+     */
+    var hasCompletedLoad: Boolean = false
+        private set
+
     /** Cuántos bloques quedan por resolver (LIVE + MOVIES + SERIES). 0 = terminó todo. */
     private var pending = 0
 
@@ -458,6 +468,7 @@ object Catalog {
             broadcast(true)
         } else {
             loading = false
+            hasCompletedLoad = true
             current.clear()
             noCache = null
             loadedAt = System.currentTimeMillis()
@@ -546,6 +557,7 @@ object Catalog {
         liveVersion++
         loadedAt = 0L
         loading = false
+        hasCompletedLoad = false
         lastError = null
         lastErrorCausa = null
         stampServer = ""
