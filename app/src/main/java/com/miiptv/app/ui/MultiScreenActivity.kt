@@ -192,8 +192,18 @@ class MultiScreenActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Al cerrar, las cuatro conexiones se sueltan ya y no cuando llegue onStop.
+        if (isFinishing) releasePlayers()
+    }
+
     override fun onStop() {
         super.onStop()
+        releasePlayers()
+    }
+
+    private fun releasePlayers() {
         for (i in 0 until SLOTS) {
             listeners[i]?.let { l -> players[i]?.removeListener(l) }
             playerViews[i].player = null

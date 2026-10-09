@@ -335,6 +335,25 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Al cerrar (atrás / salir) la conexión se suelta YA. Antes se esperaba a
+        // onStop, que en muchos aparatos (sobre todo TV, por la animación de
+        // salida) llega segundos después: el canal seguía conectado mientras la
+        // pantalla anterior ya armaba su preview, y el panel contaba dos.
+        if (isFinishing && player != null) {
+            guardarAvance(
+                player?.currentPosition ?: 0L,
+                player?.duration?.takeIf { it > 0 } ?: 0L
+            )
+            ui.removeCallbacksAndMessages(null)
+            PlaybackService.stop(this)
+            binding.playerView.player = null
+            PlaybackHolder.release()
+            player = null
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         ui.removeCallbacks(countdownTick)
@@ -1662,7 +1681,12 @@ class PlayerActivity : AppCompatActivity() {
                             return
                         }
                     }
-                    if (PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES) {
+                    // Si el panel rechazó por cuenta vencida o tope de conexiones
+                    // (HTTP 401/403/512), reintentar no sirve y cada intento lo
+                    // cuenta como una conexión más: se muestra el motivo y se para.
+                    val rechazoDelPanel = ErrorDiagnosis.causaDePlayback(this@PlayerActivity, error) ==
+                        ErrorDiagnosis.Causa.LIMITE_O_VENCIDA
+                    if (!rechazoDelPanel && PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES) {
                         retries++
                         binding.progressBar.visibility = View.VISIBLE
                         // En películas y episodios se vuelve al mismo minuto; antes un
