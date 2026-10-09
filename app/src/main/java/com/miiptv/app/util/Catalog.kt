@@ -6,6 +6,7 @@ import android.os.Looper
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.miiptv.app.api.*
+import com.miiptv.app.R
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -101,6 +102,10 @@ object Catalog {
 
     /** Motivo del último bloque que no se pudo traer. null = todo bien. */
     var lastError: String? = null
+        private set
+
+    /** Lo mismo que [lastError], pero como causa clasificada (para decidir el ícono/acción). */
+    var lastErrorCausa: ErrorDiagnosis.Causa? = null
         private set
 
     private val ui = Handler(Looper.getMainLooper())
@@ -341,6 +346,7 @@ object Catalog {
 
         loading = true
         lastError = null
+        lastErrorCausa = null
         live.clear(); movies.clear(); series.clear()
         liveVersion++
         stampServer = Session.server(ctx).trim().trimEnd('/')
@@ -392,13 +398,13 @@ object Catalog {
         call.enqueue(object : Callback<R> {
             override fun onResponse(c: Call<R>, r: Response<R>) {
                 if (!r.isSuccessful) {
-                    failed(context, block, attempt, "HTTP ${r.code()}")
+                    failed(context, block, attempt, ErrorDiagnosis.causaDeHttp(r.code()))
                     return
                 }
                 val intento = runCatching { extract(r.body()) }
                 val fallo = intento.exceptionOrNull()
                 if (fallo != null) {
-                    failed(context, block, attempt, fallo::class.java.simpleName)
+                    failed(context, block, attempt, ErrorDiagnosis.causaDeFallo(context, fallo))
                     return
                 }
 
@@ -408,7 +414,7 @@ object Catalog {
                 // respuesta cortada, caché envenenada), así que se reintenta antes
                 // de darlo por bueno. Este era exactamente el caso de "0 películas".
                 if (items.isEmpty()) {
-                    failed(context, block, attempt, "respuesta vacía")
+                    failed(context, block, attempt, ErrorDiagnosis.Causa.DESCONOCIDA)
                     return
                 }
 
@@ -421,31 +427,28 @@ object Catalog {
 
             override fun onFailure(c: Call<R>, t: Throwable) {
                 if (c.isCanceled) return
-                val motivo = when (t) {
-                    is XtreamStream.ShapeException -> t.token
-                    else -> t::class.java.simpleName
-                }
-                failed(context, block, attempt, motivo)
+                failed(context, block, attempt, ErrorDiagnosis.causaDeFallo(context, t))
             }
         })
     }
 
-    private fun failed(context: Context, block: Block, attempt: Int, motivo: String) {
+    private fun failed(context: Context, block: Block, attempt: Int, causa: ErrorDiagnosis.Causa) {
         if (attempt < MAX_RETRIES) {
             ui.postDelayed({ if (loading) fetch(context, block, attempt + 1) }, RETRY_DELAY_MS)
             return
         }
-        lastError = describe(block, motivo)
+        lastErrorCausa = causa
+        lastError = describe(context, block, causa)
         advance(context, block)
     }
 
-    private fun describe(block: Block, motivo: String): String {
+    private fun describe(context: Context, block: Block, causa: ErrorDiagnosis.Causa): String {
         val nombre = when (block) {
-            Block.LIVE -> "canales"
-            Block.MOVIES -> "películas"
-            Block.SERIES -> "series"
+            Block.LIVE -> "los canales"
+            Block.MOVIES -> "las películas"
+            Block.SERIES -> "las series"
         }
-        return "$nombre: $motivo"
+        return context.getString(R.string.catalog_error_causa, nombre, ErrorDiagnosis.mensaje(context, causa))
     }
 
     /** Se llama cuando un bloque terminó (con datos o con error definitivo). */
@@ -544,6 +547,7 @@ object Catalog {
         loadedAt = 0L
         loading = false
         lastError = null
+        lastErrorCausa = null
         stampServer = ""
         stampUser = ""
     }

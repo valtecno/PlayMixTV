@@ -19,6 +19,7 @@ import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.CrashLogger
+import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.DataSync
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.RemoteControl
@@ -179,8 +180,11 @@ class LoginActivity : AppCompatActivity() {
                     // Mostrar el mensaje exacto del panel, o el HTTP status si no hay body
                     val msg = when {
                         data?.mensaje != null -> data.mensaje
-                        !response.isSuccessful -> "Error del servidor (HTTP ${response.code()})"
-                        else -> getString(R.string.login_error)
+                        // Hubo respuesta del servidor (HTTP no exitoso): no es la
+                        // conexión del usuario, aunque el código esté vacío.
+                        !response.isSuccessful ->
+                            ErrorDiagnosis.mensaje(this@LoginActivity, ErrorDiagnosis.causaDeHttp(response.code()))
+                        else -> getString(R.string.login_error_invalid)
                     }
                     Toast.makeText(this@LoginActivity, msg, Toast.LENGTH_LONG).show()
                     return
@@ -228,9 +232,11 @@ class LoginActivity : AppCompatActivity() {
                             } else {
                                 setLoading(false)
                                 Session.logout(this@LoginActivity)
+                                // Hubo respuesta del panel (auth != 1): la cuenta no es
+                                // válida, no es un problema de conexión.
                                 Toast.makeText(
                                     this@LoginActivity,
-                                    getString(R.string.login_error),
+                                    getString(R.string.login_error_invalid),
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
@@ -239,10 +245,10 @@ class LoginActivity : AppCompatActivity() {
                         override fun onFailure(call: retrofit2.Call<LoginResponse>, t: Throwable) {
                             setLoading(false)
                             Session.logout(this@LoginActivity)
-                            val detalle = t.message ?: t.javaClass.simpleName
+                            val causa = ErrorDiagnosis.causaDeFallo(this@LoginActivity, t)
                             Toast.makeText(
                                 this@LoginActivity,
-                                "Error Xtream: $detalle",
+                                ErrorDiagnosis.mensaje(this@LoginActivity, causa),
                                 Toast.LENGTH_LONG
                             ).show()
                         }
@@ -251,11 +257,10 @@ class LoginActivity : AppCompatActivity() {
 
             override fun onFailure(call: retrofit2.Call<CodeValidationResponse>, t: Throwable) {
                 setLoading(false)
-                // Mostrar el error real para poder diagnosticar
-                val detalle = t.message ?: t.javaClass.simpleName
+                val causa = ErrorDiagnosis.causaDeFallo(this@LoginActivity, t)
                 Toast.makeText(
                     this@LoginActivity,
-                    "Error de conexión: $detalle",
+                    ErrorDiagnosis.mensaje(this@LoginActivity, causa),
                     Toast.LENGTH_LONG
                 ).show()
             }

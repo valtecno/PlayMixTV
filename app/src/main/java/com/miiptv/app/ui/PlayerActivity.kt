@@ -51,6 +51,7 @@ import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.CastHelper
 import com.miiptv.app.util.ContinueWatching
+import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.EpisodeProgress
 import com.miiptv.app.util.Epg
 import com.miiptv.app.util.RemoteControl
@@ -1499,34 +1500,13 @@ class PlayerActivity : AppCompatActivity() {
      *   5000–5999  DRM
      * La subcategoría "timeout" es ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT (2002).
      */
-    private fun clasificarError(error: PlaybackException): String {
-        val sinInternet = !hayInternet()
-        if (sinInternet) return getString(R.string.player_error_no_internet)
+    private fun clasificarError(error: PlaybackException): String =
+        // Unificado con el resto de la app en ErrorDiagnosis: antes esta pantalla
+        // no reconocía el caso de cuenta vencida / tope de conexiones (HTTP
+        // 401/403/512), que la multipantalla sí explicaba.
+        ErrorDiagnosis.mensaje(this, ErrorDiagnosis.causaDePlayback(this, error))
 
-        // Rango IO de red: 2000–2999
-        val esErrorDeRed = error.errorCode in 2000..2999
-        return if (esErrorDeRed) {
-            getString(R.string.player_error_weak_connection)
-        } else {
-            getString(R.string.player_error_source)
-        }
-    }
-
-    /** true si el dispositivo tiene conectividad de red activa en este momento. */
-    private fun hayInternet(): Boolean {
-        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-        // activeNetwork y NetworkCapabilities son de API 23: con minSdk 21 en
-        // Android 5.0/5.1 esto cerraba la app justo al reportar un error.
-        if (android.os.Build.VERSION.SDK_INT < 23) {
-            @Suppress("DEPRECATION")
-            return cm.activeNetworkInfo?.isConnected == true
-        }
-        val net = cm.activeNetwork ?: return false
-        val caps = cm.getNetworkCapabilities(net) ?: return false
-        // Sin exigir VALIDATED: en VPN o redes locales Android no la marca y
-        // la app decía "sin internet" aunque el panel respondiera.
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
+    private fun hayInternet(): Boolean = ErrorDiagnosis.hayInternet(this)
 
     private fun startPlayback(url: String, resumeAtMs: Long) {
         val (minBuffer, maxBuffer) = PlayerPrefs.bufferMillis(PlayerPrefs.getBuffer(this))

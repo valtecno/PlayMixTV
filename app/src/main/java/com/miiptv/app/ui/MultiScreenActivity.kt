@@ -33,6 +33,7 @@ import com.miiptv.app.databinding.ItemChannelBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.KidsFilter
+import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PlayerFactory
@@ -253,7 +254,8 @@ class MultiScreenActivity : AppCompatActivity() {
 
                 override fun onFailure(call: Call<List<Category>>, t: Throwable) {
                     if (isFinishing || isDestroyed) return
-                    fallbackToCatalog(t::class.java.simpleName)
+                    val causa = ErrorDiagnosis.causaDeFallo(this@MultiScreenActivity, t)
+                    fallbackToCatalog(ErrorDiagnosis.mensaje(this@MultiScreenActivity, causa))
                 }
             })
     }
@@ -283,7 +285,8 @@ class MultiScreenActivity : AppCompatActivity() {
             override fun onFailure(call: Call<List<LiveStream>>, t: Throwable) {
                 if (isFinishing || isDestroyed) return
                 showAllLoading(false)
-                showAllError(getString(R.string.multiscreen_load_error, t::class.java.simpleName))
+                val causa = ErrorDiagnosis.causaDeFallo(this@MultiScreenActivity, t)
+                showAllError(ErrorDiagnosis.mensaje(this@MultiScreenActivity, causa))
                 onLoaded?.invoke()
             }
         })
@@ -304,10 +307,8 @@ class MultiScreenActivity : AppCompatActivity() {
             }
         }
         showAllLoading(false)
-        showAllError(
-            if (motivo != null) getString(R.string.multiscreen_load_error, motivo)
-            else getString(R.string.multiscreen_no_channels)
-        )
+        // motivo ya viene como mensaje final de ErrorDiagnosis, no hace falta envolverlo de nuevo.
+        showAllError(motivo ?: getString(R.string.multiscreen_no_channels))
     }
 
     /**
@@ -363,6 +364,11 @@ class MultiScreenActivity : AppCompatActivity() {
      * "se ven una o dos y las demás quedan en negro".
      */
     private fun explain(error: PlaybackException): String {
+        // Antes esta pantalla no miraba la conexión local: un wifi caído se
+        // explicaba igual que un error del servidor.
+        if (!ErrorDiagnosis.hayInternet(this)) {
+            return ErrorDiagnosis.mensaje(this, ErrorDiagnosis.Causa.SIN_INTERNET)
+        }
         val causa = error.cause
         if (causa is androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException) {
             return when (causa.responseCode) {

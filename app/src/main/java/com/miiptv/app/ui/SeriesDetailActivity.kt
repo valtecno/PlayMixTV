@@ -20,6 +20,7 @@ import com.miiptv.app.databinding.ItemCategoryBinding
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.EpisodeProgress
+import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.RemoteControl
 import retrofit2.Call
 import retrofit2.Callback
@@ -85,6 +86,11 @@ class SeriesDetailActivity : AppCompatActivity() {
                     // Si el usuario ya salió, no se debe abrir el reproductor "solo".
                     if (isFinishing || isDestroyed) return
                     binding.progressBar.visibility = View.GONE
+                    if (!response.isSuccessful) {
+                        val causa = ErrorDiagnosis.causaDeHttp(response.code())
+                        Toast.makeText(this@SeriesDetailActivity, ErrorDiagnosis.mensaje(this@SeriesDetailActivity, causa), Toast.LENGTH_LONG).show()
+                        return
+                    }
                     episodesBySeason = response.body()?.episodes ?: emptyMap()
                     renderSeasonChips()
                     // Desde "Continuar viendo": se abre la temporada del
@@ -105,7 +111,12 @@ class SeriesDetailActivity : AppCompatActivity() {
                 override fun onFailure(call: Call<SeriesInfoResponse>, t: Throwable) {
                     if (isFinishing || isDestroyed) return
                     binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this@SeriesDetailActivity, "Error: ${t.message}", Toast.LENGTH_LONG).show()
+                    val causa = ErrorDiagnosis.causaDeFallo(this@SeriesDetailActivity, t)
+                    Toast.makeText(
+                        this@SeriesDetailActivity,
+                        ErrorDiagnosis.mensaje(this@SeriesDetailActivity, causa),
+                        Toast.LENGTH_LONG
+                    ).show()
                 }
             })
     }

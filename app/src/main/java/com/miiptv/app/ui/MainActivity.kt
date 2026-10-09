@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
+import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.Epg
 import android.os.Bundle
 import android.os.Handler
@@ -1014,7 +1015,9 @@ class MainActivity : AppCompatActivity() {
                 binding.tvHomeEmpty.visibility = View.VISIBLE
             }
             motivo != null -> {
-                binding.tvHomeEmpty.text = getString(R.string.catalog_error, motivo)
+                // motivo ya viene armado por ErrorDiagnosis con la causa real
+                // (sin internet / cuenta vencida o límite / servidor lento...).
+                binding.tvHomeEmpty.text = motivo
                 binding.tvHomeEmpty.visibility = View.VISIBLE
             }
             else -> {
@@ -1585,6 +1588,16 @@ class MainActivity : AppCompatActivity() {
             override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
                 if (isFinishing || isDestroyed) return
                 if (section != seccionAlPedir) return
+                // Antes un HTTP no exitoso (401/403/512 por cuenta vencida o tope de
+                // conexiones) se leía como "sin categorías" sin explicar por qué.
+                if (!response.isSuccessful) {
+                    setLoading(false)
+                    adapter.submitList(emptyList())
+                    binding.tvEmpty.text =
+                        ErrorDiagnosis.mensaje(this@MainActivity, ErrorDiagnosis.causaDeHttp(response.code()))
+                    binding.tvEmpty.visibility = View.VISIBLE
+                    return
+                }
                 val crudo = response.body().orEmpty()
                 when (type) {
                     ContentType.MOVIE -> allMovieCategories = crudo
@@ -1615,7 +1628,8 @@ class MainActivity : AppCompatActivity() {
             override fun onFailure(call: Call<List<Category>>, t: Throwable) {
                 if (isFinishing || section != seccionAlPedir) return
                 setLoading(false)
-                Toast.makeText(this@MainActivity, "Error cargando categorías: ${t.message}", Toast.LENGTH_LONG).show()
+                val causa = ErrorDiagnosis.causaDeFallo(this@MainActivity, t)
+                Toast.makeText(this@MainActivity, ErrorDiagnosis.mensaje(this@MainActivity, causa), Toast.LENGTH_LONG).show()
             }
         })
     }
@@ -1833,6 +1847,12 @@ class MainActivity : AppCompatActivity() {
             if (isFinishing || isDestroyed || call.isCanceled) return
             if (contenidoEnCurso === call) contenidoEnCurso = null
             setLoading(false)
+            if (!response.isSuccessful) {
+                mostrarContenido(emptyList(), mensajeError = ErrorDiagnosis.mensaje(
+                    this@MainActivity, ErrorDiagnosis.causaDeHttp(response.code())
+                ))
+                return
+            }
             mostrarContenido(map(response.body().orEmpty()).filter { it.name.isNotBlank() })
         }
 
@@ -1840,12 +1860,13 @@ class MainActivity : AppCompatActivity() {
             if (isFinishing || call.isCanceled) return
             if (contenidoEnCurso === call) contenidoEnCurso = null
             setLoading(false)
-            Toast.makeText(this@MainActivity, "Error cargando contenido: ${t.message}", Toast.LENGTH_LONG).show()
+            val causa = ErrorDiagnosis.causaDeFallo(this@MainActivity, t)
+            Toast.makeText(this@MainActivity, ErrorDiagnosis.mensaje(this@MainActivity, causa), Toast.LENGTH_LONG).show()
         }
     }
 
     /** Pone en pantalla el contenido de una categoría, venga del catálogo o del panel. */
-    private fun mostrarContenido(items: List<ContentItem>) {
+    private fun mostrarContenido(items: List<ContentItem>, mensajeError: String? = null) {
         currentItems = items
         adapter.submitList(items)
         // Categoría nueva: se arranca desde arriba, no en la posición de la anterior.
@@ -1858,7 +1879,8 @@ class MainActivity : AppCompatActivity() {
             val q = binding.etKidsSearch.text?.toString().orEmpty()
             if (q.isNotBlank()) { applyKidsSearch(q); return }
         }
-        binding.tvEmpty.setText(R.string.empty_list)
+        if (mensajeError != null) binding.tvEmpty.text = mensajeError
+        else binding.tvEmpty.setText(R.string.empty_list)
         binding.tvEmpty.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 

@@ -12,6 +12,10 @@
     <string name="toggle_password_visibility">Ver contraseña</string>
     <string name="btn_login">Conectar</string>
     <string name="login_error">Código inválido o sin conexión. Intenta de nuevo.</string>
+    <!-- A diferencia de login_error (sin respuesta del todo), esta es para cuando
+         SÍ hubo respuesta del panel/servidor pero rechazó el código o la cuenta:
+         nunca es un problema de la conexión del usuario. -->
+    <string name="login_error_invalid">El código o la cuenta no son válidos. Verifica con tu proveedor.</string>
     <!-- Solo se ve si la app se compiló sin la lista de servidores (playmix.servers vacío) -->
     <string name="login_sin_servidores">Esta versión se compiló sin servidores configurados.</string>
     <string name="loading">Cargando…</string>
@@ -304,11 +308,18 @@
     <string name="player_error">No se pudo reproducir (%1$s)</string>
     <string name="profile_tv_edit_hint">Mantén presionado para editar tu perfil</string>
     <string name="profile_hint_mobile">Mantén presionado un perfil para editarlo u ocultarlo</string>
-    <string name="player_error_no_internet">Sin conexión a internet. Comprueba tu red y vuelve a intentarlo.</string>
-    <string name="player_error_weak_connection">La conexión a internet es inestable o demasiado lenta para reproducir este contenido.</string>
-    <string name="player_error_source">El servidor no responde. Tu internet está bien. Avisa a tu soporte.</string>
 
     <string name="catalog_error">No se pudo cargar el catálogo (%1$s). Prueba en Ajustes → Actualizar catálogo.</string>
+
+    <!-- Mensajes compartidos por ErrorDiagnosis: se usan en Inicio, Login,
+         Detalle de serie, reproductor y multipantalla, para que la misma
+         causa se explique siempre igual en toda la app. -->
+    <string name="error_sin_internet">Sin conexión a internet. Comprueba tu wifi o datos móviles y vuelve a intentarlo.</string>
+    <string name="error_limite_o_vencida">Tu cuenta puede estar vencida o llegó al límite de conexiones simultáneas. Revisa con tu proveedor.</string>
+    <string name="error_servidor_lento">El servidor está lento o no responde. Tu internet está bien; prueba de nuevo en un momento.</string>
+    <string name="error_servidor_rechaza">El servidor rechazó la solicitud. Tu internet está bien; avisa a tu soporte.</string>
+    <string name="error_desconocida">Ocurrió un error. Tu internet está bien; avisa a tu soporte si se repite.</string>
+    <string name="catalog_error_causa">No se pudo cargar %1$s: %2$s</string>
     <string name="diag_title">Diagnóstico del servidor</string>
     <string name="diag_running">Probando el panel endpoint por endpoint…</string>
     <string name="diag_copy">Copiar</string>
