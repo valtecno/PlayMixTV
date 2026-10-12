@@ -99,7 +99,40 @@ data class VodMovieData(
 )
 
 data class SeriesInfoResponse(
-    @SerializedName("episodes") val episodes: Map<String, List<Episode>>?
+    @SerializedName("episodes") val episodes: Map<String, List<Episode>>?,
+    /**
+     * Ficha de la serie. Va como JsonElement a propósito: algunos paneles
+     * mandan "info": [] cuando no tienen datos, y tipado como objeto eso
+     * rompería la lectura entera y se perderían también los capítulos.
+     * Se interpreta con [infoOrNull].
+     */
+    @SerializedName("info") val info: com.google.gson.JsonElement? = null
+) {
+    fun infoOrNull(): SeriesInfo? {
+        val obj = info?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+        fun texto(vararg claves: String): String? = claves.firstNotNullOfOrNull { k ->
+            obj.get(k)?.takeIf { it.isJsonPrimitive }?.asString?.trim()?.takeIf { it.isNotEmpty() }
+        }
+        return SeriesInfo(
+            plot = texto("plot", "description"),
+            cast = texto("cast"),
+            director = texto("director"),
+            genre = texto("genre"),
+            releaseDate = texto("releaseDate", "release_date", "releasedate"),
+            rating = texto("rating"),
+            cover = texto("cover", "cover_big")
+        )
+    }
+}
+
+data class SeriesInfo(
+    val plot: String?,
+    val cast: String?,
+    val director: String?,
+    val genre: String?,
+    val releaseDate: String?,
+    val rating: String?,
+    val cover: String?
 )
 
 data class Episode(

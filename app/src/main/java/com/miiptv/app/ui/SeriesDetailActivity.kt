@@ -11,9 +11,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.miiptv.app.R
+import com.miiptv.app.api.ContentItem
 import com.miiptv.app.api.ContentType
 import com.miiptv.app.api.Episode
 import com.miiptv.app.api.Session
+import com.miiptv.app.api.SeriesInfo
 import com.miiptv.app.api.SeriesInfoResponse
 import com.miiptv.app.databinding.ActivitySeriesDetailBinding
 import com.miiptv.app.databinding.ItemCategoryBinding
@@ -21,7 +23,9 @@ import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.EpisodeProgress
 import com.miiptv.app.util.ErrorDiagnosis
+import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.RemoteControl
+import com.squareup.picasso.Picasso
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -47,6 +51,7 @@ class SeriesDetailActivity : AppCompatActivity() {
     private lateinit var adapter: EpisodeAdapter
 
     private var seriesId: Int = -1
+    private lateinit var item: ContentItem
     /** Episodio a abrir solo apenas carga la serie (ver EXTRA_RESUME_EPISODE_ID); se usa una vez. */
     private var episodioAReanudar: String? = null
 
@@ -64,6 +69,22 @@ class SeriesDetailActivity : AppCompatActivity() {
 
         seriesId = intent.getIntExtra(EXTRA_SERIES_ID, -1)
         binding.toolbar.title = intent.getStringExtra(EXTRA_SERIES_NAME)
+        item = ContentItem(
+            id = seriesId,
+            name = intent.getStringExtra(EXTRA_SERIES_NAME).orEmpty(),
+            icon = intent.getStringExtra(EXTRA_SERIES_ICON),
+            categoryId = intent.getStringExtra(EXTRA_SERIES_CATEGORY),
+            type = ContentType.SERIES
+        )
+        // Ficha arriba, igual que en las películas: carátula grande y datos,
+        // y debajo las temporadas y los capítulos.
+        binding.tvTitle.text = item.name
+        if (!item.icon.isNullOrBlank()) Picasso.get().load(item.icon).fit().centerCrop().into(binding.ivPoster)
+        binding.btnFavorite.setOnClickListener {
+            Favorites.toggle(this, item)
+            refreshFavoriteLabel()
+        }
+        refreshFavoriteLabel()
         // Solo la primera vez: si la pantalla se recrea (rotación), no se
         // vuelve a abrir el reproductor por su cuenta.
         if (savedInstanceState == null) {
@@ -74,8 +95,47 @@ class SeriesDetailActivity : AppCompatActivity() {
         binding.recyclerEpisodes.layoutManager = LinearLayoutManager(this)
         binding.recyclerEpisodes.adapter = adapter
 
+        // Con control remoto, cada elemento enfocable muestra el anillo de foco;
+        // y se arranca parado en la ficha para que la carátula quede a la vista.
+        val remoto = RemoteControl.isEnabled(this)
+        RemoteControl.applyFocusToTree(binding.root, remoto)
+        if (remoto) RemoteControl.focusWhenReady(binding.btnFavorite)
+
         if (seriesId == -1) { finish(); return }
         loadSeriesInfo(seriesId)
+    }
+
+    private fun refreshFavoriteLabel() {
+        val fav = Favorites.isFavorite(this, item)
+        binding.btnFavorite.text =
+            if (fav) "★  ${getString(R.string.tab_favorites)}" else "☆  ${getString(R.string.tab_favorites)}"
+    }
+
+    /** Rellena la ficha con lo que mande el panel; lo que falte simplemente no se muestra. */
+    private fun renderInfo(info: SeriesInfo?) {
+        if (info == null) return
+        if (!info.cover.isNullOrBlank()) Picasso.get().load(info.cover).fit().centerCrop().into(binding.ivPoster)
+
+        val meta = listOfNotNull(
+            info.releaseDate?.take(4),
+            info.rating?.takeIf { it != "0" }?.let { "★ $it" }
+        )
+        binding.tvMeta.text = meta.joinToString("  ·  ")
+        binding.tvMeta.visibility = if (meta.isEmpty()) View.GONE else View.VISIBLE
+
+        binding.tvGenre.text = info.genre.orEmpty()
+        binding.tvGenre.visibility = if (info.genre == null) View.GONE else View.VISIBLE
+
+        setSection(binding.tvPlotLabel, binding.tvPlot, info.plot)
+        setSection(binding.tvCastLabel, binding.tvCast, info.cast)
+        setSection(binding.tvDirectorLabel, binding.tvDirector, info.director)
+    }
+
+    private fun setSection(label: View, body: TextView, value: String?) {
+        val has = !value.isNullOrBlank()
+        label.visibility = if (has) View.VISIBLE else View.GONE
+        body.visibility = if (has) View.VISIBLE else View.GONE
+        body.text = value.orEmpty()
     }
 
     private fun loadSeriesInfo(seriesId: Int) {
@@ -92,6 +152,7 @@ class SeriesDetailActivity : AppCompatActivity() {
                         return
                     }
                     episodesBySeason = response.body()?.episodes ?: emptyMap()
+                    renderInfo(response.body()?.infoOrNull())
                     renderSeasonChips()
                     // Desde "Continuar viendo": se abre la temporada del
                     // episodio pendiente y se lo reproduce directo.
