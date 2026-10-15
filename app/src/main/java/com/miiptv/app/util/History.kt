@@ -18,6 +18,7 @@ object History {
     private const val LEGACY_MIGRATED_KEY = "legacy_migrated"
     private const val KEY = "items"
     private const val KEY_CLEARED_AT = "borrado_en"
+    private const val KEY_CLEARED_BY_TYPE = "borrado_por_tipo"
     private const val MAX = 60
     private val gson = Gson()
 
@@ -72,6 +73,17 @@ object History {
     /** Momento (epoch ms) de la última vez que se vació el historial, o 0 si nunca. */
     fun clearedAt(context: Context): Long = prefs(context).getLong(KEY_CLEARED_AT, 0L)
 
+    /**
+     * Cuándo se vació cada tipo por separado (nombre del tipo -> epoch ms).
+     * Es lo que permite borrar SOLO las películas, o SOLO los canales, sin
+     * tocar el resto, y que otro equipo con el mismo respaldo lo respete.
+     */
+    fun clearedByType(context: Context): Map<String, Long> {
+        val json = prefs(context).getString(KEY_CLEARED_BY_TYPE, null) ?: return emptyMap()
+        val tipo = object : TypeToken<Map<String, Long>>() {}.type
+        return runCatching { gson.fromJson<Map<String, Long>>(json, tipo) }.getOrNull().orEmpty()
+    }
+
     /** Fuerza releer del disco en la próxima consulta (al cambiar de perfil). */
     fun invalidate() { /* History no tiene caché en memoria; la clave cambia con el perfil. */ }
 
@@ -79,6 +91,24 @@ object History {
         prefs(context).edit()
             .remove(KEY)
             .putLong(KEY_CLEARED_AT, System.currentTimeMillis())
+            .apply()
+        DataSync.scheduleBackup(context)
+    }
+
+    /**
+     * Borra del historial solo los ítems de [tipos] (canales y radios son
+     * LIVE; películas y series, los suyos). Se anota la fecha por tipo para
+     * que el respaldo no los vuelva a traer desde otro equipo.
+     */
+    fun clearTypes(context: Context, tipos: Set<ContentType>) {
+        if (tipos.isEmpty()) return
+        val ahora = System.currentTimeMillis()
+        val restantes = getAll(context).filterNot { it.type in tipos }
+        val marcas = clearedByType(context).toMutableMap()
+        tipos.forEach { marcas[it.name] = ahora }
+        prefs(context).edit()
+            .putString(KEY, gson.toJson(restantes))
+            .putString(KEY_CLEARED_BY_TYPE, gson.toJson(marcas))
             .apply()
         DataSync.scheduleBackup(context)
     }
@@ -98,23 +128,33 @@ object History {
     fun mergeFromRemote(
         context: Context,
         remoto: List<ContentItem>,
-        remoteClearedAt: Long = 0L
+        remoteClearedAt: Long = 0L,
+        remoteClearedByType: Map<String, Long> = emptyMap()
     ): List<ContentItem> {
         val local = getAll(context)
         val vaciadoCombinado = maxOf(clearedAt(context), remoteClearedAt)
+        // Por tipo: gana la fecha más nueva entre este equipo y el otro.
+        val porTipo = HashMap(clearedByType(context))
+        remoteClearedByType.forEach { (tipo, cuando) ->
+            if (cuando > (porTipo[tipo] ?: 0L)) porTipo[tipo] = cuando
+        }
 
         val clavesLocales = local.mapTo(HashSet(local.size)) { uniqueKey(it.type, it.id) }
         val extra = remoto.filterNot { uniqueKey(it.type, it.id) in clavesLocales }
         var combinado = (local + extra)
 
-        if (vaciadoCombinado > 0) {
-            combinado = combinado.filter { it.syncUpdatedAt > vaciadoCombinado }
+        if (vaciadoCombinado > 0 || porTipo.isNotEmpty()) {
+            combinado = combinado.filter {
+                val corte = maxOf(vaciadoCombinado, porTipo[it.type.toString()] ?: 0L)
+                corte == 0L || it.syncUpdatedAt > corte
+            }
         }
         combinado = combinado.sortedByDescending { it.syncUpdatedAt }.take(MAX)
 
         prefs(context).edit()
             .putString(KEY, gson.toJson(combinado))
             .putLong(KEY_CLEARED_AT, vaciadoCombinado)
+            .putString(KEY_CLEARED_BY_TYPE, gson.toJson(porTipo))
             .apply()
         return combinado
     }

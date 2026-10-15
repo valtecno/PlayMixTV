@@ -197,6 +197,20 @@ object ContinueWatching {
         escribir(context, sin(leer(context), type, id))
     }
 
+    /**
+     * Vacía "Continuar viendo" (todo, o solo [type]). Cada entrada queda con
+     * su marca de borrado, igual que al sacarla de a una, para que el
+     * respaldo no la reviva desde otro equipo.
+     */
+    fun clear(context: Context, type: ContentType? = null) {
+        val lista = leer(context)
+        val ahora = System.currentTimeMillis()
+        val quitar = lista.filter { type == null || it.type == type }
+        if (quitar.isEmpty()) return
+        guardarTombstones(context, tombstones(context) + quitar.associate { clave(it.type, it.id) to ahora })
+        escribir(context, lista - quitar.toSet())
+    }
+
     /** Guarda dónde quedó una película; la saca de la lista si se terminó. */
     fun saveMovie(context: Context, movie: ContentItem, posMs: Long, durMs: Long) {
         val lista = leer(context)

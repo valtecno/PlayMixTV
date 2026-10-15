@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.miiptv.app.R
+import com.miiptv.app.api.ContentType
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivitySettingsBinding
 import com.miiptv.app.databinding.DialogAccountsBinding
@@ -20,7 +21,10 @@ import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DataSync
+import com.miiptv.app.util.ContinueWatching
 import com.miiptv.app.util.DeviceMode
+import com.miiptv.app.util.History
+import com.miiptv.app.util.Profiles
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PlayerPrefs
 import com.miiptv.app.util.ServerDiagnostics
@@ -223,7 +227,8 @@ class SettingsActivity : AppCompatActivity() {
             "🎨  ${getString(R.string.setting_personalize)}",
             "🔄  ${getString(R.string.switch_account)}",
             "🔊  ${getString(R.string.setting_audio)}",
-            "💾  ${getString(R.string.setting_data_sync)}"
+            "💾  ${getString(R.string.setting_data_sync)}",
+            "🗑️  ${getString(R.string.clear_activity_title)}"
         )
         AlertDialog.Builder(this, R.style.AppDialog)
             .setTitle(getString(R.string.profile_manage))
@@ -234,8 +239,73 @@ class SettingsActivity : AppCompatActivity() {
                     2 -> switchAccount()
                     3 -> showAudioDialog()
                     4 -> forceDataSync()
+                    5 -> showClearActivityDialog()
                 }
             }
+            .show()
+    }
+
+    /**
+     * Borra la actividad del perfil activo: se eligen uno o varios tipos, o
+     * "Todo". Historial y "Continuar viendo" son de cada perfil, así que los
+     * otros perfiles no se tocan.
+     */
+    private fun showClearActivityDialog() {
+        val etiquetas = arrayOf(
+            getString(R.string.clear_activity_live),
+            getString(R.string.clear_activity_movies),
+            getString(R.string.clear_activity_series),
+            getString(R.string.clear_activity_continue)
+        )
+        val marcadas = BooleanArray(etiquetas.size)
+        val nombre = Profiles.active(this)?.name
+        val dialog = AlertDialog.Builder(this, R.style.AppDialog)
+            .setTitle(
+                if (nombre.isNullOrBlank()) getString(R.string.clear_activity_title)
+                else getString(R.string.clear_activity_title_profile, nombre)
+            )
+            .setMultiChoiceItems(etiquetas, marcadas) { _, i, checked -> marcadas[i] = checked }
+            .setPositiveButton(R.string.clear_activity_delete, null)
+            .setNeutralButton(R.string.clear_activity_all, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.show()
+        // Se asignan después de show() para que "Todo" y un "Borrar" sin nada
+        // elegido no cierren el diálogo por su cuenta.
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+            val marcarTodo = marcadas.any { !it }
+            for (i in marcadas.indices) {
+                marcadas[i] = marcarTodo
+                dialog.listView.setItemChecked(i, marcarTodo)
+            }
+        }
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            if (marcadas.none { it }) {
+                Toast.makeText(this, R.string.clear_activity_pick_one, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            dialog.dismiss()
+            confirmClearActivity(marcadas.copyOf(), etiquetas)
+        }
+    }
+
+    private fun confirmClearActivity(marcadas: BooleanArray, etiquetas: Array<String>) {
+        val elegidas = etiquetas.filterIndexed { i, _ -> marcadas[i] }
+        AlertDialog.Builder(this, R.style.AppDialog)
+            .setTitle(R.string.clear_activity_confirm_title)
+            .setMessage(
+                getString(R.string.clear_activity_confirm_msg, elegidas.joinToString("\n") { "• $it" })
+            )
+            .setPositiveButton(R.string.clear_activity_delete) { _, _ ->
+                val tipos = mutableSetOf<ContentType>()
+                if (marcadas[0]) tipos += ContentType.LIVE
+                if (marcadas[1]) tipos += ContentType.MOVIE
+                if (marcadas[2]) tipos += ContentType.SERIES
+                History.clearTypes(this, tipos)
+                if (marcadas[3]) ContinueWatching.clear(this)
+                Toast.makeText(this, R.string.clear_activity_done, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
