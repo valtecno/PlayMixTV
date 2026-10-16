@@ -766,18 +766,36 @@ class MainActivity : AppCompatActivity() {
      * pantalla completa sino el de la columna de previsualización.
      */
     private fun fijarAltoVideo16x9() {
+        if (!previewLayoutListener) {
+            previewLayoutListener = true
+            // Si el panel cambia de alto (rotación, barra de sistema), se recalcula.
+            binding.previewPanel.addOnLayoutChangeListener { _, _, t, _, b, _, ot, _, ob ->
+                if (b - t != ob - ot && !DeviceMode.isMobile(this)) fijarAltoVideo16x9()
+            }
+        }
         binding.previewThumbFrame.post {
             if (!::binding.isInitialized) return@post
             val ancho = binding.previewThumbFrame.width
             if (ancho <= 0) return@post
             val lp = binding.previewThumbFrame.layoutParams
-            val alto = ancho * 9 / 16
+            var alto = ancho * 9 / 16
+            // Que el texto de abajo (título, categoría y EPG) siempre quepa:
+            // el video cede alto antes que dejar la guía cortada.
+            val altoPanel = binding.previewPanel.height
+            if (altoPanel > 0) {
+                val reservado = (150 * resources.displayMetrics.density).toInt() +
+                    binding.previewPanel.paddingTop
+                alto = alto.coerceAtMost((altoPanel - reservado).coerceAtLeast(
+                    (90 * resources.displayMetrics.density).toInt()))
+            }
             if (lp.height != alto) {
                 lp.height = alto
                 binding.previewThumbFrame.layoutParams = lp
             }
         }
     }
+
+    private var previewLayoutListener = false
 
     private fun handleItemClick(item: ContentItem) {
         if (!showPreviewFor(section) || !esCanalTv(item)) {
