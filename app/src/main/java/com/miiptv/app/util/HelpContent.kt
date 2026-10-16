@@ -303,6 +303,16 @@ object HelpContent {
         ),
         Pregunta(
             Tema.REPRODUCTOR,
+            "¿Cómo cambio de canal sin salir del reproductor?",
+            "Viendo un canal en vivo, en la barra superior hay tres botones: canal anterior, último canal " +
+                "visto (alterna entre los dos últimos) y canal siguiente. Se mueven por la lista de donde " +
+                "abriste el canal (la categoría, Favoritos, etc.). En el control remoto también sirven " +
+                "las teclas de canal arriba y abajo.",
+            listOf("cambiar canal", "zapping", "zapear", "siguiente canal", "canal anterior", "ultimo canal",
+                "channel", "subir canal", "bajar canal", "sin salir")
+        ),
+        Pregunta(
+            Tema.REPRODUCTOR,
             "¿Cómo lo veo en el televisor con Chromecast?",
             "En el reproductor toca el botón de Chromecast y elige tu aparato. Después se controla desde " +
                 "la app Google Home o desde la notificación.",

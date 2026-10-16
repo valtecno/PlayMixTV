@@ -50,6 +50,7 @@ import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.CastHelper
+import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.ContinueWatching
 import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.EpisodeProgress
@@ -659,6 +660,7 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnFavorite.setOnClickListener { toggleFavorite() }
         binding.btnFavorite.visibility = if (favoriteItem == null) View.GONE else View.VISIBLE
         refreshFavoriteIcon()
+        setupZapping()
 
         // Solo tiene sentido si hay más episodios por delante
         btnNextEpisode?.visibility = if (hasNextEpisode()) View.VISIBLE else View.GONE
@@ -888,7 +890,86 @@ class PlayerActivity : AppCompatActivity() {
             }
             return true // se traga tanto la bajada como la subida de la tecla
         }
+        // Teclas de canal del control remoto: zapping dentro de la lista de origen
+        if (zapEnVivo && event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_CHANNEL_UP, KeyEvent.KEYCODE_PAGE_UP -> {
+                    cambiarCanalEnVivo(playlistIndex + 1); return true
+                }
+                KeyEvent.KEYCODE_CHANNEL_DOWN, KeyEvent.KEYCODE_PAGE_DOWN -> {
+                    cambiarCanalEnVivo(playlistIndex - 1); return true
+                }
+            }
+        }
         return super.dispatchKeyEvent(event)
+    }
+
+    // ---------------- Zapping de canales en vivo ----------------
+
+    /** Hay una lista de canales a la que saltar (la que se estaba viendo al abrir el canal). */
+    private val zapEnVivo: Boolean
+        get() = !isRadio && itemType == ContentType.LIVE && playlistIds.size > 1
+
+    /** Índice del canal visto justo antes del actual (botón "último canal"), o -1. */
+    private var canalAnterior = -1
+
+    private fun setupZapping() {
+        val visible = if (zapEnVivo) View.VISIBLE else View.GONE
+        binding.btnZapPrev.visibility = visible
+        binding.btnLastChannel.visibility = visible
+        binding.btnZapNext.visibility = visible
+        if (!zapEnVivo) return
+        binding.btnZapPrev.setOnClickListener { cambiarCanalEnVivo(playlistIndex - 1) }
+        binding.btnZapNext.setOnClickListener { cambiarCanalEnVivo(playlistIndex + 1) }
+        binding.btnLastChannel.setOnClickListener {
+            if (canalAnterior in playlistIds.indices) cambiarCanalEnVivo(canalAnterior)
+            else Toast.makeText(this, R.string.zap_no_last, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Cambia al canal [destino] de la lista sin salir del reproductor. Da la
+     * vuelta: después del último viene el primero. La conexión del canal
+     * anterior se suelta ANTES de abrir la del nuevo (PlaybackHolder.release),
+     * para no contar dos al panel.
+     */
+    private fun cambiarCanalEnVivo(destinoBruto: Int) {
+        if (!zapEnVivo || locked) return
+        val n = playlistIds.size
+        var destino = ((destinoBruto % n) + n) % n
+        // La lista de origen (p. ej. Favoritos → Todos) puede traer radios, que
+        // no son canales del servidor: se saltan. Con el catálogo vacío no hay
+        // forma de distinguirlas y se acepta lo que venga.
+        val paso = if (destinoBruto < playlistIndex) -1 else 1
+        val conocidos = Catalog.live.mapTo(HashSet()) { it.id }
+        var intentos = 0
+        while (conocidos.isNotEmpty() && playlistIds[destino] !in conocidos && intentos < n) {
+            destino = ((destino + paso) % n + n) % n
+            intentos++
+        }
+        if (destino == playlistIndex || intentos >= n) return
+
+        canalAnterior = playlistIndex
+        playlistIndex = destino
+        val id = playlistIds[destino]
+        streamUrl = Session.liveStreamUrl(this, id)
+        contentTitle = playlistTitles.getOrElse(destino) { contentTitle }
+        retries = 0
+        audioAvisado = false
+        usingAltAudioSource = false
+
+        binding.tvNowPlaying.text = contentTitle
+        binding.tvNowPlaying.isSelected = true
+
+        // El ítem completo (logo, categoría) sale del catálogo; sin él se conserva lo que había.
+        val delCatalogo = Catalog.live.firstOrNull { it.id == id }
+        favoriteItem = (delCatalogo ?: favoriteItem?.copy(id = id, name = contentTitle))
+        refreshFavoriteIcon()
+        delCatalogo?.let { History.add(this, it) }
+        if (epgAllowed) refreshEpgNow(id)
+
+        PlaybackHolder.release()
+        startPlayback(streamUrl, resumeAtMs = 0L)
     }
 
     /** Aceptar/centro del D-pad: el equivalente en control remoto a tocar el candado. */
@@ -1129,7 +1210,8 @@ class PlayerActivity : AppCompatActivity() {
         listOf(
             binding.btnFavorite, binding.btnAudio, binding.btnSubtitles,
             binding.btnVolume, binding.btnAspect, binding.btnBuffer, binding.btnLock,
-            binding.btnPrevStation, binding.btnRadioPlayPause, binding.btnNextStation
+            binding.btnPrevStation, binding.btnRadioPlayPause, binding.btnNextStation,
+            binding.btnZapPrev, binding.btnLastChannel, binding.btnZapNext
         ).forEach { RemoteControl.applyIconFocus(it, true) }
 
         // btnCast es un MediaRouteButton, no un ImageView, así que

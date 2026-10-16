@@ -333,6 +333,28 @@
 
         </LinearLayout>
 
+        <!-- Zapping de canales en vivo: solo visibles si la lista trae más de un canal -->
+        <ImageView
+            android:id="@+id/btnZapPrev"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_channel_down"
+            android:visibility="gone"
+            android:contentDescription="@string/zap_prev" />
+
+        <ImageView
+            android:id="@+id/btnLastChannel"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_history"
+            android:visibility="gone"
+            android:contentDescription="@string/zap_last" />
+
+        <ImageView
+            android:id="@+id/btnZapNext"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_channel_up"
+            android:visibility="gone"
+            android:contentDescription="@string/zap_next" />
+
         <ImageView
             android:id="@+id/btnFavorite"
             style="@style/PlayerIcon"
