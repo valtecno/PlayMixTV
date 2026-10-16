@@ -149,9 +149,12 @@ object HelpContent {
         Pregunta(
             Tema.PELICULAS,
             "¿Cómo veo una serie?",
-            "Entra a Series, elige la serie, la temporada y el episodio. Al terminar un episodio, el " +
-                "siguiente arranca solo si tienes activado \"Reproducir siguiente episodio\" en Ajustes.",
-            listOf("serie", "series", "temporada", "capitulo", "episodio", "siguiente episodio")
+            "Entra a Series y toca la carátula de la serie: se abre su ficha con la carátula en grande, " +
+                "sinopsis, reparto, director y la estrella para agregarla a Favoritos. Más abajo eliges la " +
+                "temporada y el episodio. Al terminar un episodio, el siguiente arranca solo si tienes " +
+                "activado \"Reproducir siguiente episodio\" en Ajustes.",
+            listOf("serie", "series", "temporada", "capitulo", "episodio", "siguiente episodio",
+                "caratula", "ficha", "sinopsis", "reparto", "favorito serie")
         ),
         Pregunta(
             Tema.PELICULAS,
@@ -375,6 +378,24 @@ object HelpContent {
         ),
         Pregunta(
             Tema.CUENTA,
+            "¿Cómo borro mi historial o lo que he visto?",
+            "Ve a Ajustes → Mi perfil → Borrar actividad. Eliges qué borrar: Canales y radios vistos, " +
+                "Películas vistas, Series vistas, Continuar viendo, o Todo (puedes marcar varias). Solo se " +
+                "borra del perfil que estás usando, te pide confirmar y no se puede deshacer. El borrado " +
+                "también se aplica en tus otros equipos con el mismo perfil. Los favoritos no se tocan.",
+            listOf("borrar historial", "borrar actividad", "limpiar historial", "borrar vistas",
+                "borrar continuar viendo", "vistas", "vaciar", "eliminar historial", "privacidad", "quitar de continuar")
+        ),
+        Pregunta(
+            Tema.CUENTA,
+            "¿Mis datos se guardan en Google?",
+            "No. La app tiene desactivada la copia automática de Android a Google. Tus favoritos, " +
+                "Continuar viendo e historial se guardan solo en el equipo y en el servidor privado de " +
+                "PlayMix TV, nunca en tu cuenta de Google.",
+            listOf("google", "copia automatica", "privacidad", "datos", "nube google", "backup", "seguridad")
+        ),
+        Pregunta(
+            Tema.CUENTA,
             "¿Se pierden mis favoritos si cambio de equipo o reinstalo la app?",
             "No. Tus Favoritos, Continuar viendo e Historial se guardan también en la nube (no solo en " +
                 "el equipo), y se restauran solos al iniciar sesión de nuevo. En Ajustes → Mi perfil → " +
@@ -404,8 +425,12 @@ object HelpContent {
             Tema.PROBLEMAS,
             "Dice que el panel rechazó la conexión",
             "Tu cuenta tiene un límite de conexiones al mismo tiempo. Pasa si la estás usando en otro " +
-                "aparato o si tienes Multi-pantalla abierta. Cierra los otros y vuelve a intentar.",
-            listOf("rechazo", "conexiones", "limite", "otro aparato", "simultaneas")
+                "aparato o si tienes Multi-pantalla abierta. Cierra los otros y vuelve a intentar. Ojo: " +
+                "el servidor tarda entre unos segundos y un minuto en liberar la conexión de un canal " +
+                "que acabas de cerrar o cambiar, así que si aparece este aviso justo después de zapear, " +
+                "espera un momento y reintenta. El mismo mensaje puede significar que la cuenta venció.",
+            listOf("rechazo", "conexiones", "limite", "otro aparato", "simultaneas", "multiconexion",
+                "multiconexiones", "cuenta vencida", "vencida", "conexion ocupada")
         ),
         Pregunta(
             Tema.PROBLEMAS,
@@ -430,6 +455,26 @@ object HelpContent {
                 "mucho más rápido que solo con la descripción del problema.",
             listOf("se cierra", "se cierra sola", "pantalla negra", "se cierra la app", "crash",
                 "codigo de errores", "error", "se sale", "se apaga")
+        ),
+        Pregunta(
+            Tema.PROBLEMAS,
+            "¿Qué significan los mensajes de error?",
+            "La app distingue la causa: \"Sin conexión a internet\" es tu wifi o datos; \"Tu cuenta puede " +
+                "estar vencida o llegó al límite de conexiones\" lo dice el servidor, revisa tu acceso y " +
+                "que no haya otro aparato conectado; \"El servidor está lento o no responde\" significa que " +
+                "tu internet está bien y conviene reintentar en un momento; y si dice que el servidor " +
+                "rechazó la solicitud o que ocurrió un error, avísanos por WhatsApp.",
+            listOf("error", "mensaje", "sin conexion", "sin internet", "servidor lento", "no responde",
+                "vencida", "limite", "rechazo", "significa")
+        ),
+        Pregunta(
+            Tema.PROBLEMAS,
+            "Cambié de Sistema L a XL y dice \"Esperando a que cargue el contenido…\"",
+            "Es normal: al cambiar de sistema la app baja el catálogo del servidor nuevo y por unos " +
+                "segundos Inicio muestra ese aviso. Cuando termina, aparece el contenido solo. Si pasa " +
+                "mucho rato, revisa tu internet y toca Actualizar en la barra superior.",
+            listOf("esperando", "cargar contenido", "cambio de sistema", "cambie de sistema", "l a xl",
+                "no hay contenido", "nada para mostrar", "inicio vacio")
         )
     )
 

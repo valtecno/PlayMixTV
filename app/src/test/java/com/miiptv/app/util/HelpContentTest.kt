@@ -49,6 +49,13 @@ class HelpContentTest {
     }
 
     @Test
+    fun `funciones nuevas tienen respuesta`() {
+        assertEquals("¿Cómo borro mi historial o lo que he visto?", primera("borrar historial"))
+        assertEquals("¿Qué significan los mensajes de error?", primera("que significan los errores"))
+        assertEquals("¿Mis datos se guardan en Google?", primera("se guardan en google"))
+    }
+
+    @Test
     fun `tildes y mayusculas no cambian el resultado`() {
         assertEquals(primera("subtitulos"), primera("SUBTÍTULOS"))
         assertEquals(primera("niños"), primera("ninos"))
