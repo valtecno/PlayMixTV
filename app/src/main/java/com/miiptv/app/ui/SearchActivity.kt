@@ -26,6 +26,7 @@ import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.History
 import com.miiptv.app.util.RecentSearches
+import com.miiptv.app.util.SearchMatcher
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.Parental
 import com.miiptv.app.util.PinDialog
@@ -241,7 +242,26 @@ class SearchActivity : AppCompatActivity() {
         pendingFilter?.let { ui.removeCallbacks(it) }
         val task = Runnable { doFilter() }
         pendingFilter = task
-        ui.postDelayed(task, if (immediate) 0L else 250L)
+        ui.postDelayed(task, if (immediate) 0L else 150L)
+    }
+
+    /**
+     * Nombres ya normalizados (sin tildes, en minúsculas) de [source]. Se
+     * calculan una sola vez por catálogo y se reutilizan en cada tecla; solo se
+     * rehacen si la lista cambió (otro tamaño u otros objetos, p. ej. cuando
+     * llegó el catálogo nuevo del panel).
+     */
+    private var indiceClave = ""
+    private var indiceNombres: List<String> = emptyList()
+
+    private fun nombresNormalizados(source: List<ContentItem>): List<String> {
+        val clave = "${source.size}|${source.firstOrNull()?.let { System.identityHashCode(it) }}|" +
+            "${source.lastOrNull()?.let { System.identityHashCode(it) }}"
+        if (clave != indiceClave) {
+            indiceNombres = source.map { SearchMatcher.normalizar(it.name) }
+            indiceClave = clave
+        }
+        return indiceNombres
     }
 
     private fun doFilter() {
@@ -262,9 +282,17 @@ class SearchActivity : AppCompatActivity() {
             val results = if (query.length < 2) {
                 emptyList()
             } else {
-                source.filter { it.name.contains(query, ignoreCase = true) }
-                    .sortedBy { it.name.indexOf(query, ignoreCase = true) } // coincidencias al inicio primero
+                val tokens = SearchMatcher.tokens(query)
+                val nombres = nombresNormalizados(source)
+                val aciertos = ArrayList<Pair<Int, Int>>()   // (posición en source, puntaje)
+                for (i in source.indices) {
+                    val pt = SearchMatcher.puntaje(nombres[i], tokens)
+                    if (pt >= 0) aciertos.add(i to pt)
+                }
+                // coincidencias al inicio primero; a igual puntaje, el nombre más corto
+                aciertos.sortedWith(compareBy<Pair<Int, Int>>({ it.second }, { nombres[it.first].length }))
                     .take(300)
+                    .map { source[it.first] }
             }
 
             ui.post {
