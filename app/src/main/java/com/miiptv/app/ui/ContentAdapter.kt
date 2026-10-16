@@ -130,7 +130,26 @@ class ContentAdapter(
     fun submitList(newItems: List<ContentItem>) {
         items.clear()
         items.addAll(newItems)
+        precargadoHasta = -1
         notifyDataSetChanged()
+    }
+
+    /** Última posición cuyas imágenes ya se pidieron por adelantado. */
+    private var precargadoHasta = -1
+
+    /**
+     * Baja a la caché en disco las imágenes de las próximas [cantidad] filas
+     * después de [ultimaVisible], para que ya estén cuando el usuario llegue.
+     * No decodifica nada (no usa memoria) y nunca repite lo ya pedido.
+     */
+    fun precargarDesde(ultimaVisible: Int, cantidad: Int = 12) {
+        if (ultimaVisible < 0 || items.isEmpty()) return
+        val ini = maxOf(ultimaVisible + 1, precargadoHasta + 1)
+        val fin = minOf(ultimaVisible + cantidad, items.size - 1)
+        for (i in ini..fin) {
+            items[i].icon?.takeIf { it.isNotBlank() }?.let { runCatching { Picasso.get().load(it).fetch() } }
+        }
+        if (fin > precargadoHasta) precargadoHasta = fin
     }
 
     /** Lo que se está mostrando ahora, para armar listas de reproducción. */

@@ -1814,8 +1814,28 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     picasso.resumeTag(ImageLoader.TAG_LISTA)
                 }
+                // Al detenerse la lista, se piden por adelantado las siguientes filas.
+                if (newState == androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_IDLE) {
+                    precargarSiguientes()
+                }
             }
         })
+        // Lista recién cargada (sin scroll todavía): se precargan las primeras filas de abajo.
+        adapter.registerAdapterDataObserver(object : androidx.recyclerview.widget.RecyclerView.AdapterDataObserver() {
+            override fun onChanged() {
+                lista.removeCallbacks(precargaInicial)
+                lista.postDelayed(precargaInicial, 700)
+            }
+        })
+    }
+
+    private val precargaInicial = Runnable { precargarSiguientes() }
+
+    private fun precargarSiguientes() {
+        if (!::adapter.isInitialized || isFinishing || isDestroyed) return
+        val ultima = (binding.recyclerChannels.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
+            ?.findLastVisibleItemPosition() ?: return
+        adapter.precargarDesde(ultima)
     }
 
     // ---------------- Continuar viendo ----------------
