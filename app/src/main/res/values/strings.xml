@@ -199,6 +199,11 @@
     <string name="settings_account">Cuenta</string>
     <string name="setting_buffer">Buffer</string>
     <string name="setting_aspect">Relación de aspecto</string>
+    <string name="setting_low_end">Modo equipo débil (menos animaciones y memoria)</string>
+    <string name="low_end_warn_title">¿Desactivar el modo equipo débil?</string>
+    <string name="low_end_warn_msg">Este equipo parece tener poca memoria o un procesador lento. Sin este modo la app usa más memoria y animaciones, y puede ir lenta, trabarse o cerrarse sola, sobre todo al reproducir video o en multipantalla.</string>
+    <string name="low_end_warn_ok">Desactivar igual</string>
+    <string name="low_end_changed">Listo. Cierra y vuelve a abrir la app para aplicarlo por completo.</string>
     <string name="setting_open_last_channel">Abrir en el último canal al iniciar</string>
     <string name="setting_reconnect">Reconectar automáticamente</string>
     <string name="setting_screen_on">Mantener pantalla encendida</string>

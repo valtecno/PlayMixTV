@@ -26,6 +26,7 @@ import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.History
 import com.miiptv.app.util.Profiles
 import com.miiptv.app.util.Servers
+import com.miiptv.app.util.DevicePerf
 import com.miiptv.app.util.PlayerPrefs
 import com.miiptv.app.util.ServerDiagnostics
 import com.miiptv.app.util.UpdateDialog
@@ -79,6 +80,8 @@ class SettingsActivity : AppCompatActivity() {
             PlayerPrefs.setOpenLastChannel(this, checked)
         }
         binding.rowOpenLast.setOnClickListener { binding.swOpenLast.toggle() }
+
+        configurarModoEquipoDebil()
 
         binding.swScreenOn.isChecked = PlayerPrefs.getKeepScreenOn(this)
         binding.swScreenOn.setOnCheckedChangeListener { _, checked ->
@@ -605,5 +608,34 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.ok, null)
             .show()
+    }
+
+    /**
+     * Modo equipo débil: arranca como lo detectó la app, y el usuario puede
+     * activarlo o desactivarlo. Desactivarlo en un equipo que sí es débil pide
+     * confirmación, porque el rendimiento puede empeorar mucho.
+     */
+    private fun configurarModoEquipoDebil() {
+        val sw = binding.swLowEnd
+        sw.setOnCheckedChangeListener(null)
+        sw.isChecked = DevicePerf.esGamaBaja(this)
+        sw.setOnCheckedChangeListener { _, activado ->
+            if (!activado && DevicePerf.detectadoDebil(this)) {
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.low_end_warn_title)
+                    .setMessage(R.string.low_end_warn_msg)
+                    .setPositiveButton(R.string.low_end_warn_ok) { _, _ ->
+                        DevicePerf.setManual(this, false)
+                        Toast.makeText(this, R.string.low_end_changed, Toast.LENGTH_LONG).show()
+                    }
+                    .setNegativeButton(android.R.string.cancel) { _, _ -> configurarModoEquipoDebil() }
+                    .setOnCancelListener { configurarModoEquipoDebil() }
+                    .show()
+            } else {
+                DevicePerf.setManual(this, activado)
+                Toast.makeText(this, R.string.low_end_changed, Toast.LENGTH_LONG).show()
+            }
+        }
+        binding.rowLowEnd.setOnClickListener { sw.toggle() }
     }
 }

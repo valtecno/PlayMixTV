@@ -12,11 +12,39 @@ object DevicePerf {
 
     private const val MB = 1024L * 1024L
 
-    @Volatile private var cache: Boolean? = null
+    /** Lo que detectó el equipo por su cuenta (se calcula una vez). */
+    @Volatile private var detectado: Boolean? = null
 
-    /** true = equipo débil: poca RAM, pocos núcleos o marcado por Android como "low RAM". */
+    private const val PREFS = "miiptv_perf"
+    private const val KEY_MANUAL = "modo_equipo_debil"   // 1 = activado, 0 = desactivado, ausente = automático
+
+    private fun prefs(c: Context) = c.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /** true si la detección automática considera débil a este equipo (ignora lo elegido a mano). */
+    fun detectadoDebil(context: Context): Boolean =
+        detectado ?: calcular(context.applicationContext).also { detectado = it }
+
+    /** Lo elegido a mano en Ajustes: true/false, o null si se deja en automático. */
+    fun manual(context: Context): Boolean? {
+        val p = prefs(context)
+        return if (p.contains(KEY_MANUAL)) p.getInt(KEY_MANUAL, 0) == 1 else null
+    }
+
+    fun setManual(context: Context, activado: Boolean) {
+        prefs(context).edit().putInt(KEY_MANUAL, if (activado) 1 else 0).apply()
+        efectivo = null
+    }
+
+    /** Resultado final ya resuelto: esta consulta se hace en cada fila de las listas. */
+    @Volatile private var efectivo: Boolean? = null
+
+    /**
+     * true = modo equipo débil activo: poca RAM, pocos núcleos o marcado por
+     * Android como "low RAM", salvo que el usuario lo haya activado o
+     * desactivado a mano en Ajustes (eso manda siempre).
+     */
     fun esGamaBaja(context: Context): Boolean =
-        cache ?: calcular(context.applicationContext).also { cache = it }
+        efectivo ?: (manual(context) ?: detectadoDebil(context)).also { efectivo = it }
 
     private fun calcular(c: Context): Boolean {
         val am = c.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager ?: return false

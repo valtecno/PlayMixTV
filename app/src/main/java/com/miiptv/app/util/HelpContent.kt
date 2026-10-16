@@ -410,6 +410,15 @@ object HelpContent {
             listOf("ultimo canal", "abrir directo", "iniciar", "arrancar", "ultimo visto", "tele normal")
         ),
         Pregunta(
+            Tema.PROBLEMAS,
+            "La app va lenta o se cierra sola en mi equipo",
+            "Ve a Ajustes y activa Modo equipo débil: usa menos memoria y quita animaciones. La app lo " +
+                "activa sola en equipos con poca RAM; si lo desactivas en uno débil, te avisará que puede ir " +
+                "lenta. Después de cambiarlo, cierra y vuelve a abrir la app. También ayuda poner el buffer " +
+                "en Bajo y no usar multipantalla.",
+            listOf("lenta", "lento", "se traba", "se cierra", "poca ram", "equipo viejo", "deco", "memoria", "rendimiento")
+        ),
+        Pregunta(
             Tema.CUENTA,
             "¿Cómo actualizo el contenido?",
             "Toca la flecha circular amarilla de la barra superior (Actualizar) o ve a Ajustes → " +
