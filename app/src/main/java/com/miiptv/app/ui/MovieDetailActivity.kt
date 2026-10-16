@@ -12,6 +12,7 @@ import com.miiptv.app.util.DeviceMode
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.History
 import com.miiptv.app.util.RemoteControl
+import com.miiptv.app.util.BlurTransformation
 import com.squareup.picasso.Picasso
 import retrofit2.Call
 import retrofit2.Callback
@@ -57,7 +58,10 @@ class MovieDetailActivity : AppCompatActivity() {
 
         binding.toolbar.title = item.name
         binding.tvTitle.text = item.name
-        if (!item.icon.isNullOrBlank()) Picasso.get().load(item.icon).fit().centerCrop().into(binding.ivPoster)
+        if (!item.icon.isNullOrBlank()) {
+            Picasso.get().load(item.icon).fit().centerCrop().into(binding.ivPoster)
+            cargarFondo(item.icon)
+        }
 
         binding.btnPlay.background = Appearance.gradient(this, 10f)
         binding.btnPlay.setOnClickListener { play() }
@@ -111,9 +115,18 @@ class MovieDetailActivity : AppCompatActivity() {
             })
     }
 
+    /** Fondo desenfocado con la misma carátula (ver BlurTransformation). */
+    private fun cargarFondo(url: String?) {
+        if (url.isNullOrBlank()) return
+        Picasso.get().load(url).transform(BlurTransformation()).into(binding.ivBackdrop)
+    }
+
     private fun render(info: VodInfo?, data: VodMovieData?) {
         // Si el servidor manda una carátula mejor que la de la lista, la usamos
-        if (!info?.image.isNullOrBlank()) Picasso.get().load(info?.image).fit().centerCrop().into(binding.ivPoster)
+        if (!info?.image.isNullOrBlank()) {
+            Picasso.get().load(info?.image).fit().centerCrop().into(binding.ivPoster)
+            cargarFondo(info?.image)
+        }
 
         // Extensión real del archivo, para que la URL de reproducción sea correcta
         if (!data?.containerExtension.isNullOrBlank()) {

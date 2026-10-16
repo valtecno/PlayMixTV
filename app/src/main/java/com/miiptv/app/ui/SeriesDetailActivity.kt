@@ -25,6 +25,7 @@ import com.miiptv.app.util.EpisodeProgress
 import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.Favorites
 import com.miiptv.app.util.RemoteControl
+import com.miiptv.app.util.BlurTransformation
 import com.squareup.picasso.Picasso
 import retrofit2.Call
 import retrofit2.Callback
@@ -79,7 +80,10 @@ class SeriesDetailActivity : AppCompatActivity() {
         // Ficha arriba, igual que en las películas: carátula grande y datos,
         // y debajo las temporadas y los capítulos.
         binding.tvTitle.text = item.name
-        if (!item.icon.isNullOrBlank()) Picasso.get().load(item.icon).fit().centerCrop().into(binding.ivPoster)
+        if (!item.icon.isNullOrBlank()) {
+            Picasso.get().load(item.icon).fit().centerCrop().into(binding.ivPoster)
+            cargarFondo(item.icon)
+        }
         binding.btnFavorite.setOnClickListener {
             Favorites.toggle(this, item)
             refreshFavoriteLabel()
@@ -111,10 +115,19 @@ class SeriesDetailActivity : AppCompatActivity() {
             if (fav) "★  ${getString(R.string.tab_favorites)}" else "☆  ${getString(R.string.tab_favorites)}"
     }
 
+    /** Fondo desenfocado con la misma carátula (ver BlurTransformation). */
+    private fun cargarFondo(url: String?) {
+        if (url.isNullOrBlank()) return
+        Picasso.get().load(url).transform(BlurTransformation()).into(binding.ivBackdrop)
+    }
+
     /** Rellena la ficha con lo que mande el panel; lo que falte simplemente no se muestra. */
     private fun renderInfo(info: SeriesInfo?) {
         if (info == null) return
-        if (!info.cover.isNullOrBlank()) Picasso.get().load(info.cover).fit().centerCrop().into(binding.ivPoster)
+        if (!info.cover.isNullOrBlank()) {
+            Picasso.get().load(info.cover).fit().centerCrop().into(binding.ivPoster)
+            cargarFondo(info.cover)
+        }
 
         val meta = listOfNotNull(
             info.releaseDate?.take(4),
