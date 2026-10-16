@@ -1036,6 +1036,9 @@ class MainActivity : AppCompatActivity() {
         // cargando", "no hay nada" y "falló, y este fue el motivo".
         val vacio = novedades.itemCount == 0 && recientes.itemCount == 0
         val motivo = Catalog.lastError
+        val cargandoCatalogo = vacio &&
+            (Catalog.isLoading || (!Catalog.hasCompletedLoad && motivo == null))
+        mostrarEsqueletoInicio(cargandoCatalogo)
         when {
             !vacio -> binding.tvHomeEmpty.visibility = View.GONE
             // Mientras baja el catálogo se avisa, en vez de dejar el Inicio en
@@ -1043,8 +1046,8 @@ class MainActivity : AppCompatActivity() {
             // También cuando todavía no terminó ninguna descarga (p. ej. recién
             // cambiado de Sistema L a XL): no es "no hay contenido", es espera.
             Catalog.isLoading || (!Catalog.hasCompletedLoad && motivo == null) -> {
-                binding.tvHomeEmpty.setText(R.string.home_loading)
-                binding.tvHomeEmpty.visibility = View.VISIBLE
+                // El esqueleto animado ya indica que está cargando.
+                binding.tvHomeEmpty.visibility = View.GONE
             }
             motivo != null -> {
                 // motivo ya viene armado por ErrorDiagnosis con la causa real
@@ -1060,6 +1063,29 @@ class MainActivity : AppCompatActivity() {
 
         actualizarHero()
         startCarousel()
+    }
+
+    private var esqueletoAnim: android.animation.ObjectAnimator? = null
+
+    /** Bloques grises que pulsan mientras el Inicio todavía no tiene contenido. */
+    private fun mostrarEsqueletoInicio(mostrar: Boolean) {
+        val sk = binding.homeSkeleton
+        if (mostrar) {
+            if (sk.visibility != View.VISIBLE) sk.visibility = View.VISIBLE
+            if (esqueletoAnim == null) {
+                esqueletoAnim = android.animation.ObjectAnimator.ofFloat(sk, View.ALPHA, 0.35f, 1f).apply {
+                    duration = 900
+                    repeatMode = android.animation.ValueAnimator.REVERSE
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                    start()
+                }
+            }
+        } else {
+            esqueletoAnim?.cancel()
+            esqueletoAnim = null
+            sk.alpha = 1f
+            sk.visibility = View.GONE
+        }
     }
 
     // ---------------- Banner destacado ----------------
@@ -3361,6 +3387,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        esqueletoAnim?.cancel()
         // Un diálogo todavía en pantalla cuando se destruye la activity es una
         // ventana filtrada (WindowLeaked en el log).
         exitDialog?.dismiss()

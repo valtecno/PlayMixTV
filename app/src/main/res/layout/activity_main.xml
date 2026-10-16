@@ -476,6 +476,47 @@
         </LinearLayout>
     </LinearLayout>
 
+        <!-- Esqueleto de carga del Inicio: bloques que pulsan mientras baja el catálogo. -->
+        <LinearLayout
+            android:id="@+id/homeSkeleton"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:visibility="gone">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="150dp"
+                android:layout_marginBottom="16dp"
+                android:orientation="horizontal">
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_skeleton" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="110dp"
+                android:layout_marginBottom="16dp"
+                android:orientation="horizontal">
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_skeleton" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="110dp"
+                android:layout_marginBottom="16dp"
+                android:orientation="horizontal">
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_marginEnd="12dp" android:background="@drawable/bg_skeleton" />
+                <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_skeleton" />
+            </LinearLayout>
+
+        </LinearLayout>
+
         <!-- Mensaje del Inicio. Va acá y no en tvEmpty porque aquel vive dentro
              de bodyContainer, que en Inicio está oculto. -->
         <TextView
