@@ -428,6 +428,16 @@ object HelpContent {
         ),
         Pregunta(
             Tema.PELICULAS,
+            "¿Dónde veo recomendaciones de películas y series?",
+            "En Mi Espacio → Actividad reciente → Recomendado. Son películas y series que todavía no " +
+                "viste, de las categorías que más ves en tu perfil, con las novedades primero. Aparece " +
+                "cuando ya viste al menos 3 títulos, y no incluye lo que tienes a medias, en favoritos ni " +
+                "en categorías bloqueadas. Cada perfil tiene las suyas.",
+            listOf("recomendado", "recomendaciones", "sugerencias", "para ti", "que ver", "que veo",
+                "similar", "parecido", "gustos")
+        ),
+        Pregunta(
+            Tema.PELICULAS,
             "¿Cómo quito una sola película o serie de Continuar viendo o Vistas?",
             "Mantén presionada su carátula (con control remoto, mantén apretado OK) y elige \"Quitar de " +
                 "Continuar viendo\" o \"Quitar de Vistas\". Solo se quita ese ítem, en tu perfil, y el " +

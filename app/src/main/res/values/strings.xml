@@ -457,6 +457,9 @@
     <string name="sleep_set">Se detendrá en %1$s</string>
     <string name="sleep_canceled">Temporizador desactivado</string>
     <string name="sleep_fired">Temporizador: reproducción detenida</string>
+    <string name="my_space_recommended_chip">Recomendado</string>
+    <string name="title_recommended">Recomendado para ti</string>
+    <string name="empty_recommended">Mira algunas películas o series y aquí aparecerán recomendaciones.</string>
     <string name="hero_play">▶  Ver ahora</string>
     <string name="hero_info">Más info</string>
     <string name="hero_open_series">Ver serie</string>

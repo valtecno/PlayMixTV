@@ -55,6 +55,7 @@ import com.miiptv.app.util.ImageLoader
 import com.miiptv.app.util.KidsFilter
 import com.miiptv.app.util.KidsMode
 import com.miiptv.app.util.Parental
+import com.miiptv.app.util.Recommender
 import com.miiptv.app.util.PlaybackHolder
 import com.miiptv.app.util.RemoteControl
 import com.miiptv.app.util.PlayerFactory
@@ -95,7 +96,7 @@ class MainActivity : AppCompatActivity() {
      * favFilter/favIsRadio por completo; esos dos solo tienen sentido dentro
      * de FAVORITOS, tal como funcionaban antes de agregar las otras pestañas.
      */
-    private enum class EspacioModo { FAVORITOS, CONTINUAR, VISTAS }
+    private enum class EspacioModo { FAVORITOS, CONTINUAR, VISTAS, RECOMENDADO }
     private var espacioModo: EspacioModo = EspacioModo.FAVORITOS
 
     /**
@@ -2535,6 +2536,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Películas y series ya reproducidas (el Historial completo también trae canales). */
+    private var recomendadosCache: List<ContentItem>? = null
+
+    /**
+     * "Recomendado para ti": películas y series de las categorías que más ve
+     * este perfil, sin lo ya visto, a medias ni guardado en favoritos, y sin
+     * categorías bloqueadas con PIN (ver Recommender).
+     */
+    private fun itemsRecomendados(): List<ContentItem> {
+        recomendadosCache?.let { return it }
+        if (kidsMode) return emptyList<ContentItem>().also { recomendadosCache = it }
+        val vistos = itemsVistas()
+        val excluir = HashSet<String>()
+        vistos.forEach { excluir += Recommender.clave(it) }
+        itemsContinuarTodo().forEach { excluir += Recommender.clave(it) }
+        Favorites.getAll(this).forEach { excluir += Recommender.clave(it) }
+        val catalogo = (Catalog.movies + Catalog.series)
+            .filter { !Parental.isCategoryLocked(this, it.categoryId) }
+        return Recommender.recomendar(vistos, catalogo, excluir).also { recomendadosCache = it }
+    }
+
     private fun itemsVistas(): List<ContentItem> =
         History.getAll(this).filter { it.type == ContentType.MOVIE || it.type == ContentType.SERIES }
 
@@ -2574,6 +2595,8 @@ class MainActivity : AppCompatActivity() {
         // Favoritos en vez de quedar mostrando un chip que ya no está.
         if (espacioModo == EspacioModo.CONTINUAR && itemsContinuarTodo().isEmpty()) espacioModo = EspacioModo.FAVORITOS
         if (espacioModo == EspacioModo.VISTAS && itemsVistas().isEmpty()) espacioModo = EspacioModo.FAVORITOS
+        recomendadosCache = null
+        if (espacioModo == EspacioModo.RECOMENDADO && itemsRecomendados().isEmpty()) espacioModo = EspacioModo.FAVORITOS
         renderEspacioGroups()
         renderFavoriteFilters()
         applyFavoriteFilter()
@@ -2647,6 +2670,9 @@ class MainActivity : AppCompatActivity() {
             if (itemsVistas().isNotEmpty()) {
                 filtros += Filtro(getString(R.string.my_space_watched_chip), EspacioModo.VISTAS, null, false)
             }
+            if (itemsRecomendados().isNotEmpty()) {
+                filtros += Filtro(getString(R.string.my_space_recommended_chip), EspacioModo.RECOMENDADO, null, false)
+            }
         } else {
             filtros += Filtro(getString(R.string.fav_all), EspacioModo.FAVORITOS, null, false)
             filtros += Filtro(getString(R.string.tab_live), EspacioModo.FAVORITOS, ContentType.LIVE, false)
@@ -2681,11 +2707,13 @@ class MainActivity : AppCompatActivity() {
         currentCategoryId = if (espacioModo == EspacioModo.CONTINUAR) CONTINUAR_ID else null
         val esContinuar = espacioModo == EspacioModo.CONTINUAR
         val quitable: (ContentItem) -> Boolean = { item -> preguntarQuitar(item, esContinuar); true }
-        adapter.onLongPress = if (espacioModo == EspacioModo.FAVORITOS) null else quitable
+        adapter.onLongPress =
+            if (espacioModo == EspacioModo.FAVORITOS || espacioModo == EspacioModo.RECOMENDADO) null else quitable
 
         val items = when (espacioModo) {
             EspacioModo.CONTINUAR -> itemsContinuarTodo()
             EspacioModo.VISTAS -> itemsVistas()
+            EspacioModo.RECOMENDADO -> itemsRecomendados()
             EspacioModo.FAVORITOS -> {
                 val todos = Favorites.getAll(this)
                 // Las radios son LIVE pero traen su propia URL: así se separan de los canales
@@ -2715,6 +2743,7 @@ class MainActivity : AppCompatActivity() {
             when (espacioModo) {
                 EspacioModo.CONTINUAR -> R.string.title_continue_watching
                 EspacioModo.VISTAS -> R.string.title_watched
+                EspacioModo.RECOMENDADO -> R.string.title_recommended
                 EspacioModo.FAVORITOS -> R.string.tab_favorites
             }
         )
@@ -2724,6 +2753,7 @@ class MainActivity : AppCompatActivity() {
             when (espacioModo) {
                 EspacioModo.CONTINUAR -> R.string.empty_continue_watching
                 EspacioModo.VISTAS -> R.string.empty_watched
+                EspacioModo.RECOMENDADO -> R.string.empty_recommended
                 EspacioModo.FAVORITOS -> R.string.empty_favorites
             }
         )
