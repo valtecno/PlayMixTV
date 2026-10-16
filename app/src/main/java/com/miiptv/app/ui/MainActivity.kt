@@ -20,9 +20,11 @@ import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import androidx.core.view.doOnLayout
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -79,6 +81,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var recentAdapter: CarouselAdapter
     private lateinit var novedades: AutoCarousel
     private lateinit var recientes: AutoCarousel
+    private lateinit var hero: HeroBanner
 
     private var section: Section = Section.HOME
     private var currentCategoryId: String? = null
@@ -985,6 +988,7 @@ class MainActivity : AppCompatActivity() {
             // tiene sentido el cartel de "cargando" o "no hay nada".
             binding.tvHomeEmpty.visibility = View.GONE
             stopCarousel()
+            actualizarHero()
             return
         }
 
@@ -1028,7 +1032,42 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        actualizarHero()
         startCarousel()
+    }
+
+    // ---------------- Banner destacado ----------------
+
+    /** Carga el banner con lo último agregado y lo muestra u oculta según haya algo. */
+    private fun actualizarHero() {
+        if (!::hero.isInitialized) return
+        hero.submit(Catalog.newestMovies(this, limit = 6), Catalog.newestSeries(this, limit = 6))
+        layoutHero(hero.hasItems)
+        if (hero.hasItems) hero.start()
+    }
+
+    /**
+     * Fija el alto del banner (40 % del Inicio, entre 120 y 260 dp) y empuja
+     * hacia abajo a los carruseles con el margen superior de homeSections.
+     */
+    private fun layoutHero(visible: Boolean) {
+        val sections = binding.homeSections.layoutParams as FrameLayout.LayoutParams
+        if (!visible) {
+            sections.topMargin = 0
+            binding.homeSections.layoutParams = sections
+            return
+        }
+        binding.homeArea.doOnLayout {
+            val d = resources.displayMetrics.density
+            val alto = (binding.homeArea.height * 0.40f).toInt()
+                .coerceIn((120 * d).toInt(), (260 * d).toInt())
+            val lp = binding.heroBanner.layoutParams as FrameLayout.LayoutParams
+            lp.height = alto
+            binding.heroBanner.layoutParams = lp
+            val sec = binding.homeSections.layoutParams as FrameLayout.LayoutParams
+            sec.topMargin = alto + lp.topMargin + (6 * d).toInt()
+            binding.homeSections.layoutParams = sec
+        }
     }
 
     // ---------------- Carrusel de novedades ----------------
@@ -1091,6 +1130,12 @@ class MainActivity : AppCompatActivity() {
         recientes = AutoCarousel(binding.recyclerRecent, recentAdapter, delayMs = 5000L)
         novedades.attach()
         recientes.attach()
+
+        hero = HeroBanner(
+            binding,
+            onPlay = { item -> openItem(item, forzarReproducir = true) },
+            onInfo = { item -> openDetalles(item) }
+        )
 
         // Flechas de navegación manual del carrusel (también usables con D-pad / control remoto)
         binding.btnMoviePrev.setOnClickListener { novedades.stepBack() }
@@ -1168,6 +1213,7 @@ class MainActivity : AppCompatActivity() {
     private fun startCarousel() {
         if (!::novedades.isInitialized) return
         novedades.start()
+        if (::hero.isInitialized && hero.hasItems) hero.start()
         // Medio ciclo de desfase: así las dos columnas no cambian a la vez
         recientes.start(startOffsetMs = 2500L)
     }
@@ -1177,6 +1223,7 @@ class MainActivity : AppCompatActivity() {
         if (!::novedades.isInitialized) return
         novedades.stop()
         recientes.stop()
+        if (::hero.isInitialized) hero.stop()
     }
 
     // ---------------- Menú superior ----------------
@@ -2680,16 +2727,37 @@ class MainActivity : AppCompatActivity() {
 
     // ---------------- Abrir contenido ----------------
 
-    private fun openItem(item: ContentItem) {
+    private fun openItem(item: ContentItem, forzarReproducir: Boolean = false) {
         if (Parental.isCategoryLocked(this, item.categoryId)) {
-            PinDialog.ask(this) { reallyOpen(item) }
+            PinDialog.ask(this) { reallyOpen(item, forzarReproducir) }
         } else {
-            reallyOpen(item)
+            reallyOpen(item, forzarReproducir)
         }
     }
 
-    private fun reallyOpen(item: ContentItem) {
-        if (item.type != ContentType.MOVIE || Appearance.getMovieClick(this) == Appearance.CLICK_PLAY) {
+    /** Ficha de una película aunque el perfil esté configurado para reproducir al tocar. */
+    private fun openDetalles(item: ContentItem) {
+        val abrir = {
+            if (item.type == ContentType.MOVIE) {
+                startActivity(
+                    Intent(this, MovieDetailActivity::class.java)
+                        .putExtra(MovieDetailActivity.EXTRA_ID, item.id)
+                        .putExtra(MovieDetailActivity.EXTRA_NAME, item.name)
+                        .putExtra(MovieDetailActivity.EXTRA_ICON, item.icon)
+                        .putExtra(MovieDetailActivity.EXTRA_EXT, item.containerExtension)
+                        .putExtra(MovieDetailActivity.EXTRA_CATEGORY, item.categoryId)
+                )
+            } else {
+                reallyOpen(item)
+            }
+        }
+        if (Parental.isCategoryLocked(this, item.categoryId)) PinDialog.ask(this) { abrir() } else abrir()
+    }
+
+    private fun reallyOpen(item: ContentItem, forzarReproducir: Boolean = false) {
+        if (item.type != ContentType.MOVIE || forzarReproducir ||
+            Appearance.getMovieClick(this) == Appearance.CLICK_PLAY
+        ) {
             History.add(this, item)
         }
         // Las radios ya traen su URL; el resto se arma con los datos de la sesión
@@ -2721,7 +2789,7 @@ class MainActivity : AppCompatActivity() {
                 startActivity(liveIntent(item))
             }
             ContentType.MOVIE -> {
-                if (Appearance.getMovieClick(this) == Appearance.CLICK_DETAILS) {
+                if (!forzarReproducir && Appearance.getMovieClick(this) == Appearance.CLICK_DETAILS) {
                     startActivity(
                         Intent(this, MovieDetailActivity::class.java)
                             .putExtra(MovieDetailActivity.EXTRA_ID, item.id)

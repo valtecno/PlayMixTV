@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Velo del banner de Inicio: oscuro a la izquierda (donde va el texto) y
+     transparente a la derecha (donde va la carátula). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="0"
+        android:startColor="#F00A0A0F"
+        android:centerColor="#990A0A0F"
+        android:endColor="#1A0A0A0F" />
+</shape>

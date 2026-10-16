@@ -67,6 +67,16 @@ object HelpContent {
         ),
         Pregunta(
             Tema.PRIMEROS_PASOS,
+            "¿Qué es el banner grande de Inicio?",
+            "Arriba en Inicio hay un banner con las últimas películas y series agregadas, que cambia " +
+                "solo cada unos segundos. Toca \"Ver ahora\" para reproducir una película, \"Más info\" " +
+                "para ver su ficha, o \"Ver serie\" para abrir una serie. Con control remoto, la rotación " +
+                "se detiene mientras tienes un botón seleccionado.",
+            listOf("banner", "destacado", "inicio", "novedades", "estrenos", "ver ahora", "mas info",
+                "carátula grande", "caratula grande", "lo nuevo")
+        ),
+        Pregunta(
+            Tema.PRIMEROS_PASOS,
             "¿Qué son Sistema L y Sistema XL?",
             "Son los dos servidores de PlayMix TV. Cada uno tiene su propio catálogo de canales, películas " +
                 "y series. El sistema se elige al iniciar sesión; para pasar al otro toca el ícono de " +
