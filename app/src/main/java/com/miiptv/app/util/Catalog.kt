@@ -419,15 +419,22 @@ object Catalog {
 
         // Copia vieja (o ninguna): se muestra lo guardado de inmediato mientras
         // el panel responde, y lo que llegue de la red lo reemplaza bloque a bloque.
+        //
+        // En un equipo débil se hace en fila (primero el disco, después la red):
+        // leer lo guardado y armar lo nuevo a la vez duplicaba el pico de memoria.
+        val enFila = DevicePerf.esGamaBaja(ctx)
         ioExecutor.execute {
             val leido = leerDeDiscoPuro(ctx)
-            if (leido != null) ui.post {
+            ui.post {
                 if (ronda != gen || !loading) return@post
-                aplicarLeidoDeDisco(ctx, leido)
-                broadcast(true)
+                if (leido != null) {
+                    aplicarLeidoDeDisco(ctx, leido)
+                    broadcast(true)
+                }
+                if (enFila) descargar(ctx)
             }
         }
-        descargar(ctx)
+        if (!enFila) descargar(ctx)
     }
 
     /** Lanza la descarga en paralelo de los tres bloques. */
