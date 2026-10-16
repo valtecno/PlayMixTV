@@ -448,6 +448,8 @@
     <string name="zap_next">Canal siguiente en la lista</string>
     <string name="zap_last">Volver al último canal visto</string>
     <string name="zap_no_last">Aún no cambiaste de canal</string>
+    <string name="reconnecting">Reconectando… (%1$d/%2$d)</string>
+    <string name="reconnect_no_internet">Sin internet, esperando la conexión…</string>
     <string name="sleep_timer">Temporizador para dormir</string>
     <string name="sleep_off">Desactivado</string>
     <string name="sleep_minutes">%1$d minutos</string>

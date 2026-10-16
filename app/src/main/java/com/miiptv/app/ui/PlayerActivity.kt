@@ -113,6 +113,7 @@ class PlayerActivity : AppCompatActivity() {
         const val EXTRA_RADIO_SOURCE = "extra_radio_source"
 
         private const val MAX_RETRIES = 5
+        private const val MAX_ESPERAS_SIN_INTERNET = 20
         private const val NEXT_COUNTDOWN_SECONDS = 8
         private const val ACTION_PIP_PLAY_PAUSE = "com.miiptv.app.PIP_PLAY_PAUSE"
     }
@@ -436,6 +437,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        reconexionHandler.removeCallbacksAndMessages(null)
         ui.removeCallbacksAndMessages(null)
         stopEqualizer()
         unregisterPipReceiver()
@@ -1692,6 +1694,26 @@ class PlayerActivity : AppCompatActivity() {
 
     private fun hayInternet(): Boolean = ErrorDiagnosis.hayInternet(this)
 
+    /** Handler propio: los `ui.removeCallbacksAndMessages(null)` del resto no deben cancelar la reconexión. */
+    private val reconexionHandler = Handler(Looper.getMainLooper())
+    private var esperasSinInternet = 0
+
+    private fun programarReconexion(exo: ExoPlayer, url: String, esperaMs: Long) {
+        reconexionHandler.removeCallbacksAndMessages(null)
+        reconexionHandler.postDelayed({
+            // Si la pantalla se cerró o ya se cambió de canal/episodio (otro reproductor), no se toca nada.
+            if (isFinishing || isDestroyed || player !== exo) return@postDelayed
+            // En películas y episodios se vuelve al mismo minuto; antes un
+            // corte de red a mitad de película la reiniciaba desde 0.
+            val retomar = if (isRadio || itemType == ContentType.LIVE)
+                androidx.media3.common.C.TIME_UNSET else exo.currentPosition
+            exo.stop()
+            exo.setMediaItem(MediaItem.fromUri(url), retomar)
+            exo.prepare()
+            exo.playWhenReady = true
+        }, esperaMs)
+    }
+
     private fun startPlayback(url: String, resumeAtMs: Long) {
         val (minBuffer, maxBuffer) = PlayerPrefs.bufferMillis(PlayerPrefs.getBuffer(this))
         val loadControl = DefaultLoadControl.Builder()
@@ -1796,7 +1818,10 @@ class PlayerActivity : AppCompatActivity() {
                 override fun onPlaybackStateChanged(state: Int) {
                     binding.progressBar.visibility =
                         if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
-                    if (state == Player.STATE_READY) retries = 0
+                    if (state == Player.STATE_READY) {
+                        retries = 0
+                        esperasSinInternet = 0
+                    }
 
                     // Fin del episodio: encadenar con el siguiente
                     if (state == Player.STATE_ENDED &&
@@ -1854,17 +1879,30 @@ class PlayerActivity : AppCompatActivity() {
                     // cuenta como una conexión más: se muestra el motivo y se para.
                     val rechazoDelPanel = ErrorDiagnosis.causaDePlayback(this@PlayerActivity, error) ==
                         ErrorDiagnosis.Causa.LIMITE_O_VENCIDA
-                    if (!rechazoDelPanel && PlayerPrefs.getAutoReconnect(this@PlayerActivity) && retries < MAX_RETRIES) {
+                    val reconectar = !rechazoDelPanel &&
+                        PlayerPrefs.getAutoReconnect(this@PlayerActivity)
+                    val sinRed = !hayInternet()
+                    if (reconectar && sinRed && esperasSinInternet < MAX_ESPERAS_SIN_INTERNET) {
+                        // Sin internet no tiene sentido gastar intentos: se espera a que
+                        // vuelva la conexión (hasta ~1 minuto) y recién ahí se reintenta.
+                        esperasSinInternet++
+                        binding.progressBar.visibility = View.VISIBLE
+                        if (esperasSinInternet == 1) {
+                            Toast.makeText(this@PlayerActivity, R.string.reconnect_no_internet, Toast.LENGTH_SHORT).show()
+                        }
+                        programarReconexion(exo, url, 3_000L)
+                    } else if (reconectar && retries < MAX_RETRIES) {
                         retries++
                         binding.progressBar.visibility = View.VISIBLE
-                        // En películas y episodios se vuelve al mismo minuto; antes un
-                        // corte de red a mitad de película la reiniciaba desde 0.
-                        val retomar = if (isRadio || itemType == ContentType.LIVE)
-                            androidx.media3.common.C.TIME_UNSET else exo.currentPosition
-                        exo.stop()
-                        exo.setMediaItem(MediaItem.fromUri(url), retomar)
-                        exo.prepare()
-                        exo.playWhenReady = true
+                        Toast.makeText(
+                            this@PlayerActivity,
+                            getString(R.string.reconnecting, retries, MAX_RETRIES),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        // Espera creciente (1,5 / 3 / 4,5 / 6 / 6 s): reintentar de golpe
+                        // gastaba los cinco intentos en un segundo con un corte corto, y
+                        // cada intento cuenta como una conexión más para el panel.
+                        programarReconexion(exo, url, (retries * 1_500L).coerceAtMost(6_000L))
                     } else {
                         binding.progressBar.visibility = View.GONE
                         Snackbar.make(
