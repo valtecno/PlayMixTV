@@ -402,6 +402,14 @@ object HelpContent {
             listOf("idioma predeterminado", "audio preferido", "subtitulos fijos", "idioma default")
         ),
         Pregunta(
+            Tema.CANALES,
+            "¿Puedo abrir la app directo en el último canal?",
+            "Sí. Ve a Ajustes → Reproducción y activa Abrir en el último canal al iniciar. Al abrir la app " +
+                "(una vez por arranque) salta directo al canal que viste por última vez. No funciona con el " +
+                "perfil Niños ni con canales de categorías bloqueadas.",
+            listOf("ultimo canal", "abrir directo", "iniciar", "arrancar", "ultimo visto", "tele normal")
+        ),
+        Pregunta(
             Tema.CUENTA,
             "¿Cómo actualizo el contenido?",
             "Toca la flecha circular amarilla de la barra superior (Actualizar) o ve a Ajustes → " +

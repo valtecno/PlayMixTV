@@ -64,6 +64,7 @@ import com.miiptv.app.util.EpgReminder
 import com.miiptv.app.util.RadioCatalog
 import com.miiptv.app.util.Servers
 import com.miiptv.app.util.PinDialog
+import com.miiptv.app.util.PlayerPrefs
 import com.miiptv.app.util.UpdateDialog
 import com.miiptv.app.util.applyBrandGradient
 import com.squareup.picasso.Picasso
@@ -1119,6 +1120,7 @@ class MainActivity : AppCompatActivity() {
         if (!isFinishing && !isDestroyed && section == Section.HOME) {
             showHome()
         }
+        abrirUltimoCanal()
         // La descarga falló pero hay contenido guardado: se avisa que es la copia local.
         if (!cargando && !isFinishing && !isDestroyed && Catalog.lastError != null && !Catalog.isEmpty) {
             Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
@@ -2995,7 +2997,30 @@ class MainActivity : AppCompatActivity() {
      * entradas revienta el límite de tamaño de una transacción Binder
      * (TransactionTooLargeException) y la app se cae al abrir el reproductor.
      */
-    private fun liveIntent(item: ContentItem): Intent {
+    /**
+     * Opción "Abrir en el último canal al iniciar": al arrancar la app, apenas
+     * hay catálogo, salta directo al canal que se vio por última vez. Solo una
+     * vez por arranque del proceso, y nunca con el perfil Niños, con la
+     * categoría bloqueada por control parental o si el canal ya no existe.
+     */
+    private fun abrirUltimoCanal() {
+        if (ultimoCanalProcesado || isFinishing || isDestroyed) return
+        if (!PlayerPrefs.getOpenLastChannel(this)) { ultimoCanalProcesado = true; return }
+        if (!Catalog.isFor(this) || Catalog.live.isEmpty()) {
+            if (!Catalog.isLoading) ultimoCanalProcesado = true
+            return
+        }
+        ultimoCanalProcesado = true
+        if (Profiles.active(this)?.isKids == true) return
+        val id = PlayerPrefs.getLastChannelId(this)
+        if (id <= 0) return
+        val item = Catalog.live.firstOrNull { it.id == id } ?: return
+        if (Parental.isCategoryLocked(this, item.categoryId)) return
+        History.add(this, item)
+        startActivity(liveIntent(item, Catalog.live.filter { it.categoryId == item.categoryId }))
+    }
+
+    private fun liveIntent(item: ContentItem, base: List<ContentItem> = currentItems): Intent {
         val intent = Intent(this, PlayerActivity::class.java)
             .putExtra(PlayerActivity.EXTRA_URL, Session.liveStreamUrl(this, item.id))
             .putExtra(PlayerActivity.EXTRA_TITLE, item.name)
@@ -3008,7 +3033,7 @@ class MainActivity : AppCompatActivity() {
             // canal desde Favoritos o Historial no debe mostrarlo.
             .putExtra(PlayerActivity.EXTRA_EPG_ALLOWED, section == Section.LIVE || section == Section.PPV)
 
-        val lista = currentItems.filter { it.type == ContentType.LIVE }
+        val lista = base.filter { it.type == ContentType.LIVE }
         val actual = lista.indexOfFirst { it.id == item.id }
         if (actual < 0 || lista.size < 2) return intent
 
@@ -3322,6 +3347,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private companion object {
+        /** Ya se intentó abrir el último canal en este arranque del proceso. */
+        var ultimoCanalProcesado = false
+
         /** Espera antes de conectar la previsualización, al recorrer la lista. */
         const val PREVIEW_DELAY_MS = 800L
 

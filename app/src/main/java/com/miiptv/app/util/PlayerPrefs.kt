@@ -38,6 +38,12 @@ object PlayerPrefs {
     fun getAutoPlayNext(c: Context) = prefs(c).getBoolean("autoplay_next", true)
     fun setAutoPlayNext(c: Context, v: Boolean) = prefs(c).edit().putBoolean("autoplay_next", v).apply()
 
+    // ---- Abrir directo en el último canal visto al iniciar la app ----
+    fun getOpenLastChannel(c: Context) = prefs(c).getBoolean("open_last_channel", false)
+    fun setOpenLastChannel(c: Context, v: Boolean) = prefs(c).edit().putBoolean("open_last_channel", v).apply()
+    fun getLastChannelId(c: Context) = prefs(c).getInt("last_channel_id", 0)
+    fun setLastChannelId(c: Context, id: Int) = prefs(c).edit().putInt("last_channel_id", id).apply()
+
     fun getKeepScreenOn(c: Context) = prefs(c).getBoolean("keep_screen_on", true)
     fun setKeepScreenOn(c: Context, v: Boolean) = prefs(c).edit().putBoolean("keep_screen_on", v).apply()
 

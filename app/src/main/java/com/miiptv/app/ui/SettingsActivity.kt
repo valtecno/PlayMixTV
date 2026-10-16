@@ -74,6 +74,12 @@ class SettingsActivity : AppCompatActivity() {
         }
         binding.rowAutoNext.setOnClickListener { binding.swAutoNext.toggle() }
 
+        binding.swOpenLast.isChecked = PlayerPrefs.getOpenLastChannel(this)
+        binding.swOpenLast.setOnCheckedChangeListener { _, checked ->
+            PlayerPrefs.setOpenLastChannel(this, checked)
+        }
+        binding.rowOpenLast.setOnClickListener { binding.swOpenLast.toggle() }
+
         binding.swScreenOn.isChecked = PlayerPrefs.getKeepScreenOn(this)
         binding.swScreenOn.setOnCheckedChangeListener { _, checked ->
             PlayerPrefs.setKeepScreenOn(this, checked)

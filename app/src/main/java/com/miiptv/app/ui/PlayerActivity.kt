@@ -1715,6 +1715,11 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun startPlayback(url: String, resumeAtMs: Long) {
+        // Recuerda el último canal en vivo (opción "Abrir en el último canal").
+        if (itemType == ContentType.LIVE && !isRadio) {
+            val id = playlistIds.getOrNull(playlistIndex) ?: intent.getIntExtra(EXTRA_ITEM_ID, 0)
+            if (id > 0) PlayerPrefs.setLastChannelId(this, id)
+        }
         val (minBuffer, maxBuffer) = PlayerPrefs.bufferMillis(PlayerPrefs.getBuffer(this))
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(

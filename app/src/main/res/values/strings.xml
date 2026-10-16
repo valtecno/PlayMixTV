@@ -198,6 +198,7 @@
     <string name="settings_account">Cuenta</string>
     <string name="setting_buffer">Buffer</string>
     <string name="setting_aspect">Relación de aspecto</string>
+    <string name="setting_open_last_channel">Abrir en el último canal al iniciar</string>
     <string name="setting_reconnect">Reconectar automáticamente</string>
     <string name="setting_screen_on">Mantener pantalla encendida</string>
     <string name="setting_refresh">Actualizar catálogo</string>
