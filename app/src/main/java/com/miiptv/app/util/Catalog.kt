@@ -170,6 +170,14 @@ object Catalog {
     private val ioExecutor = Executors.newSingleThreadExecutor()
     private const val CACHE_PREFS = "miiptv_catalog_cache"
     private const val CACHE_KEY_SERVER = "server"
+    private const val CACHE_KEY_SAVED_AT = "saved_at"
+
+    /**
+     * Número de "ronda" de carga. Sube con cada ensureLoaded real y con cada
+     * hardReset, así una lectura de disco que termina tarde (cuando ya se
+     * cerró sesión, cambió el sistema o empezó otra carga) se descarta sola.
+     */
+    private var gen = 0
 
     private fun archivoCache(context: Context, bloque: String): File =
         File(context.filesDir, "catalog_cache_$bloque.json")
@@ -208,17 +216,32 @@ object Catalog {
         context: Context,
         liveSnap: List<ContentItem>,
         moviesSnap: List<ContentItem>,
-        seriesSnap: List<ContentItem>
+        seriesSnap: List<ContentItem>,
+        completo: Boolean
     ) {
         runCatching {
             val type = object : TypeToken<List<ContentItem>>() {}.type
-            escribirBloque(context, "live", liveSnap, type)
-            escribirBloque(context, "movies", moviesSnap, type)
-            escribirBloque(context, "series", seriesSnap, type)
-            context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE).edit()
+            // Un bloque vacío es un fallo disfrazado: no pisa la copia buena
+            // que ya hubiera en disco.
+            if (liveSnap.isNotEmpty()) escribirBloque(context, "live", liveSnap, type)
+            if (moviesSnap.isNotEmpty()) escribirBloque(context, "movies", moviesSnap, type)
+            if (seriesSnap.isNotEmpty()) escribirBloque(context, "series", seriesSnap, type)
+            val edit = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE).edit()
                 .putString(CACHE_KEY_SERVER, "${Session.server(context)}|${Session.username(context)}")
-                .apply()
+            // Solo una descarga completa y sin errores cuenta como "reciente":
+            // si faltó un bloque, la próxima apertura vuelve a pedirlo al panel.
+            if (completo) edit.putLong(CACHE_KEY_SAVED_AT, System.currentTimeMillis())
+            else edit.remove(CACHE_KEY_SAVED_AT)
+            edit.apply()
         }
+    }
+
+    /** Cuándo se guardó por última vez un catálogo completo en disco (0 = nunca / de otro sistema). */
+    private fun guardadoEn(context: Context): Long {
+        val prefs = context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE)
+        val stamp = prefs.getString(CACHE_KEY_SERVER, null) ?: return 0L
+        if (stamp != "${Session.server(context)}|${Session.username(context)}") return 0L
+        return prefs.getLong(CACHE_KEY_SAVED_AT, 0L)
     }
 
     /**
@@ -366,6 +389,49 @@ object Catalog {
         // sin borrar la caché de disco (borrarla es E/S y bloquearía la pantalla).
         noCache = if (force) "no-cache" else null
 
+        val ronda = ++gen
+        val guardado = if (force) 0L else guardadoEn(ctx)
+
+        // Copia en disco reciente: se usa tal cual, sin molestar al panel. Es lo
+        // que hace que abrir la app de nuevo sea instantáneo incluso con un
+        // catálogo enorme. Si la lectura falla, se baja del panel como siempre.
+        if (guardado > 0 && System.currentTimeMillis() - guardado < TTL_MS) {
+            ioExecutor.execute {
+                val leido = leerDeDiscoPuro(ctx)
+                ui.post {
+                    if (ronda != gen || !loading) return@post
+                    val completo = leido != null && leido.live.isNotEmpty() &&
+                        leido.movies.isNotEmpty() && leido.series.isNotEmpty()
+                    if (leido != null && completo) {
+                        aplicarLeidoDeDisco(ctx, leido)
+                        loadedAt = guardado
+                        loading = false
+                        hasCompletedLoad = true
+                        noCache = null
+                        broadcast(false)
+                    } else {
+                        descargar(ctx)
+                    }
+                }
+            }
+            return
+        }
+
+        // Copia vieja (o ninguna): se muestra lo guardado de inmediato mientras
+        // el panel responde, y lo que llegue de la red lo reemplaza bloque a bloque.
+        ioExecutor.execute {
+            val leido = leerDeDiscoPuro(ctx)
+            if (leido != null) ui.post {
+                if (ronda != gen || !loading) return@post
+                aplicarLeidoDeDisco(ctx, leido)
+                broadcast(true)
+            }
+        }
+        descargar(ctx)
+    }
+
+    /** Lanza la descarga en paralelo de los tres bloques. */
+    private fun descargar(ctx: Context) {
         // Los tres bloques salen a la vez. El panel Xtream sí limita conexiones
         // simultáneas por cuenta, pero el límite típico (varias a la vez) alcanza
         // de sobra para tres pedidos; lo que había que evitar era tener varias
@@ -485,7 +551,8 @@ object Catalog {
                 val liveSnap = live.toList()
                 val moviesSnap = movies.toList()
                 val seriesSnap = series.toList()
-                ioExecutor.execute { saveToDisk(app, liveSnap, moviesSnap, seriesSnap) }
+                val completo = lastError == null
+                ioExecutor.execute { saveToDisk(app, liveSnap, moviesSnap, seriesSnap, completo) }
             }
             broadcast(false)
         }
@@ -550,6 +617,7 @@ object Catalog {
     }
 
     private fun hardReset() {
+        gen++
         current.forEach { runCatching { it.cancel() } }
         current.clear()
         pending = 0

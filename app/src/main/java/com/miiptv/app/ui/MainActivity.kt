@@ -1115,9 +1115,13 @@ class MainActivity : AppCompatActivity() {
 
     // ---------------- Carrusel de novedades ----------------
 
-    private val catalogListener: (Boolean) -> Unit = { _ ->
+    private val catalogListener: (Boolean) -> Unit = { cargando ->
         if (!isFinishing && !isDestroyed && section == Section.HOME) {
             showHome()
+        }
+        // La descarga falló pero hay contenido guardado: se avisa que es la copia local.
+        if (!cargando && !isFinishing && !isDestroyed && Catalog.lastError != null && !Catalog.isEmpty) {
+            Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1221,29 +1225,9 @@ class MainActivity : AppCompatActivity() {
         val tocaRefrescoDelDia = DailyRefresh.toca(this)
         if (tocaRefrescoDelDia) DailyRefresh.marcarHecho(this)
 
-        // Si el catálogo está vacío y hay datos guardados en disco, los cargamos
-        // de inmediato para que la pantalla no quede en blanco mientras baja el
-        // nuevo. El usuario ve contenido al instante aunque no haya conexión.
-        //
-        // loadFromDiskAsync (no loadFromDisk) a propósito: parsear el catálogo
-        // entero -en un panel grande, decenas de miles de ítems- en el hilo
-        // principal, justo al abrir la app, es la clase de ráfaga que puede
-        // hacer que el sistema mate el proceso por memoria en equipos con poca
-        // RAM (ver el comentario largo en Catalog.loadFromDisk). Como ahora es
-        // asíncrono, el resultado puede llegar después de que esta pantalla ya
-        // se haya ido: de ahí el resguardo isFinishing/isDestroyed antes de
-        // tocar cualquier vista.
-        if (Catalog.isEmpty) {
-            Catalog.loadFromDiskAsync(this) { cargoDeDisco ->
-                if (isFinishing || isDestroyed) return@loadFromDiskAsync
-                if (cargoDeDisco) {
-                    Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
-                }
-                Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
-            }
-        } else {
-            Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
-        }
+        // Catalog ya sirve primero lo guardado en disco (al instante, sin pedir
+        // nada al panel si es reciente) y actualiza en segundo plano.
+        Catalog.ensureLoaded(this, force = tocaRefrescoDelDia, onUpdate = catalogListener)
 
         // Y se deja programado el corte de esta noche por si la app queda abierta.
         programarRefrescoDiario()

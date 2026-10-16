@@ -405,7 +405,9 @@ object HelpContent {
             Tema.CUENTA,
             "¿Cómo actualizo el contenido?",
             "Toca la flecha circular amarilla de la barra superior (Actualizar) o ve a Ajustes → " +
-                "Actualizar contenido. Igual, la app baja el catálogo nuevo sola la primera vez que la abres cada día.",
+                "Actualizar contenido. Igual, la app baja el catálogo nuevo sola la primera vez que la abres cada día. " +
+                "Si la cerraste hace menos de 30 minutos, abre al instante con lo guardado; si hace más, muestra " +
+                "lo guardado y lo actualiza en segundo plano.",
             listOf("actualizar", "refrescar", "nuevo contenido", "recargar", "catalogo")
         ),
         Pregunta(
