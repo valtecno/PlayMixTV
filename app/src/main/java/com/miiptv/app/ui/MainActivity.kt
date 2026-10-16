@@ -1044,6 +1044,14 @@ class MainActivity : AppCompatActivity() {
         hero.setMovil(DeviceMode.isMobile(this))
         hero.submit(Catalog.newestMovies(this, limit = 6), Catalog.newestSeries(this, limit = 6))
         layoutHero(hero.hasItems)
+        // En móvil, con banner el fondo de marca sobra: el banner ocupa todo y
+        // la imagen de atrás le restaba contraste. Sin banner (catálogo aún
+        // vacío) se mantiene la imagen de marca.
+        if (DeviceMode.isMobile(this)) {
+            val marca = if (hero.hasItems) View.GONE else View.VISIBLE
+            binding.ivHomeBackdrop.visibility = marca
+            binding.homeBackdropScrim.visibility = marca
+        }
         if (hero.hasItems) hero.start()
     }
 
@@ -1061,11 +1069,10 @@ class MainActivity : AppCompatActivity() {
         binding.homeArea.doOnLayout {
             val d = resources.displayMetrics.density
             val movil = DeviceMode.isMobile(this)
-            // Móvil: borde a borde y alto (los carruseles no se usan ahí).
+            // Móvil: ocupa todo el Inicio (los carruseles no se usan ahí).
             // TV: tarjeta con margen, 40 % del alto.
             val alto = if (movil) {
-                (binding.homeArea.height * 0.62f).toInt()
-                    .coerceIn((220 * d).toInt(), (480 * d).toInt())
+                binding.homeArea.height   // todo el Inicio, del menú al borde inferior
             } else {
                 (binding.homeArea.height * 0.40f).toInt()
                     .coerceIn((120 * d).toInt(), (260 * d).toInt())

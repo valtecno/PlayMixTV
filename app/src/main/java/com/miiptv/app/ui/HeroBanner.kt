@@ -101,7 +101,7 @@ class HeroBanner(
             b.heroScrim.setBackgroundResource(R.drawable.bg_hero_scrim_mobile)
             b.ivHeroPoster.visibility = View.GONE
             b.heroContent.gravity = android.view.Gravity.BOTTOM
-            b.heroContent.setPadding((18 * d).toInt(), (18 * d).toInt(), (18 * d).toInt(), (22 * d).toInt())
+            b.heroContent.setPadding((20 * d).toInt(), (20 * d).toInt(), (20 * d).toInt(), (32 * d).toInt())
             b.tvHeroTitle.textSize = 26f
         } else {
             b.heroBanner.setBackgroundResource(R.drawable.bg_chip_outline)
