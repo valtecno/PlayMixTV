@@ -28,6 +28,7 @@ class HeroBanner(
     private val ui = Handler(Looper.getMainLooper())
     private var items: List<ContentItem> = emptyList()
     private var index = 0
+    private var movil = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -79,6 +80,41 @@ class HeroBanner(
 
     val hasItems: Boolean get() = items.isNotEmpty()
 
+    /**
+     * Móvil: la carátula llena el banner de borde a borde (sin la carátula
+     * chica al costado) y el texto se apoya abajo sobre un velo oscuro.
+     * TV: el banner de siempre, con carátula al costado.
+     */
+    fun setMovil(esMovil: Boolean) {
+        if (movil == esMovil) return
+        movil = esMovil
+        aplicarModo()
+        if (items.isNotEmpty()) render(animate = false)
+    }
+
+    private fun aplicarModo() {
+        val d = b.root.resources.displayMetrics.density
+        if (movil) {
+            b.heroBanner.background = null
+            b.heroBanner.clipToOutline = false
+            b.ivHeroBackdrop.alpha = 1f
+            b.heroScrim.setBackgroundResource(R.drawable.bg_hero_scrim_mobile)
+            b.ivHeroPoster.visibility = View.GONE
+            b.heroContent.gravity = android.view.Gravity.BOTTOM
+            b.heroContent.setPadding((18 * d).toInt(), (18 * d).toInt(), (18 * d).toInt(), (22 * d).toInt())
+            b.tvHeroTitle.textSize = 26f
+        } else {
+            b.heroBanner.setBackgroundResource(R.drawable.bg_chip_outline)
+            b.heroBanner.clipToOutline = true
+            b.ivHeroBackdrop.alpha = 0.35f
+            b.heroScrim.setBackgroundResource(R.drawable.bg_hero_scrim)
+            b.ivHeroPoster.visibility = View.VISIBLE
+            b.heroContent.gravity = android.view.Gravity.CENTER_VERTICAL
+            b.heroContent.setPadding((14 * d).toInt(), (14 * d).toInt(), (14 * d).toInt(), (14 * d).toInt())
+            b.tvHeroTitle.textSize = 22f
+        }
+    }
+
     fun start() {
         ui.removeCallbacks(tick)
         if (items.size > 1) ui.postDelayed(tick, DELAY_MS)
@@ -108,10 +144,12 @@ class HeroBanner(
 
         Picasso.get().cancelRequest(b.ivHeroPoster)
         Picasso.get().cancelRequest(b.ivHeroBackdrop)
+        if (!movil) {
+            Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
+                .resize(600, 0).onlyScaleDown().into(b.ivHeroPoster)
+        }
         Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
-            .resize(600, 0).onlyScaleDown().into(b.ivHeroPoster)
-        Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
-            .resize(600, 0).onlyScaleDown().into(b.ivHeroBackdrop)
+            .resize(if (movil) 1000 else 600, 0).onlyScaleDown().into(b.ivHeroBackdrop)
 
         if (animate) {
             b.heroContent.alpha = 0f

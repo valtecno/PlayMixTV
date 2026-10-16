@@ -1041,6 +1041,7 @@ class MainActivity : AppCompatActivity() {
     /** Carga el banner con lo último agregado y lo muestra u oculta según haya algo. */
     private fun actualizarHero() {
         if (!::hero.isInitialized) return
+        hero.setMovil(DeviceMode.isMobile(this))
         hero.submit(Catalog.newestMovies(this, limit = 6), Catalog.newestSeries(this, limit = 6))
         layoutHero(hero.hasItems)
         if (hero.hasItems) hero.start()
@@ -1059,10 +1060,24 @@ class MainActivity : AppCompatActivity() {
         }
         binding.homeArea.doOnLayout {
             val d = resources.displayMetrics.density
-            val alto = (binding.homeArea.height * 0.40f).toInt()
-                .coerceIn((120 * d).toInt(), (260 * d).toInt())
+            val movil = DeviceMode.isMobile(this)
+            // Móvil: borde a borde y alto (los carruseles no se usan ahí).
+            // TV: tarjeta con margen, 40 % del alto.
+            val alto = if (movil) {
+                (binding.homeArea.height * 0.62f).toInt()
+                    .coerceIn((220 * d).toInt(), (480 * d).toInt())
+            } else {
+                (binding.homeArea.height * 0.40f).toInt()
+                    .coerceIn((120 * d).toInt(), (260 * d).toInt())
+            }
             val lp = binding.heroBanner.layoutParams as FrameLayout.LayoutParams
             lp.height = alto
+            if (movil) {
+                lp.setMargins(0, 0, 0, 0)
+            } else {
+                val m10 = (10 * d).toInt()
+                lp.setMargins(m10, (4 * d).toInt(), m10, 0)
+            }
             binding.heroBanner.layoutParams = lp
             val sec = binding.homeSections.layoutParams as FrameLayout.LayoutParams
             sec.topMargin = alto + lp.topMargin + (6 * d).toInt()
