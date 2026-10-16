@@ -107,7 +107,8 @@ object RemoteControl {
         view.scaleX = 1f
         view.scaleY = 1f
         view.translationZ = 0f
-        if (!escalar) {
+        // En un equipo débil el crecimiento animado de cada tarjeta se nota en la fluidez.
+        if (!escalar || DevicePerf.esGamaBaja(view.context)) {
             view.onFocusChangeListener = null
             return
         }

@@ -1072,7 +1072,7 @@ class MainActivity : AppCompatActivity() {
         val sk = binding.homeSkeleton
         if (mostrar) {
             if (sk.visibility != View.VISIBLE) sk.visibility = View.VISIBLE
-            if (esqueletoAnim == null) {
+            if (esqueletoAnim == null && !com.miiptv.app.util.DevicePerf.esGamaBaja(this)) {
                 esqueletoAnim = android.animation.ObjectAnimator.ofFloat(sk, View.ALPHA, 0.35f, 1f).apply {
                     duration = 900
                     repeatMode = android.animation.ValueAnimator.REVERSE

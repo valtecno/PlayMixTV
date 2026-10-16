@@ -33,11 +33,14 @@
         android:layout_height="match_parent"
         android:visibility="gone">
 
+        <!-- La imagen se carga por código solo en modo radio (ver PlayerActivity):
+             como src= se decodificaba entera (1920x1080, ~8 MB) al abrir CUALQUIER
+             video, aunque este contenedor esté oculto. -->
         <ImageView
+            android:id="@+id/ivRadioBg"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
-            android:src="@drawable/bg_radio"
             android:contentDescription="@null" />
 
         <!-- Oscurece el pie para que la barra de reproducción se despegue -->

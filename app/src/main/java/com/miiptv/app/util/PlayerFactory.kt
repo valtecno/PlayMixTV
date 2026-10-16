@@ -34,6 +34,19 @@ object PlayerFactory {
         .setConstantBitrateSeekingEnabled(true)
 
     /**
+     * Buffer para reproductores secundarios (vista previa, multipantalla). El
+     * de ExoPlayer por defecto puede reservar más de 100 MB POR reproductor, y
+     * en multipantalla hay cuatro a la vez: en un equipo con poca RAM eso era
+     * pedir a gritos que el sistema matara la app.
+     */
+    fun loadControlAcotado(context: Context, bytes: Int = 12 * 1024 * 1024): LoadControl =
+        androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(2_500, 15_000, 1_500, 2_500)
+            .setTargetBufferBytes(bytes)
+            .setPrioritizeTimeOverSizeThresholds(false)
+            .build()
+
+    /**
      * @param handleAudioFocus dejar en false cuando hay varios reproductores a la vez
      *        (multi-pantalla), porque si todos piden el foco se pausan entre ellos.
      * @param applyLanguagePrefs aplica el idioma de audio y subtítulos elegidos en
@@ -102,7 +115,7 @@ object PlayerFactory {
             .setSeekForwardIncrementMs(10_000)
             .setSeekBackIncrementMs(10_000)
 
-        if (loadControl != null) builder.setLoadControl(loadControl)
+        builder.setLoadControl(loadControl ?: loadControlAcotado(context))
 
         return builder.build().apply {
             // Con la pantalla apagada (radio y audio en segundo plano) el CPU y el

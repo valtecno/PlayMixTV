@@ -49,6 +49,7 @@ import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.DevicePerf
 import com.miiptv.app.util.SleepTimer
 import com.miiptv.app.util.CastHelper
 import com.miiptv.app.util.Catalog
@@ -1292,6 +1293,8 @@ class PlayerActivity : AppCompatActivity() {
 
         binding.playerView.visibility = View.GONE
         binding.radioBackdrop.visibility = View.VISIBLE
+        com.squareup.picasso.Picasso.get().load(R.drawable.bg_radio)
+            .fit().centerCrop().config(android.graphics.Bitmap.Config.RGB_565).into(binding.ivRadioBg)
         binding.radioBar.visibility = View.VISIBLE
 
         // Sin video no hay subtítulos ni relación de aspecto que elegir
@@ -1720,14 +1723,20 @@ class PlayerActivity : AppCompatActivity() {
             val id = playlistIds.getOrNull(playlistIndex) ?: intent.getIntExtra(EXTRA_ITEM_ID, 0)
             if (id > 0) PlayerPrefs.setLastChannelId(this, id)
         }
-        val (minBuffer, maxBuffer) = PlayerPrefs.bufferMillis(PlayerPrefs.getBuffer(this))
+        val (minBuffer, maxBufferElegido) = PlayerPrefs.bufferMillis(PlayerPrefs.getBuffer(this))
+        // En un equipo débil el buffer "Alto" (2 minutos) no entra en memoria: se acota.
+        val gamaBaja = DevicePerf.esGamaBaja(this)
+        val maxBuffer = if (gamaBaja) maxBufferElegido.coerceAtMost(40_000) else maxBufferElegido
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                minBuffer,
+                minOf(minBuffer, maxBuffer),
                 maxBuffer,
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
                 DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
             )
+            // Tope en bytes: sin esto, ExoPlayer reserva por defecto más de 100 MB.
+            .setTargetBufferBytes(DevicePerf.bufferMaxBytes(this))
+            .setPrioritizeTimeOverSizeThresholds(false)
             .build()
 
         player = PlayerFactory.build(

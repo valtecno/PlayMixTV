@@ -41,4 +41,19 @@ class PlayMixApp : Application() {
             }
         })
     }
+
+    /**
+     * El sistema avisa que falta memoria (o que la app quedó en segundo plano):
+     * se sueltan las imágenes decodificadas, que se recuperan del disco al volver.
+     */
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) ImageLoader.liberarMemoria()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        ImageLoader.liberarMemoria()
+    }
 }

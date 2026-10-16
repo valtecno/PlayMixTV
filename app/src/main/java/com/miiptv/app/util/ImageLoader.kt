@@ -45,6 +45,7 @@ object ImageLoader {
 
     @Volatile private var listo = false
     @Volatile private var discoCache: Cache? = null
+    @Volatile private var memoriaCache: LruCache? = null
 
     /** Nombre de la carpeta de la caché en disco, dentro de cacheDir. */
     const val CARPETA_DISCO = "picasso-imagenes"
@@ -109,7 +110,7 @@ object ImageLoader {
         return Picasso.Builder(context)
             .downloader(OkHttp3Downloader(cliente))
             .executor(hilos)
-            .memoryCache(LruCache(tamanoMemoria()))
+            .memoryCache(LruCache(tamanoMemoria(context)).also { memoriaCache = it })
             .build()
     }
 
@@ -120,10 +121,19 @@ object ImageLoader {
     }
 
     /**
-     * Un 20 % del heap para bitmaps ya decodificados (Picasso usa 15 %). Con
-     * largeHeap eso alcanza para volver a una lista recién vista sin
-     * redecodificar nada.
+     * Memoria para bitmaps ya decodificados: un 20 % del heap en un equipo
+     * normal (tope 96 MB) y solo un 10 % (tope 24 MB) en uno débil, donde
+     * quedarse con cientos de carátulas en RAM hacía que el sistema matara la
+     * app. Ver [DevicePerf].
      */
-    private fun tamanoMemoria(): Int =
-        (Runtime.getRuntime().maxMemory() / 5).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    private fun tamanoMemoria(context: Context): Int =
+        DevicePerf.memoriaImagenes(Runtime.getRuntime().maxMemory(), DevicePerf.esGamaBaja(context))
+
+    /**
+     * Suelta las imágenes que están en memoria (siguen en el disco). Se llama
+     * cuando el sistema avisa que falta memoria o que la app pasó a segundo plano.
+     */
+    fun liberarMemoria() {
+        runCatching { memoriaCache?.clear() }
+    }
 }

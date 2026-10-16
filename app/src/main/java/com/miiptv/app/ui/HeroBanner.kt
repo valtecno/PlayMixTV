@@ -30,13 +30,17 @@ class HeroBanner(
     private var index = 0
     private var movil = false
 
+    /** Equipo débil: rotación más lenta y sin fundido (menos decodificación y dibujo). */
+    private val gamaBaja = com.miiptv.app.util.DevicePerf.esGamaBaja(b.root.context)
+    private val delayMs get() = if (gamaBaja) 12_000L else DELAY_MS
+
     private val tick = object : Runnable {
         override fun run() {
             if (items.size > 1 && !b.heroBanner.hasFocus()) {
                 index = (index + 1) % items.size
                 render(animate = true)
             }
-            ui.postDelayed(this, DELAY_MS)
+            ui.postDelayed(this, delayMs)
         }
     }
 
@@ -117,7 +121,7 @@ class HeroBanner(
 
     fun start() {
         ui.removeCallbacks(tick)
-        if (items.size > 1) ui.postDelayed(tick, DELAY_MS)
+        if (items.size > 1) ui.postDelayed(tick, delayMs)
     }
 
     fun stop() = ui.removeCallbacks(tick)
@@ -151,7 +155,7 @@ class HeroBanner(
         Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
             .resize(if (movil) 1000 else 600, 0).onlyScaleDown().into(b.ivHeroBackdrop)
 
-        if (animate) {
+        if (animate && !gamaBaja) {
             b.heroContent.alpha = 0f
             b.heroContent.animate().alpha(1f).setDuration(350).start()
         } else {

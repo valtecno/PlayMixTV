@@ -31,7 +31,7 @@
                 android:layout_marginEnd="10dp"
                 android:adjustViewBounds="true"
                 android:contentDescription="@string/app_name"
-                android:src="@drawable/logo_playmix" />
+                android:src="@drawable/logo_playmix_chico" />
 
             <LinearLayout
                 android:layout_width="wrap_content"

@@ -64,8 +64,10 @@ class SeriesDetailActivity : AppCompatActivity() {
         DeviceMode.lockPortraitIfMobile(this)
         binding = ActivitySeriesDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        @Suppress("DEPRECATION")
-        overridePendingTransition(R.anim.detail_enter, R.anim.detail_exit)
+        if (!com.miiptv.app.util.DevicePerf.esGamaBaja(this)) {
+            @Suppress("DEPRECATION")
+            overridePendingTransition(R.anim.detail_enter, R.anim.detail_exit)
+        }
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
@@ -120,7 +122,9 @@ class SeriesDetailActivity : AppCompatActivity() {
     /** Fondo desenfocado con la misma carátula (ver BlurTransformation). */
     private fun cargarFondo(url: String?) {
         if (url.isNullOrBlank()) return
-        Picasso.get().load(url).transform(BlurTransformation()).into(binding.ivBackdrop)
+        // resize antes del desenfoque: sin esto se decodifica la carátula entera (varios MB)
+        Picasso.get().load(url).resize(256, 0).onlyScaleDown()
+            .transform(BlurTransformation()).into(binding.ivBackdrop)
     }
 
     /** Rellena la ficha con lo que mande el panel; lo que falte simplemente no se muestra. */
