@@ -408,6 +408,16 @@ object HelpContent {
                 "borrar continuar viendo", "vistas", "vaciar", "eliminar historial", "privacidad", "quitar de continuar")
         ),
         Pregunta(
+            Tema.PELICULAS,
+            "¿Cómo quito una sola película o serie de Continuar viendo o Vistas?",
+            "Mantén presionada su carátula (con control remoto, mantén apretado OK) y elige \"Quitar de " +
+                "Continuar viendo\" o \"Quitar de Vistas\". Solo se quita ese ítem, en tu perfil, y el " +
+                "cambio también se aplica en tus otros equipos. Para vaciar por tipo o todo, usa Ajustes → " +
+                "Mi perfil → Borrar actividad.",
+            listOf("quitar", "sacar", "borrar una", "eliminar una", "continuar viendo", "vistas",
+                "mantener presionado", "una sola", "quitar de continuar", "quitar de vistas")
+        ),
+        Pregunta(
             Tema.CUENTA,
             "¿Mis datos se guardan en Google?",
             "No. La app tiene desactivada la copia automática de Android a Google. Tus favoritos, " +

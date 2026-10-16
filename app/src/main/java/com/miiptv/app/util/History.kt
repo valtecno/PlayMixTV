@@ -19,6 +19,8 @@ object History {
     private const val KEY = "items"
     private const val KEY_CLEARED_AT = "borrado_en"
     private const val KEY_CLEARED_BY_TYPE = "borrado_por_tipo"
+    private const val KEY_ITEM_TOMBS = "borrados_items"
+    private const val MAX_TOMBS = 200
     private const val MAX = 60
     private val gson = Gson()
 
@@ -84,6 +86,32 @@ object History {
         return runCatching { gson.fromJson<Map<String, Long>>(json, tipo) }.getOrNull().orEmpty()
     }
 
+    /**
+     * Cuándo se sacó a mano cada ítem suelto ("TIPO:ID" -> epoch ms). Igual que
+     * las marcas de Continuar viendo: sin esto, el respaldo de otro equipo
+     * traería de vuelta el ítem recién borrado.
+     */
+    fun itemTombstones(context: Context): Map<String, Long> {
+        val json = prefs(context).getString(KEY_ITEM_TOMBS, null) ?: return emptyMap()
+        val tipo = object : TypeToken<Map<String, Long>>() {}.type
+        return runCatching { gson.fromJson<Map<String, Long>>(json, tipo) }.getOrNull().orEmpty()
+    }
+
+    private fun guardarItemTombs(context: Context, mapa: Map<String, Long>) {
+        val recortado = mapa.entries.sortedByDescending { it.value }.take(MAX_TOMBS)
+            .associate { it.key to it.value }
+        prefs(context).edit().putString(KEY_ITEM_TOMBS, gson.toJson(recortado)).apply()
+    }
+
+    /** Saca un solo ítem del historial y lo anota para que el respaldo lo respete. */
+    fun remove(context: Context, type: ContentType, id: Int) {
+        val key = uniqueKey(type, id)
+        val restantes = getAll(context).filterNot { uniqueKey(it.type, it.id) == key }
+        prefs(context).edit().putString(KEY, gson.toJson(restantes)).apply()
+        guardarItemTombs(context, itemTombstones(context) + (key to System.currentTimeMillis()))
+        DataSync.scheduleBackup(context)
+    }
+
     /** Fuerza releer del disco en la próxima consulta (al cambiar de perfil). */
     fun invalidate() { /* History no tiene caché en memoria; la clave cambia con el perfil. */ }
 
@@ -129,7 +157,8 @@ object History {
         context: Context,
         remoto: List<ContentItem>,
         remoteClearedAt: Long = 0L,
-        remoteClearedByType: Map<String, Long> = emptyMap()
+        remoteClearedByType: Map<String, Long> = emptyMap(),
+        remoteItemTombs: Map<String, Long> = emptyMap()
     ): List<ContentItem> {
         val local = getAll(context)
         val vaciadoCombinado = maxOf(clearedAt(context), remoteClearedAt)
@@ -143,9 +172,17 @@ object History {
         val extra = remoto.filterNot { uniqueKey(it.type, it.id) in clavesLocales }
         var combinado = (local + extra)
 
-        if (vaciadoCombinado > 0 || porTipo.isNotEmpty()) {
+        // Ítems sueltos sacados a mano: gana la marca más nueva de los dos equipos.
+        val tombs = HashMap(itemTombstones(context))
+        remoteItemTombs.forEach { (k, cuando) -> if (cuando > (tombs[k] ?: 0L)) tombs[k] = cuando }
+
+        if (vaciadoCombinado > 0 || porTipo.isNotEmpty() || tombs.isNotEmpty()) {
             combinado = combinado.filter {
-                val corte = maxOf(vaciadoCombinado, porTipo[it.type.toString()] ?: 0L)
+                val corte = maxOf(
+                    vaciadoCombinado,
+                    porTipo[it.type.toString()] ?: 0L,
+                    tombs[uniqueKey(it.type, it.id)] ?: 0L
+                )
                 corte == 0L || it.syncUpdatedAt > corte
             }
         }
@@ -156,6 +193,7 @@ object History {
             .putLong(KEY_CLEARED_AT, vaciadoCombinado)
             .putString(KEY_CLEARED_BY_TYPE, gson.toJson(porTipo))
             .apply()
+        guardarItemTombs(context, tombs)
         return combinado
     }
 }

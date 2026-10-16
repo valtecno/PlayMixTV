@@ -71,7 +71,9 @@ object DataSync {
         /** Última vez que se vació el historial en este equipo (ver History.clear), o 0. */
         val historialBorradoEn: Long = 0L,
         /** Cuándo se vació cada tipo del historial por separado (nombre del tipo -> epoch ms). */
-        val historialBorradoPorTipo: Map<String, Long> = emptyMap()
+        val historialBorradoPorTipo: Map<String, Long> = emptyMap(),
+        /** Ítems sueltos sacados del historial a mano ("TIPO:ID" -> epoch ms). */
+        val historialBorradosItems: Map<String, Long> = emptyMap()
     )
 
     private fun accountKey(context: Context): String {
@@ -176,7 +178,8 @@ object DataSync {
                 favoritosBorrados = Favorites.tombstones(context),
                 continuarBorrados = ContinueWatching.tombstones(context),
                 historialBorradoEn = History.clearedAt(context),
-                historialBorradoPorTipo = History.clearedByType(context)
+                historialBorradoPorTipo = History.clearedByType(context),
+                historialBorradosItems = History.itemTombstones(context)
             )
             val json = gson.toJson(payload)
             SyncApi.instance.guardar(cuenta = cuenta, datos = json).enqueue(object : Callback<SyncPostResponse> {
@@ -252,7 +255,8 @@ object DataSync {
                         History.mergeFromRemote(
                             context, remoto.historial.orEmpty(), remoto.historialBorradoEn ?: 0L,
                             // Blob viejo de la nube: el campo no existe y llega null
-                            remoto.historialBorradoPorTipo.orEmpty()
+                            remoto.historialBorradoPorTipo.orEmpty(),
+                            remoto.historialBorradosItems.orEmpty()
                         )
                         backupNow(context)
                     }

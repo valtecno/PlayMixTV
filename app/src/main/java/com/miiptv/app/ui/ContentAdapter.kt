@@ -57,6 +57,13 @@ class ContentAdapter(
     var epgEnabled: Boolean = false
 
     /**
+     * Pulsación larga personalizada (p. ej. "quitar de Continuar viendo").
+     * Si no es null, reemplaza a la de favoritos con el remoto y la habilita
+     * también con el dedo. Debe devolver true si consumió el gesto.
+     */
+    var onLongPress: ((ContentItem) -> Boolean)? = null
+
+    /**
      * Id de la radio que está sonando en preview (ver MainActivity.previewRadio).
      * Solo esa fila muestra el botón "Abrir"; se usa [setPreviewing] en vez de
      * asignar directo para no repintar la lista entera en cada tap.
@@ -306,6 +313,11 @@ class ContentAdapter(
             // a modo táctil, o una tarjeta reutilizada conservaría el listener.
             root.setOnLongClickListener(null)
             root.isLongClickable = false
+        }
+
+        onLongPress?.let { alMantener ->
+            root.setOnLongClickListener { alMantener(item) }
+            root.isLongClickable = true
         }
     }
 

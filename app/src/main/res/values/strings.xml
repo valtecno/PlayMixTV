@@ -439,6 +439,11 @@
     <string name="guide_empty">No hay canales en esta categoría.</string>
     <string name="guide_no_favorites">Aún no tienes canales favoritos. Elige una categoría arriba.</string>
     <string name="action_guide">Guía</string>
+    <string name="remove_from_continue">Quitar de Continuar viendo</string>
+    <string name="remove_from_watched">Quitar de Vistas</string>
+    <string name="fav_add_option">Agregar a favoritos</string>
+    <string name="fav_remove_option">Quitar de favoritos</string>
+    <string name="removed_from_list">Quitado de la lista</string>
     <string name="hero_play">▶  Ver ahora</string>
     <string name="hero_info">Más info</string>
     <string name="hero_open_series">Ver serie</string>

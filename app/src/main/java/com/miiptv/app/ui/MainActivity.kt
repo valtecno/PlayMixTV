@@ -507,6 +507,8 @@ class MainActivity : AppCompatActivity() {
         // Favoritos, bindEpgNow() igual lo filtra por ContentType.LIVE, así
         // que una película o serie favorita nunca dispara la consulta.
         adapter.epgEnabled = newSection == Section.LIVE || newSection == Section.PPV || newSection == Section.FAVORITES
+        // Cada pantalla que permite quitar ítems con pulsación larga lo vuelve a activar
+        adapter.onLongPress = null
         highlightNav()
         binding.tvEmpty.visibility = View.GONE
         binding.tvSectionTitle.visibility = View.GONE
@@ -1893,8 +1895,10 @@ class MainActivity : AppCompatActivity() {
 
         // "Continuar viendo" no es una categoría del panel: sale de lo que
         // la app guardó en el aparato.
+        adapter.onLongPress = null
         if (categoryId == CONTINUAR_ID) {
             setLoading(false)
+            adapter.onLongPress = { item -> preguntarQuitar(item, deContinuar = true); true }
             mostrarContenido(itemsContinuar(type))
             return
         }
@@ -2675,6 +2679,9 @@ class MainActivity : AppCompatActivity() {
         // esto es lo que hace que abrir una serie desde acá la retome en el
         // episodio pendiente en vez de en el primero (ver reallyOpen).
         currentCategoryId = if (espacioModo == EspacioModo.CONTINUAR) CONTINUAR_ID else null
+        val esContinuar = espacioModo == EspacioModo.CONTINUAR
+        val quitable: (ContentItem) -> Boolean = { item -> preguntarQuitar(item, esContinuar); true }
+        adapter.onLongPress = if (espacioModo == EspacioModo.FAVORITOS) null else quitable
 
         val items = when (espacioModo) {
             EspacioModo.CONTINUAR -> itemsContinuarTodo()
@@ -2750,6 +2757,40 @@ class MainActivity : AppCompatActivity() {
         if (actual == null || actual.spanCount != columns) {
             binding.recyclerChannels.layoutManager = GridLayoutManager(this, columns)
         }
+    }
+
+    // ---------------- Quitar un ítem de Continuar viendo / Vistas ----------------
+
+    /**
+     * Pulsación larga sobre una carátula de Continuar viendo o Vistas: ofrece
+     * sacarla de esa lista (solo ese ítem; "Borrar actividad" en Ajustes vacía
+     * por tipo). Con el control remoto, donde esta pulsación servía para
+     * marcar favoritos, se ofrece también eso.
+     */
+    private fun preguntarQuitar(item: ContentItem, deContinuar: Boolean) {
+        val lista = getString(if (deContinuar) R.string.remove_from_continue else R.string.remove_from_watched)
+        val opciones = mutableListOf(lista)
+        val conFavorito = RemoteControl.isEnabled(this)
+        if (conFavorito) {
+            opciones += getString(
+                if (Favorites.isFavorite(this, item)) R.string.fav_remove_option else R.string.fav_add_option
+            )
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(item.name)
+            .setItems(opciones.toTypedArray()) { _, cual ->
+                if (cual == 0) {
+                    if (deContinuar) ContinueWatching.remove(this, item.type, item.id)
+                    else History.remove(this, item.type, item.id)
+                    Toast.makeText(this, R.string.removed_from_list, Toast.LENGTH_SHORT).show()
+                    if (section == Section.FAVORITES) showFavorites() else refrescarContinuar()
+                } else {
+                    Favorites.toggle(this, item)
+                    adapter.notifyDataSetChanged()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     // ---------------- Abrir contenido ----------------
