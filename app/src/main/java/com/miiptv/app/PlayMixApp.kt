@@ -27,13 +27,18 @@ class PlayMixApp : Application() {
                         ?.let { activity.window.setBackgroundDrawable(it) }
                 }
             }
-            override fun onActivityCreated(a: android.app.Activity, s: android.os.Bundle?) = aplicar(a)
+            override fun onActivityCreated(a: android.app.Activity, s: android.os.Bundle?) {
+                com.miiptv.app.util.SleepTimer.registrar(a)
+                aplicar(a)
+            }
             override fun onActivityResumed(a: android.app.Activity) = aplicar(a)
             override fun onActivityStarted(a: android.app.Activity) {}
             override fun onActivityPaused(a: android.app.Activity) {}
             override fun onActivityStopped(a: android.app.Activity) {}
             override fun onActivitySaveInstanceState(a: android.app.Activity, o: android.os.Bundle) {}
-            override fun onActivityDestroyed(a: android.app.Activity) {}
+            override fun onActivityDestroyed(a: android.app.Activity) {
+                com.miiptv.app.util.SleepTimer.olvidar(a)
+            }
         })
     }
 }

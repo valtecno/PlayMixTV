@@ -49,6 +49,7 @@ import com.miiptv.app.api.ContentType
 import com.miiptv.app.databinding.ActivityPlayerBinding
 import com.miiptv.app.api.Session
 import com.miiptv.app.util.Appearance
+import com.miiptv.app.util.SleepTimer
 import com.miiptv.app.util.CastHelper
 import com.miiptv.app.util.Catalog
 import com.miiptv.app.util.ContinueWatching
@@ -432,7 +433,6 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        sleepHandler.removeCallbacksAndMessages(null)
         ui.removeCallbacksAndMessages(null)
         stopEqualizer()
         unregisterPipReceiver()
@@ -656,6 +656,7 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnBuffer.setOnClickListener { showBufferDialog() }
         binding.btnLock.setOnClickListener { setLocked(true) }
         binding.btnSleep.setOnClickListener { showSleepDialog() }
+        marcarTemporizador()
         btnNextEpisode = binding.playerView.findViewById(R.id.btnNextEpisode)
         btnNextEpisode?.setOnClickListener { playNextEpisode() }
 
@@ -1499,24 +1500,12 @@ class PlayerActivity : AppCompatActivity() {
 
     // ---------------- Temporizador para dormir ----------------
 
-    /** Handler propio: los `ui.removeCallbacksAndMessages(null)` del resto no deben cancelarlo. */
-    private val sleepHandler = Handler(Looper.getMainLooper())
-    private var sleepMinutes = 0
-
     private fun showSleepDialog() {
-        val minutos = intArrayOf(0, 15, 30, 45, 60, 90, 120)
-        val etiquetas = minutos.map { m ->
-            when (m) {
-                0 -> getString(R.string.sleep_off)
-                60 -> getString(R.string.sleep_hour)
-                90 -> getString(R.string.sleep_hour_half)
-                120 -> getString(R.string.sleep_hours)
-                else -> getString(R.string.sleep_minutes, m)
-            }
-        }
+        val minutos = SleepTimer.OPCIONES
+        val etiquetas = minutos.map { SleepTimer.etiqueta(this, it) }
         AlertDialog.Builder(this)
             .setTitle(R.string.sleep_timer)
-            .setSingleChoiceItems(etiquetas.toTypedArray(), minutos.indexOf(sleepMinutes).coerceAtLeast(0)) { dialog, which ->
+            .setSingleChoiceItems(etiquetas.toTypedArray(), minutos.indexOf(SleepTimer.minutos).coerceAtLeast(0)) { dialog, which ->
                 programarTemporizador(minutos[which], etiquetas[which])
                 dialog.dismiss()
             }
@@ -1524,23 +1513,21 @@ class PlayerActivity : AppCompatActivity() {
             .show()
     }
 
+    /** El temporizador es de toda la app (ver [SleepTimer]): al cumplirse la cierra. */
     private fun programarTemporizador(minutos: Int, etiqueta: String) {
-        sleepHandler.removeCallbacksAndMessages(null)
-        sleepMinutes = minutos
+        SleepTimer.programar(this, minutos)
+        marcarTemporizador()
         if (minutos <= 0) {
-            binding.btnSleep.clearColorFilter()
             Toast.makeText(this, R.string.sleep_canceled, Toast.LENGTH_SHORT).show()
-            return
+        } else {
+            Toast.makeText(this, getString(R.string.sleep_set, etiqueta), Toast.LENGTH_SHORT).show()
         }
-        // El icono toma el color de acento mientras hay un temporizador activo
-        binding.btnSleep.setColorFilter(Appearance.accent(this))
-        Toast.makeText(this, getString(R.string.sleep_set, etiqueta), Toast.LENGTH_SHORT).show()
-        sleepHandler.postDelayed({
-            if (isFinishing || isDestroyed) return@postDelayed
-            Toast.makeText(this, R.string.sleep_fired, Toast.LENGTH_LONG).show()
-            // finish() deja que onPause/onDestroy guarden el avance y suelten la conexión
-            finish()
-        }, minutos * 60_000L)
+    }
+
+    /** El icono toma el color de acento mientras hay un temporizador activo. */
+    private fun marcarTemporizador() {
+        if (SleepTimer.activo) binding.btnSleep.setColorFilter(Appearance.accent(this))
+        else binding.btnSleep.clearColorFilter()
     }
 
     // ---------------- Siguiente episodio ----------------

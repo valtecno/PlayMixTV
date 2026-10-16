@@ -452,11 +452,10 @@
     <string name="sleep_off">Desactivado</string>
     <string name="sleep_minutes">%1$d minutos</string>
     <string name="sleep_hour">1 hora</string>
-    <string name="sleep_hour_half">1 hora y media</string>
     <string name="sleep_hours">2 horas</string>
-    <string name="sleep_set">Se detendrá en %1$s</string>
+    <string name="sleep_set">La app se cerrará en %1$s</string>
     <string name="sleep_canceled">Temporizador desactivado</string>
-    <string name="sleep_fired">Temporizador: reproducción detenida</string>
+    <string name="sleep_fired">Temporizador: app cerrada</string>
     <string name="my_space_recommended_chip">Recomendado</string>
     <string name="title_recommended">Recomendado para ti</string>
     <string name="empty_recommended">Mira algunas películas o series y aquí aparecerán recomendaciones.</string>
