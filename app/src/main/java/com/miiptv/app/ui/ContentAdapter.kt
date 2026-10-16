@@ -288,7 +288,7 @@ class ContentAdapter(
         if (item.type == ContentType.LIVE) {
             RemoteControl.applyItemFocusOutline(root, remoteMode)
         } else {
-            RemoteControl.applyItemFocus(root, remoteMode)
+            RemoteControl.applyItemFocus(root, remoteMode, escalar = holder is PosterHolder)
         }
 
         if (remoteMode) {

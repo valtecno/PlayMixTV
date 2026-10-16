@@ -64,6 +64,8 @@ class SeriesDetailActivity : AppCompatActivity() {
         DeviceMode.lockPortraitIfMobile(this)
         binding = ActivitySeriesDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.detail_enter, R.anim.detail_exit)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }

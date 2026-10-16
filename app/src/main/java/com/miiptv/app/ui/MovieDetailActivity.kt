@@ -40,6 +40,8 @@ class MovieDetailActivity : AppCompatActivity() {
         DeviceMode.lockPortraitIfMobile(this)
         binding = ActivityMovieDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        @Suppress("DEPRECATION")
+        overridePendingTransition(R.anim.detail_enter, R.anim.detail_exit)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }

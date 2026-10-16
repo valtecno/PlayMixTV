@@ -86,7 +86,8 @@ object RemoteControl {
     fun applyItemFocus(
         view: View,
         remoto: Boolean,
-        cornerRadiusDp: Float = 14f
+        cornerRadiusDp: Float = 14f,
+        escalar: Boolean = false
     ) {
         view.background = Appearance.cardFocusBackground(view.context, cornerRadiusDp)
 
@@ -98,7 +99,26 @@ object RemoteControl {
 
         (view as? ViewGroup)?.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
         view.isFocusable = true
-        view.onFocusChangeListener = null
+        // La tarjeta enfocada crece un poco y pasa por encima de las vecinas.
+        // Solo para carátulas de una grilla: en filas de ancho completo el
+        // crecimiento se saldría del margen de la pantalla.
+        // El reciclado de vistas puede traerla ya enfocada o escalada: se
+        // normaliza al reasignar.
+        view.scaleX = 1f
+        view.scaleY = 1f
+        view.translationZ = 0f
+        if (!escalar) {
+            view.onFocusChangeListener = null
+            return
+        }
+        view.onFocusChangeListener = View.OnFocusChangeListener { v, tieneFoco ->
+            v.animate()
+                .scaleX(if (tieneFoco) 1.06f else 1f)
+                .scaleY(if (tieneFoco) 1.06f else 1f)
+                .translationZ(if (tieneFoco) 12f else 0f)
+                .setDuration(140)
+                .start()
+        }
     }
 
     /**
