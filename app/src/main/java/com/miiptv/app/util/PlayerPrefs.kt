@@ -42,9 +42,12 @@ object PlayerPrefs {
     fun setKeepScreenOn(c: Context, v: Boolean) = prefs(c).edit().putBoolean("keep_screen_on", v).apply()
 
     // ---- Idioma de audio preferido para Películas/Series (código ISO-639: "spa","eng").
-    // null = sin preferencia, se deja la pista que traiga el stream por defecto. ----
-    fun getAudioLanguage(c: Context): String? = prefs(c).getString("audio_language", null)
-    fun setAudioLanguage(c: Context, v: String?) = prefs(c).edit().putString("audio_language", v).apply()
+    // null = sin preferencia, se deja la pista que traiga el stream por defecto.
+    // Si nunca se eligió nada, el valor de partida es español; "sin preferencia" se
+    // guarda como texto vacío para distinguirlo de "no elegido todavía". ----
+    fun getAudioLanguage(c: Context): String? =
+        prefs(c).getString("audio_language", "spa")?.takeIf { it.isNotEmpty() }
+    fun setAudioLanguage(c: Context, v: String?) = prefs(c).edit().putString("audio_language", v ?: "").apply()
 
     fun audioLanguageLabel(c: Context, lang: String?): String = c.getString(
         when (lang) {

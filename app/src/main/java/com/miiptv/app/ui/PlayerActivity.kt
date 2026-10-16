@@ -162,6 +162,9 @@ class PlayerActivity : AppCompatActivity() {
      * canal en vivo, porque cada señal es independiente.
      */
     private var usingAltAudioSource = false
+
+    /** Ya se buscó el audio en el idioma preferido en este canal (ver elegirIdiomaEnVivo). */
+    private var idiomaAutoHecho = false
     /** Tras recargar por más idiomas, reabre el diálogo de audio solo. */
     private var reopenAudioDialogOnTracks = false
 
@@ -960,6 +963,7 @@ class PlayerActivity : AppCompatActivity() {
         retries = 0
         audioAvisado = false
         usingAltAudioSource = false
+        idiomaAutoHecho = false
 
         binding.tvNowPlaying.text = contentTitle
         binding.tvNowPlaying.isSelected = true
@@ -1145,16 +1149,60 @@ class PlayerActivity : AppCompatActivity() {
      * idiomas, no insiste. Deja pendiente reabrir el diálogo de audio en
      * cuanto lleguen las pistas nuevas (ver onTracksChanged en startPlayback).
      */
-    private fun probarAudioAlternativo() {
+    private fun probarAudioAlternativo(abrirDialogo: Boolean = true) {
         val nuevaUrl = swapLiveExtension(streamUrl) ?: return
         usingAltAudioSource = true
-        reopenAudioDialogOnTracks = true
+        reopenAudioDialogOnTracks = abrirDialogo
         streamUrl = nuevaUrl
         retries = 0
         audioAvisado = false
         Toast.makeText(this, R.string.audio_alt_source_searching, Toast.LENGTH_SHORT).show()
         PlaybackHolder.release()
         startPlayback(streamUrl, resumeAtMs = 0L)
+    }
+
+    /** ¿La pista es del idioma [codigo] ("spa"/"eng")? Mira el código y, si viene vacío, el nombre. */
+    private fun pistaEnIdioma(f: androidx.media3.common.Format, codigo: String): Boolean {
+        val lang = (f.language ?: "").lowercase()
+        val label = (f.label ?: "").lowercase()
+        return when (codigo) {
+            "spa" -> lang == "es" || lang.startsWith("es-") || lang.startsWith("spa") ||
+                Regex("espa|spanish|castellano|latino|\\bspa\\b").containsMatchIn(label)
+            "eng" -> lang == "en" || lang.startsWith("en-") || lang.startsWith("eng") ||
+                Regex("ingl|english|\\beng\\b").containsMatchIn(label)
+            else -> false
+        }
+    }
+
+    /**
+     * Canales en vivo: deja sonando el audio en el idioma preferido (español
+     * por defecto) sin que el usuario abra el menú de audio. Si la señal
+     * actual no trae esa pista, prueba una sola vez la otra vía del panel
+     * (.ts <-> .m3u8), que a veces sí trae los dos idiomas. Si tampoco, se
+     * queda con lo que haya.
+     */
+    private fun elegirIdiomaEnVivo(exo: ExoPlayer, tracks: Tracks) {
+        if (idiomaAutoHecho || itemType != ContentType.LIVE || isRadio) return
+        val codigo = PlayerPrefs.getAudioLanguage(this) ?: return
+        val grupos = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
+        if (grupos.isEmpty()) return   // todavía no llegaron las pistas
+
+        for (g in grupos) {
+            for (i in 0 until g.length) {
+                if (!g.isTrackSupported(i) || !pistaEnIdioma(g.getTrackFormat(i), codigo)) continue
+                idiomaAutoHecho = true
+                if (!g.isTrackSelected(i)) {
+                    exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
+                        .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+                        .addOverride(TrackSelectionOverride(g.mediaTrackGroup, i))
+                        .build()
+                }
+                return
+            }
+        }
+        if (puedeProbarAudioAlternativo()) probarAudioAlternativo(abrirDialogo = false)
+        else idiomaAutoHecho = true
     }
 
     private fun titleFor(trackType: Int) = when (trackType) {
@@ -1657,7 +1705,8 @@ class PlayerActivity : AppCompatActivity() {
 
         player = PlayerFactory.build(
             this, loadControl,
-            applyLanguagePrefs = itemType == ContentType.MOVIE || itemType == ContentType.SERIES
+            applyLanguagePrefs = itemType == ContentType.MOVIE || itemType == ContentType.SERIES,
+            applyAudioPref = itemType == ContentType.LIVE && !isRadio
         ).also { exo ->
             binding.playerView.player = exo
             exo.volume = volumenReproductor()
@@ -1704,6 +1753,8 @@ class PlayerActivity : AppCompatActivity() {
                             return
                         }
                     }
+
+                    elegirIdiomaEnVivo(exo, tracks)
 
                     if (audioAvisado) return
                     val grupos = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }

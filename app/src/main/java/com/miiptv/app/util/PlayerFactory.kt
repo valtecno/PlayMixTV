@@ -40,12 +40,16 @@ object PlayerFactory {
      *        Ajustes → Cuenta → Audio. Se deja en false para Canales/PPV (donde ya
      *        existe su propia detección de audio en vivo, ver probarAudioAlternativo
      *        en PlayerActivity) y en true solo para Películas/Series.
+     * @param applyAudioPref aplica solo el idioma de audio preferido (sin tocar los
+     *        subtítulos). Lo usan los canales en vivo; Películas/Series ya lo
+     *        incluyen con applyLanguagePrefs.
      */
     fun build(
         context: Context,
         loadControl: LoadControl? = null,
         handleAudioFocus: Boolean = true,
-        applyLanguagePrefs: Boolean = false
+        applyLanguagePrefs: Boolean = false,
+        applyAudioPref: Boolean = false
     ): ExoPlayer {
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(Session.USER_AGENT)
@@ -71,8 +75,10 @@ object PlayerFactory {
                 .setExceedAudioConstraintsIfNecessary(true)
                 .setExceedRendererCapabilitiesIfNecessary(true)
 
-            if (applyLanguagePrefs) {
+            if (applyLanguagePrefs || applyAudioPref) {
                 PlayerPrefs.getAudioLanguage(context)?.let { parametros.setPreferredAudioLanguage(it) }
+            }
+            if (applyLanguagePrefs) {
                 when (PlayerPrefs.getSubtitleMode(context)) {
                     PlayerPrefs.SUB_SPANISH ->
                         parametros.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).setPreferredTextLanguage("spa")

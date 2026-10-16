@@ -192,7 +192,8 @@ object HelpContent {
             "¿Cómo cambio el idioma del audio o pongo subtítulos?",
             "Mientras miras, usa los botones de pista de audio y de subtítulos del reproductor. Para " +
                 "dejar un idioma preferido fijo, ve a Ajustes → Mi perfil → Audio: ahí eliges el idioma " +
-                "de audio y los subtítulos que se usan al abrir películas y series.",
+                "de audio (español por defecto, también en canales) y los subtítulos de películas y series. " +
+                "Para escuchar inglés en un canal puntual, usa el botón de pista de audio.",
             listOf("idioma", "audio", "subtitulos", "español", "ingles", "latino", "doblaje")
         ),
         Pregunta(
@@ -331,8 +332,9 @@ object HelpContent {
         Pregunta(
             Tema.REPRODUCTOR,
             "El canal trae un solo idioma",
-            "Abre el botón de pista de audio: la app prueba sola otra señal en busca de más idiomas " +
-                "(el canal se reconecta un momento) y, si los hay, aparecen en la lista.",
+            "Los canales abren solos en español. Si la señal no trae esa pista, la app prueba sola otra " +
+                "señal (el canal se reconecta un momento). Si aun así no hay español, el canal viene solo " +
+                "en otro idioma. Para escuchar el inglés, abre el botón de pista de audio y elígelo.",
             listOf("un idioma", "mas idiomas", "otra señal", "ingles", "español")
         ),
 
@@ -395,7 +397,8 @@ object HelpContent {
             Tema.CUENTA,
             "¿Cómo cambio el idioma de audio o los subtítulos predeterminados?",
             "Ve a Ajustes → Mi perfil y elige Audio. " +
-                "Ahí fijas el idioma de audio y de subtítulos que se usan al abrir películas y series.",
+                "Ahí fijas el idioma de audio (español por defecto, se aplica también a los canales) y los " +
+                "subtítulos que se usan al abrir películas y series.",
             listOf("idioma predeterminado", "audio preferido", "subtitulos fijos", "idioma default")
         ),
         Pregunta(

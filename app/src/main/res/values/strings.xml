@@ -212,7 +212,7 @@
     <string name="audio_normalize_button">Normalizar volumen del sistema</string>
     <string name="audio_volume_normalized">Volumen del sistema normalizado</string>
     <string name="audio_language_label">Idioma de audio preferido</string>
-    <string name="audio_language_hint">Se usa al abrir una película o serie si el stream trae esa pista; si no, se deja la que venga por defecto.</string>
+    <string name="audio_language_hint">Se usa al abrir un canal, película o serie si el stream trae esa pista; si no, se deja la que venga por defecto. Por defecto es español.</string>
     <string name="subtitle_label">Subtítulos</string>
     <string name="subtitle_hint">Aplica a películas y series. Si el idioma elegido no está disponible en el stream, se dejan apagados.</string>
     <string name="audio_lang_none">Sin preferencia</string>
