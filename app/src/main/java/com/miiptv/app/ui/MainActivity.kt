@@ -251,6 +251,10 @@ class MainActivity : AppCompatActivity() {
         binding.recyclerChannels.layoutManager = GridLayoutManager(this, 1)
         binding.recyclerChannels.adapter = adapter
         configurarListaRapida()
+        binding.tvConnBanner.setOnClickListener {
+            binding.tvConnBanner.visibility = View.GONE
+            Catalog.ensureLoaded(this, force = true, onUpdate = catalogListener)
+        }
 
         binding.btnPreviewPlay.setOnClickListener { previewItem?.let { openItem(it) } }
         binding.previewPlayRow.setOnClickListener { previewItem?.let { openItem(it) } }
@@ -1121,9 +1125,11 @@ class MainActivity : AppCompatActivity() {
             showHome()
         }
         abrirUltimoCanal()
-        // La descarga falló pero hay contenido guardado: se avisa que es la copia local.
-        if (!cargando && !isFinishing && !isDestroyed && Catalog.lastError != null && !Catalog.isEmpty) {
-            Toast.makeText(this, R.string.catalog_offline, Toast.LENGTH_LONG).show()
+        // La descarga falló pero hay contenido guardado: aviso discreto arriba
+        // (en vez de pantallas vacías) con toque para reintentar.
+        if (!isFinishing && !isDestroyed) {
+            binding.tvConnBanner.visibility =
+                if (!cargando && Catalog.lastError != null && !Catalog.isEmpty) View.VISIBLE else View.GONE
         }
     }
 

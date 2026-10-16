@@ -62,6 +62,24 @@
 
     </androidx.appcompat.widget.Toolbar>
 
+    <!-- Aviso discreto cuando el panel no respondió y se muestra lo guardado. -->
+    <TextView
+        android:id="@+id/tvConnBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#55B45309"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="@string/conn_banner"
+        android:textColor="@color/text_light"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
     <!-- ===== Menú de secciones + saludo/vencimiento, todo en una sola línea ===== -->
     <LinearLayout
         android:layout_width="match_parent"
