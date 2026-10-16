@@ -393,11 +393,23 @@ class ContentAdapter(
         }
         tvEpgNow.visibility = View.GONE
         tvEpgNow.tag = item.id
-        Epg.nowPlaying(tvEpgNow.context, item.id) { titulo ->
-            if (tvEpgNow.tag == item.id) {
-                tvEpgNow.text = titulo
-                tvEpgNow.visibility = if (titulo.isNullOrBlank()) View.GONE else View.VISIBLE
+        val pedir = {
+            Epg.nowPlaying(tvEpgNow.context, item.id) { titulo ->
+                if (tvEpgNow.tag == item.id) {
+                    tvEpgNow.text = titulo
+                    tvEpgNow.visibility = if (titulo.isNullOrBlank()) View.GONE else View.VISIBLE
+                }
             }
+        }
+        if (Epg.enCache(item.id)) {
+            pedir()   // sin red: se muestra al instante
+        } else {
+            // Con la lista desplazándose rápido pasan cientos de filas que nunca
+            // llegan a verse: se espera un instante y solo se pide a la guía si
+            // la fila sigue mostrando este mismo canal.
+            tvEpgNow.postDelayed({
+                if (tvEpgNow.tag == item.id && tvEpgNow.isAttachedToWindow) pedir()
+            }, 300L)
         }
     }
 

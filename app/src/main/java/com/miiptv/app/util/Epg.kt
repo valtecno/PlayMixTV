@@ -62,6 +62,12 @@ object Epg {
      * llamador entonces oculta el subtítulo en vez de mostrar algo vacío o
      * desfasado.
      */
+    /** ¿Ya hay una respuesta vigente de este canal (la lectura no iría a la red)? */
+    fun enCache(streamId: Int): Boolean {
+        val c = cache[streamId] ?: return false
+        return System.currentTimeMillis() - c.fetchedAt < TTL_MS
+    }
+
     fun nowPlaying(context: Context, streamId: Int, onResult: (String?) -> Unit) {
         val cached = cache[streamId]
         val now = System.currentTimeMillis()
