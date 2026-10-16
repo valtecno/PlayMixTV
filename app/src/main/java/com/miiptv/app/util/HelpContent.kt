@@ -313,6 +313,15 @@ object HelpContent {
         ),
         Pregunta(
             Tema.REPRODUCTOR,
+            "¿Cómo programo que se apague solo para dormir?",
+            "En el reproductor toca el ícono de luna (Temporizador para dormir) en la barra superior y " +
+                "elige 15, 30, 45 minutos, 1 hora, 1 hora y media o 2 horas. Al cumplirse, la reproducción " +
+                "se detiene sola y se guarda dónde ibas. El ícono se tiñe de color mientras está activo; " +
+                "para cancelarlo vuelve a abrirlo y elige Desactivado.",
+            listOf("dormir", "temporizador", "apagar", "apagado", "sleep", "timer", "se apague", "programar apagado", "luna")
+        ),
+        Pregunta(
+            Tema.REPRODUCTOR,
             "¿Cómo lo veo en el televisor con Chromecast?",
             "En el reproductor toca el botón de Chromecast y elige tu aparato. Después se controla desde " +
                 "la app Google Home o desde la notificación.",

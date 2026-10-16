@@ -448,6 +448,15 @@
     <string name="zap_next">Canal siguiente en la lista</string>
     <string name="zap_last">Volver al último canal visto</string>
     <string name="zap_no_last">Aún no cambiaste de canal</string>
+    <string name="sleep_timer">Temporizador para dormir</string>
+    <string name="sleep_off">Desactivado</string>
+    <string name="sleep_minutes">%1$d minutos</string>
+    <string name="sleep_hour">1 hora</string>
+    <string name="sleep_hour_half">1 hora y media</string>
+    <string name="sleep_hours">2 horas</string>
+    <string name="sleep_set">Se detendrá en %1$s</string>
+    <string name="sleep_canceled">Temporizador desactivado</string>
+    <string name="sleep_fired">Temporizador: reproducción detenida</string>
     <string name="hero_play">▶  Ver ahora</string>
     <string name="hero_info">Más info</string>
     <string name="hero_open_series">Ver serie</string>

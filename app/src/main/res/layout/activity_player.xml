@@ -414,6 +414,12 @@
             android:contentDescription="@string/setting_buffer" />
 
         <ImageView
+            android:id="@+id/btnSleep"
+            style="@style/PlayerIcon"
+            android:src="@drawable/ic_sleep"
+            android:contentDescription="@string/sleep_timer" />
+
+        <ImageView
             android:id="@+id/btnLock"
             style="@style/PlayerIcon"
             android:src="@drawable/ic_lock_open"
