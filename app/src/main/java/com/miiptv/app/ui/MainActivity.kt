@@ -2856,7 +2856,11 @@ class MainActivity : AppCompatActivity() {
         if (Parental.isCategoryLocked(this, item.categoryId)) PinDialog.ask(this) { abrir() } else abrir()
     }
 
-    private fun reallyOpen(item: ContentItem, forzarReproducir: Boolean = false) {
+    private fun reallyOpen(item: ContentItem, forzar: Boolean = false) {
+        // Desde "Continuar viendo" una película se reanuda directo en su minuto,
+        // sin pasar por la ficha (el reproductor ya retoma donde quedó).
+        val forzarReproducir = forzar ||
+            (item.type == ContentType.MOVIE && currentCategoryId == CONTINUAR_ID)
         if (item.type != ContentType.MOVIE || forzarReproducir ||
             Appearance.getMovieClick(this) == Appearance.CLICK_PLAY
         ) {
