@@ -133,6 +133,51 @@ object Epg {
             })
     }
 
+    // ---------------- Guía de programación ----------------
+
+    private val guideCache = HashMap<Int, Entry>()
+    private val guidePending = HashMap<Int, MutableList<(List<EpgListing>) -> Unit>>()
+    private const val GUIDE_TTL_MS = 10 * 60 * 1000L
+    private const val GUIDE_LIMIT = 8
+
+    /**
+     * Los próximos programas del canal (hasta [GUIDE_LIMIT]) para la Guía, con
+     * caché propia de 10 minutos: la guía pide una fila por canal visible y no
+     * debe repetir pedidos al panel al hacer scroll. [onResult] llega en el
+     * hilo principal; lista vacía si el canal no trae programación.
+     */
+    fun guide(context: Context, streamId: Int, onResult: (List<EpgListing>) -> Unit) {
+        val cached = guideCache[streamId]
+        if (cached != null && System.currentTimeMillis() - cached.fetchedAt < GUIDE_TTL_MS) {
+            onResult(cached.listings)
+            return
+        }
+        val enEspera = guidePending.getOrPut(streamId) { mutableListOf() }
+        enEspera.add(onResult)
+        if (enEspera.size > 1) return
+
+        Session.api(context.applicationContext)
+            .getShortEpg(Session.username(context), Session.password(context),
+                streamId = streamId, limit = GUIDE_LIMIT)
+            .enqueue(object : Callback<EpgResponse> {
+                override fun onResponse(call: Call<EpgResponse>, response: Response<EpgResponse>) {
+                    val listados = response.body()?.epgListings.orEmpty()
+                    val frescura = if (response.isSuccessful) System.currentTimeMillis()
+                        else System.currentTimeMillis() - GUIDE_TTL_MS + 30_000L
+                    guideCache[streamId] = Entry(listados, frescura)
+                    guidePending.remove(streamId).orEmpty().forEach { it(listados) }
+                }
+
+                override fun onFailure(call: Call<EpgResponse>, t: Throwable) {
+                    guideCache[streamId] = Entry(emptyList(), System.currentTimeMillis() - GUIDE_TTL_MS + 30_000L)
+                    guidePending.remove(streamId).orEmpty().forEach { it(emptyList()) }
+                }
+            })
+    }
+
+    /** Título ya decodificado de un programa (para la Guía). */
+    fun titulo(listado: EpgListing): String? = listado.tituloLegible()
+
     /** Arma "HH:mm–HH:mm Título · Luego: Título (HH:mm)" a partir de lo vigente ahora mismo. */
     private fun renderNow(listados: List<EpgListing>): String? {
         val ahoraEpoch = System.currentTimeMillis() / 1000

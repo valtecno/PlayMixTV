@@ -124,6 +124,17 @@ object HelpContent {
         ),
         Pregunta(
             Tema.CANALES,
+            "¿Dónde veo la guía de programación?",
+            "Toca el ícono de televisor de la barra superior (Guía; en el celular está dentro del engranaje). " +
+                "Muestra los canales en filas y sus programas en una línea de tiempo de 3 horas, con una " +
+                "raya que marca la hora actual y el programa en el aire resaltado. Arriba eliges tus " +
+                "Favoritos o una categoría. Toca un canal para verlo. Solo aparece si el servidor trae " +
+                "programación para ese canal.",
+            listOf("guia", "guia de programacion", "programacion", "horarios", "que dan", "epg",
+                "linea de tiempo", "parrilla", "grilla", "que hay en tv")
+        ),
+        Pregunta(
+            Tema.CANALES,
             "¿Cómo pongo un recordatorio de un programa?",
             "Elige el canal y, debajo del mini reproductor, mantén apretado \"A continuación\". Te llega " +
                 "una notificación cuando esté por empezar. La hora es aproximada: se calcula desde el " +

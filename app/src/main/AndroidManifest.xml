@@ -141,6 +141,7 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
         <activity android:name=".ui.MovieDetailActivity" android:exported="false" />
+        <activity android:name=".ui.GuideActivity" android:exported="false" />
         <activity
             android:name=".ui.MultiScreenActivity"
             android:exported="false"

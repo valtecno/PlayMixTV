@@ -1259,6 +1259,7 @@ class MainActivity : AppCompatActivity() {
         val sueltos = !kidsMode && !movil
         menu.findItem(R.id.action_parental)?.isVisible = sueltos
         menu.findItem(R.id.action_multi)?.isVisible = sueltos
+        menu.findItem(R.id.action_guide)?.isVisible = sueltos
         menu.findItem(R.id.action_account)?.isVisible = sueltos
         // Muestra el avatar del perfil activo en el ícono de cuenta (solo en TV,
         // donde ese ícono vive en la barra; en móvil está dentro del menú rápido)
@@ -1331,7 +1332,7 @@ class MainActivity : AppCompatActivity() {
             val remoto = RemoteControl.isEnabled(this)
             listOf(
                 R.id.action_refresh, R.id.action_search, R.id.action_parental,
-                R.id.action_multi, R.id.action_account, R.id.action_quick
+                R.id.action_guide, R.id.action_multi, R.id.action_account, R.id.action_quick
             ).forEach { id ->
                 binding.toolbar.findViewById<View>(id)?.let { boton ->
                     boton.nextFocusDownId = destino
@@ -1362,7 +1363,7 @@ class MainActivity : AppCompatActivity() {
     private fun ocultarBotonFantasma() {
         val idsConocidos = setOf(
             R.id.action_refresh, R.id.action_search, R.id.action_parental,
-            R.id.action_multi, R.id.action_account, R.id.action_quick
+            R.id.action_guide, R.id.action_multi, R.id.action_account, R.id.action_quick
         )
         binding.toolbar.post {
             for (i in 0 until binding.toolbar.childCount) {
@@ -1384,6 +1385,7 @@ class MainActivity : AppCompatActivity() {
             R.id.action_refresh -> refreshAll()
             R.id.action_search -> startActivity(Intent(this, SearchActivity::class.java))
             R.id.action_parental -> openParentalSettings()
+            R.id.action_guide -> startActivity(Intent(this, GuideActivity::class.java))
             R.id.action_multi -> startActivity(Intent(this, MultiScreenActivity::class.java))
             R.id.action_account -> startActivity(Intent(this, SettingsActivity::class.java))
             R.id.action_quick -> showQuickMenu()
@@ -1423,6 +1425,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         accion(R.id.quickParental, R.string.action_parental) { openParentalSettings() }
+        accion(R.id.quickGuide, R.string.action_guide) {
+            startActivity(Intent(this, GuideActivity::class.java))
+        }
         accion(R.id.quickMulti, R.string.nav_multi) {
             startActivity(Intent(this, MultiScreenActivity::class.java))
         }
@@ -2778,7 +2783,7 @@ class MainActivity : AppCompatActivity() {
                 // canal para recuperar esa fila (idAlAbrirPantallaCompleta).
                 idToolbarEnfoqueAntes = currentFocus?.id?.takeIf {
                     it == R.id.action_refresh || it == R.id.action_search ||
-                    it == R.id.action_parental || it == R.id.action_multi ||
+                    it == R.id.action_parental || it == R.id.action_multi || it == R.id.action_guide ||
                     it == R.id.action_account || it == R.id.action_quick
                 }
                 idAlAbrirPantallaCompleta = if (idToolbarEnfoqueAntes == null) item.id else null

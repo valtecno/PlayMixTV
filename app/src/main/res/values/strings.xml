@@ -434,6 +434,11 @@
     <string name="profile_long_press_hint">Mantén para editar</string>
     <string name="profile_switch">Cambiar perfil</string>
     <string name="profile_manage">Mi perfil</string>
+    <string name="guide_title">Guía de programación</string>
+    <string name="guide_favorites">⭐ Favoritos</string>
+    <string name="guide_empty">No hay canales en esta categoría.</string>
+    <string name="guide_no_favorites">Aún no tienes canales favoritos. Elige una categoría arriba.</string>
+    <string name="action_guide">Guía</string>
     <string name="hero_play">▶  Ver ahora</string>
     <string name="hero_info">Más info</string>
     <string name="hero_open_series">Ver serie</string>
