@@ -4,6 +4,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -55,6 +56,9 @@ class PersonalizeActivity : AppCompatActivity() {
         binding.tvSwatch.background = Appearance.gradient(this, 12f)
         binding.tvApplied.background = Appearance.gradient(this, 18f)
         refreshSwatchSelection()
+        // El halo del fondo toma el color de acento: se reaplica al cambiarlo
+        buildBgThemes()
+        window.setBackgroundDrawable(Appearance.screenBackground(this))
         refreshSubtitle()
         refreshMovieClick()
         refreshGrids()
@@ -91,6 +95,58 @@ class PersonalizeActivity : AppCompatActivity() {
         val selected = Appearance.getPaletteIndex(this)
         for (i in 0 until binding.colorContainer.childCount) {
             (binding.colorContainer.getChildAt(i) as? TextView)?.text = if (i == selected) "✓" else ""
+        }
+    }
+
+    // ---------------- Fondo de la app ----------------
+
+    /** Vista previa de cada fondo con su nombre; el elegido lleva borde de acento. */
+    private fun buildBgThemes() {
+        binding.bgContainer.removeAllViews()
+        val seleccionado = Appearance.getBgThemeIndex(this)
+        Appearance.bgThemes.forEachIndexed { index, tema ->
+            val columna = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).also { it.marginEnd = dp(12f) }
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    Appearance.setBgThemeIndex(this@PersonalizeActivity, index)
+                    window.setBackgroundDrawable(Appearance.screenBackground(this@PersonalizeActivity))
+                    buildBgThemes()
+                }
+            }
+            val muestra = View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(64f), dp(64f))
+                val preview = tema.start?.let {
+                    GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(it, tema.end ?: it))
+                } ?: GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(
+                        ContextCompat.getColor(this@PersonalizeActivity, R.color.background_gradient_start),
+                        ContextCompat.getColor(this@PersonalizeActivity, R.color.background_gradient_end)
+                    )
+                )
+                preview.cornerRadius = dp(14f).toFloat()
+                preview.setStroke(
+                    dp(if (index == seleccionado) 3f else 1f),
+                    if (index == seleccionado) Appearance.accent(this@PersonalizeActivity) else 0x55FFFFFF
+                )
+                background = preview
+            }
+            val nombre = TextView(this).apply {
+                text = tema.name
+                textSize = 11f
+                gravity = Gravity.CENTER
+                setPadding(0, dp(6f), 0, 0)
+                setTextColor(ContextCompat.getColor(this@PersonalizeActivity, R.color.text_light))
+            }
+            columna.addView(muestra)
+            columna.addView(nombre)
+            binding.bgContainer.addView(columna)
         }
     }
 

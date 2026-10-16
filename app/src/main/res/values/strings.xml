@@ -460,6 +460,8 @@
     <string name="my_space_recommended_chip">Recomendado</string>
     <string name="title_recommended">Recomendado para ti</string>
     <string name="empty_recommended">Mira algunas películas o series y aquí aparecerán recomendaciones.</string>
+    <string name="bg_theme_title">Fondo de la app</string>
+    <string name="bg_theme_desc">Elige el fondo de todas las pantallas. AMOLED es negro puro y ahorra batería en pantallas OLED.</string>
     <string name="hero_play">▶  Ver ahora</string>
     <string name="hero_info">Más info</string>
     <string name="hero_open_series">Ver serie</string>

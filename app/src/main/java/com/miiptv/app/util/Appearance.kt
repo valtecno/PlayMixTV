@@ -31,6 +31,54 @@ object Appearance {
         Palette("Cian", 0xFF12B5CC.toInt(), 0xFF56E1F0.toInt())
     )
 
+    /**
+     * Fondo de las pantallas. [start]/[end] null = el fondo violeta de siempre
+     * (el del tema de Android, sin tocar). [glow]: halo de color de acento
+     * arriba, como el del fondo original.
+     */
+    data class BgTheme(val name: String, val start: Int?, val end: Int?, val glow: Boolean)
+
+    val bgThemes = listOf(
+        BgTheme("Violeta", null, null, true),
+        BgTheme("AMOLED", 0xFF000000.toInt(), 0xFF000000.toInt(), false),
+        BgTheme("Azul noche", 0xFF10264F.toInt(), 0xFF050A14.toInt(), true),
+        BgTheme("Carbón", 0xFF2A2A33.toInt(), 0xFF0A0A0C.toInt(), true),
+        BgTheme("Vino", 0xFF3D1024.toInt(), 0xFF0F0408.toInt(), true)
+    )
+
+    fun getBgThemeIndex(c: Context): Int =
+        prefs(c).getInt("bg_theme", 0).coerceIn(0, bgThemes.lastIndex)
+
+    fun setBgThemeIndex(c: Context, index: Int) =
+        prefs(c).edit().putInt("bg_theme", index.coerceIn(0, bgThemes.lastIndex)).apply()
+
+    /** Dibujo del fondo para [theme] (sin el del tema Violeta, que es el de Android). */
+    fun bgDrawable(c: Context, theme: BgTheme): Drawable? {
+        val inicio = theme.start ?: return null
+        val fin = theme.end ?: return null
+        val d = c.resources.displayMetrics.density
+        val base = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(inicio, fin))
+        if (!theme.glow) return base
+        val acento = accent(c)
+        val halo = GradientDrawable().apply {
+            gradientType = GradientDrawable.RADIAL_GRADIENT
+            gradientRadius = 380f * d
+            setGradientCenter(0.5f, 0f)
+            colors = intArrayOf((acento and 0x00FFFFFF) or 0x40000000, 0x00000000)
+        }
+        return android.graphics.drawable.LayerDrawable(arrayOf(base, halo)).apply {
+            setLayerInset(1, 0, (-120 * d).toInt(), 0, 0)
+        }
+    }
+
+    /**
+     * Fondo a aplicar a la ventana de una pantalla: el elegido por el usuario,
+     * o el violeta original (el drawable del tema) si elige "Violeta".
+     */
+    fun screenBackground(c: Context): Drawable? =
+        bgDrawable(c, bgThemes[getBgThemeIndex(c)])
+            ?: androidx.core.content.ContextCompat.getDrawable(c, com.miiptv.app.R.drawable.bg_screen)
+
     // ---- Al tocar una película ----
     const val CLICK_PLAY = 0        // ir directo al reproductor
     const val CLICK_DETAILS = 1     // abrir la ficha con reparto, director, etc.

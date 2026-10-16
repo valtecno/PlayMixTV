@@ -384,9 +384,11 @@ object HelpContent {
             Tema.CUENTA,
             "¿Puedo cambiar los colores o la apariencia de la app?",
             "Sí. Ve a Ajustes → Mi perfil y elige " +
-                "Personalizar apariencia. Ahí eliges el color principal, el tamaño de los subtítulos " +
+                "Personalizar apariencia. Ahí eliges el color principal, el fondo de la app (Violeta, " +
+                "AMOLED negro puro, Azul noche, Carbón o Vino), el tamaño de los subtítulos " +
                 "y cómo se ven películas y series.",
-            listOf("color", "colores", "tema", "apariencia", "personalizar", "subtitulos grandes")
+            listOf("color", "colores", "tema", "apariencia", "personalizar", "subtitulos grandes",
+                "fondo", "oscuro", "amoled", "negro", "azul noche", "carbon", "vino")
         ),
         Pregunta(
             Tema.CUENTA,

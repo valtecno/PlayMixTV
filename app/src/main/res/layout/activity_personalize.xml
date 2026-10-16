@@ -107,6 +107,29 @@
                 </HorizontalScrollView>
             </LinearLayout>
 
+            <!-- ==================== FONDO DE LA APP ==================== -->
+            <TextView style="@style/SettingsHeader" android:text="@string/bg_theme_title" />
+            <TextView style="@style/SectionHint" android:text="@string/bg_theme_desc" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_option"
+                android:padding="16dp">
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+                    <LinearLayout
+                        android:id="@+id/bgContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal" />
+                </HorizontalScrollView>
+            </LinearLayout>
+
             <!-- ==================== TAMAÑO DE SUBTÍTULOS ==================== -->
             <TextView style="@style/SettingsHeader" android:text="@string/subtitle_size" />
             <TextView android:id="@+id/tvSubtitleCurrent" style="@style/SectionHint" />
