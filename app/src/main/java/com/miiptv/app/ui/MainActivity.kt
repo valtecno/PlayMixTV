@@ -79,10 +79,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var adapter: ContentAdapter
-    private lateinit var carouselAdapter: CarouselAdapter
-    private lateinit var recentAdapter: CarouselAdapter
-    private lateinit var novedades: AutoCarousel
-    private lateinit var recientes: AutoCarousel
     private lateinit var hero: HeroBanner
 
     private var section: Section = Section.HOME
@@ -565,7 +561,7 @@ class MainActivity : AppCompatActivity() {
         // En móvil el Inicio es una imagen fija, así que no hay nada que rotar.
         // showHome() también lo frena, pero mejor no arrancarlo de entrada: el
         // temporizador quedaba andando un instante al entrar a Inicio.
-        if (isHome && !DeviceMode.isMobile(this)) startCarousel() else stopCarousel()
+        if (isHome) startCarousel() else stopCarousel()
 
         when (newSection) {
             Section.HOME -> showHome()
@@ -990,68 +986,25 @@ class MainActivity : AppCompatActivity() {
         adapter.submitList(emptyList())
 
         /*
-         * En móvil el Inicio es la imagen de marca, no los carruseles.
+         * El Inicio es solo el banner, a pantalla completa, tanto en móvil como
+         * en TV. Ya no hay carruseles de últimas películas/series: el banner
+         * muestra lo mismo y no queda nada corriendo ni cargando en segundo
+         * plano. ya no existe homeSections.
          *
-         * Los carruseles se pensaron para el televisor: dos columnas lado a lado
-         * que van rotando solas. Apiladas en una pantalla de teléfono quedaban
-         * dos franjas cortas, cada una con un póster a la vez.
-         *
-         * La imagen va con poca opacidad y con un velo que la funde por los
-         * bordes, para que no compita con el menú ni con la barra de título.
-         *
-         * Dónde NO hace falta controlar nada: la imagen vive dentro de homeArea,
-         * que empieza debajo del menú y se oculta entero al salir del Inicio. O
-         * sea que no puede taparle nada al menú ni asomarse en otra sección
-         * aunque este método cambie. Ver el comentario en activity_main.xml.
+         * Mientras no hay banner (catálogo vacío) se ve la imagen de marca, y
+         * encima el esqueleto, el motivo del error o el cartel de "vacío".
          */
-        val fondoDeMarca = DeviceMode.isMobile(this)
-        binding.ivHomeBackdrop.visibility = if (fondoDeMarca) View.VISIBLE else View.GONE
-        binding.homeBackdropScrim.visibility = if (fondoDeMarca) View.VISIBLE else View.GONE
-        binding.homeSections.visibility = if (fondoDeMarca) View.GONE else View.VISIBLE
+        actualizarHero()
 
-        if (fondoDeMarca) {
-            // Sin carruseles no hay nada que cargar ni que rotar, y tampoco
-            // tiene sentido el cartel de "cargando" o "no hay nada".
-            binding.tvHomeEmpty.visibility = View.GONE
-            stopCarousel()
-            actualizarHero()
-            return
-        }
-
-        // Columna izquierda: últimas películas. Columna derecha: últimas series.
-        val fila1 = Catalog.newestMovies(this, limit = 20)
-        val fila2 = Catalog.newestSeries(this, limit = 20)
-
-        novedades.submit(fila1)
-        recientes.submit(fila2)
-
-        binding.colNovedades.visibility = if (novedades.itemCount == 0) View.GONE else View.VISIBLE
-        binding.colRecientes.visibility = if (recientes.itemCount == 0) View.GONE else View.VISIBLE
-        // El separador solo tiene sentido si hay algo a los dos lados
-        binding.homeDivider.visibility =
-            if (novedades.itemCount > 0 && recientes.itemCount > 0) View.VISIBLE else View.GONE
-
-        // Antes, si el catálogo venía vacío el cartel se ocultaba y quedaba una
-        // pantalla en blanco sin explicación. Ahora se distingue entre "todavía
-        // cargando", "no hay nada" y "falló, y este fue el motivo".
-        val vacio = novedades.itemCount == 0 && recientes.itemCount == 0
+        val vacio = !hero.hasItems
         val motivo = Catalog.lastError
         val cargandoCatalogo = vacio &&
             (Catalog.isLoading || (!Catalog.hasCompletedLoad && motivo == null))
         mostrarEsqueletoInicio(cargandoCatalogo)
         when {
             !vacio -> binding.tvHomeEmpty.visibility = View.GONE
-            // Mientras baja el catálogo se avisa, en vez de dejar el Inicio en
-            // blanco sin explicación: en el Sistema XL puede tardar bastante.
-            // También cuando todavía no terminó ninguna descarga (p. ej. recién
-            // cambiado de Sistema L a XL): no es "no hay contenido", es espera.
-            Catalog.isLoading || (!Catalog.hasCompletedLoad && motivo == null) -> {
-                // El esqueleto animado ya indica que está cargando.
-                binding.tvHomeEmpty.visibility = View.GONE
-            }
+            cargandoCatalogo -> binding.tvHomeEmpty.visibility = View.GONE
             motivo != null -> {
-                // motivo ya viene armado por ErrorDiagnosis con la causa real
-                // (sin internet / cuenta vencida o límite / servidor lento...).
                 binding.tvHomeEmpty.text = motivo
                 binding.tvHomeEmpty.visibility = View.VISIBLE
             }
@@ -1060,8 +1013,6 @@ class MainActivity : AppCompatActivity() {
                 binding.tvHomeEmpty.visibility = View.VISIBLE
             }
         }
-
-        actualizarHero()
         startCarousel()
     }
 
@@ -1093,54 +1044,24 @@ class MainActivity : AppCompatActivity() {
     /** Carga el banner con lo último agregado y lo muestra u oculta según haya algo. */
     private fun actualizarHero() {
         if (!::hero.isInitialized) return
-        hero.setMovil(DeviceMode.isMobile(this))
+        hero.setMovil(true)  // banner a pantalla completa también en TV
         hero.submit(Catalog.newestMovies(this, limit = 6), Catalog.newestSeries(this, limit = 6))
         layoutHero(hero.hasItems)
-        // En móvil, con banner el fondo de marca sobra: el banner ocupa todo y
-        // la imagen de atrás le restaba contraste. Sin banner (catálogo aún
-        // vacío) se mantiene la imagen de marca.
-        if (DeviceMode.isMobile(this)) {
-            val marca = if (hero.hasItems) View.GONE else View.VISIBLE
-            binding.ivHomeBackdrop.visibility = marca
-            binding.homeBackdropScrim.visibility = marca
-        }
+        // Con banner el fondo de marca sobra; sin banner se mantiene.
+        val marca = if (hero.hasItems) View.GONE else View.VISIBLE
+        binding.ivHomeBackdrop.visibility = marca
+        binding.homeBackdropScrim.visibility = marca
         if (hero.hasItems) hero.start()
     }
 
-    /**
-     * Fija el alto del banner (40 % del Inicio, entre 120 y 260 dp) y empuja
-     * hacia abajo a los carruseles con el margen superior de homeSections.
-     */
+    /** El banner ocupa todo el Inicio, del menú al borde inferior. */
     private fun layoutHero(visible: Boolean) {
-        val sections = binding.homeSections.layoutParams as FrameLayout.LayoutParams
-        if (!visible) {
-            sections.topMargin = 0
-            binding.homeSections.layoutParams = sections
-            return
-        }
+        if (!visible) return
         binding.homeArea.doOnLayout {
-            val d = resources.displayMetrics.density
-            val movil = DeviceMode.isMobile(this)
-            // Móvil: ocupa todo el Inicio (los carruseles no se usan ahí).
-            // TV: tarjeta con margen, 40 % del alto.
-            val alto = if (movil) {
-                binding.homeArea.height   // todo el Inicio, del menú al borde inferior
-            } else {
-                (binding.homeArea.height * 0.40f).toInt()
-                    .coerceIn((120 * d).toInt(), (260 * d).toInt())
-            }
             val lp = binding.heroBanner.layoutParams as FrameLayout.LayoutParams
-            lp.height = alto
-            if (movil) {
-                lp.setMargins(0, 0, 0, 0)
-            } else {
-                val m10 = (10 * d).toInt()
-                lp.setMargins(m10, (4 * d).toInt(), m10, 0)
-            }
+            lp.height = binding.homeArea.height
+            lp.setMargins(0, 0, 0, 0)
             binding.heroBanner.layoutParams = lp
-            val sec = binding.homeSections.layoutParams as FrameLayout.LayoutParams
-            sec.topMargin = alto + lp.topMargin + (6 * d).toInt()
-            binding.homeSections.layoutParams = sec
         }
     }
 
@@ -1159,92 +1080,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * En móvil las dos secciones del inicio van apiladas (Novedades arriba,
-     * Agregados debajo); en TV van lado a lado, aprovechando el ancho.
-     */
-    private fun applyHomeOrientation() {
-        val movil = DeviceMode.isMobile(this)
-        binding.homeSections.orientation =
-            if (movil) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-
-        listOf(binding.colNovedades, binding.colRecientes).forEach { columna ->
-            val lp = columna.layoutParams as LinearLayout.LayoutParams
-            if (movil) {
-                lp.width = LinearLayout.LayoutParams.MATCH_PARENT
-                lp.height = 0
-            } else {
-                lp.width = 0
-                lp.height = LinearLayout.LayoutParams.MATCH_PARENT
-            }
-            lp.weight = 1f
-            columna.layoutParams = lp
-        }
-
-        // Separador: línea vertical entre columnas en TV, horizontal entre
-        // secciones apiladas en móvil.
-        val grosor = (resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        val sep = binding.homeDivider.layoutParams as LinearLayout.LayoutParams
-        val margen = (10 * resources.displayMetrics.density).toInt()
-        if (movil) {
-            sep.width = LinearLayout.LayoutParams.MATCH_PARENT
-            sep.height = grosor
-            sep.setMargins(margen, 0, margen, 0)
-            binding.homeDivider.setBackgroundResource(R.drawable.bg_divider_horizontal)
-        } else {
-            sep.width = grosor
-            sep.height = LinearLayout.LayoutParams.MATCH_PARENT
-            sep.setMargins(0, margen, 0, margen)
-            binding.homeDivider.setBackgroundResource(R.drawable.bg_divider_vertical)
-        }
-        binding.homeDivider.layoutParams = sep
-    }
-
     private fun setupCarousel() {
-        applyHomeOrientation()
-        carouselAdapter = CarouselAdapter(onClick = { item -> openItem(item) })
-        recentAdapter = CarouselAdapter(onClick = { item -> openItem(item) })
-
-        // Una carátula por columna, cambiando de a una. El carrusel se encarga
-        // de darle forma de carátula y centrarla en el espacio disponible.
-        novedades = AutoCarousel(binding.recyclerCarousel, carouselAdapter, delayMs = 5000L)
-        recientes = AutoCarousel(binding.recyclerRecent, recentAdapter, delayMs = 5000L)
-        novedades.attach()
-        recientes.attach()
-
         hero = HeroBanner(
             binding,
             onPlay = { item -> openItem(item, forzarReproducir = true) },
             onInfo = { item -> openDetalles(item) }
         )
-
-        // Flechas de navegación manual del carrusel (también usables con D-pad / control remoto)
-        binding.btnMoviePrev.setOnClickListener { novedades.stepBack() }
-        binding.btnMovieNext.setOnClickListener { novedades.stepForward() }
-        binding.btnSeriesPrev.setOnClickListener { recientes.stepBack() }
-        binding.btnSeriesNext.setOnClickListener { recientes.stepForward() }
-
-        // Encadenado de foco D-pad entre las cuatro flechas
-        binding.btnMoviePrev.nextFocusRightId  = R.id.btnMovieNext
-        binding.btnMovieNext.nextFocusLeftId   = R.id.btnMoviePrev
-        binding.btnMovieNext.nextFocusRightId  = R.id.btnSeriesPrev
-        binding.btnSeriesPrev.nextFocusLeftId  = R.id.btnMovieNext
-        binding.btnSeriesPrev.nextFocusRightId = R.id.btnSeriesNext
-        binding.btnSeriesNext.nextFocusLeftId  = R.id.btnSeriesPrev
-
-        // Efecto visual de foco para TV: escala suave al recibir/perder foco
-        listOf(
-            binding.btnMoviePrev, binding.btnMovieNext,
-            binding.btnSeriesPrev, binding.btnSeriesNext
-        ).forEach { btn ->
-            btn.setOnFocusChangeListener { v, hasFocus ->
-                v.animate()
-                    .scaleX(if (hasFocus) 1.18f else 1f)
-                    .scaleY(if (hasFocus) 1.18f else 1f)
-                    .setDuration(150)
-                    .start()
-            }
-        }
 
         /*
          * El catálogo se carga una sola vez y lo reutiliza también el buscador.
@@ -1272,18 +1113,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startCarousel() {
-        if (!::novedades.isInitialized) return
-        novedades.start()
         if (::hero.isInitialized && hero.hasItems) hero.start()
-        // Medio ciclo de desfase: así las dos columnas no cambian a la vez
-        recientes.start(startOffsetMs = 2500L)
     }
 
     private fun stopCarousel() {
-        // Puede llamarse desde onDestroy aunque onCreate haya salido antes de inicializarlos
-        if (!::novedades.isInitialized) return
-        novedades.stop()
-        recientes.stop()
+        // Puede llamarse desde onDestroy aunque onCreate haya salido antes de inicializarlo
         if (::hero.isInitialized) hero.stop()
     }
 
@@ -3312,7 +3146,6 @@ class MainActivity : AppCompatActivity() {
                 applyKidsVisibility()
                 selectSection(seccionBase())
             }
-            applyHomeOrientation()
             binding.tvToolbarTitle.applyBrandGradient()
             highlightNav()
             applyLayoutMode(section)
