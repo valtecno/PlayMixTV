@@ -103,7 +103,17 @@ class HeroBanner(
             b.heroBanner.clipToOutline = false
             b.ivHeroBackdrop.alpha = 1f
             b.heroScrim.setBackgroundResource(R.drawable.bg_hero_scrim_mobile)
-            b.ivHeroPoster.visibility = View.GONE
+            // Carátula completa en miniatura a la derecha, acorde a la pantalla:
+            // alto ~45 % de la pantalla, sin pasar del 38 % del ancho (relación 2:3).
+            val dm = b.root.resources.displayMetrics
+            val alto = minOf(dm.heightPixels * 0.45f, dm.widthPixels * 0.38f * 1.5f).toInt()
+            val lp = b.ivHeroPoster.layoutParams as android.widget.LinearLayout.LayoutParams
+            lp.height = alto
+            lp.width = (alto * 2f / 3f).toInt()
+            lp.gravity = android.view.Gravity.BOTTOM
+            b.ivHeroPoster.layoutParams = lp
+            b.ivHeroPoster.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            b.ivHeroPoster.visibility = View.VISIBLE
             b.heroContent.gravity = android.view.Gravity.BOTTOM
             b.heroContent.setPadding((20 * d).toInt(), (20 * d).toInt(), (20 * d).toInt(), (32 * d).toInt())
             b.tvHeroTitle.textSize = 26f
@@ -148,10 +158,8 @@ class HeroBanner(
 
         Picasso.get().cancelRequest(b.ivHeroPoster)
         Picasso.get().cancelRequest(b.ivHeroBackdrop)
-        if (!movil) {
-            Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
-                .resize(600, 0).onlyScaleDown().into(b.ivHeroPoster)
-        }
+        Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
+            .resize(600, 0).onlyScaleDown().into(b.ivHeroPoster)
         Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
             .resize(if (movil) 1000 else 600, 0).onlyScaleDown().into(b.ivHeroBackdrop)
 
