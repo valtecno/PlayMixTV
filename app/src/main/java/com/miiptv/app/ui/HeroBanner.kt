@@ -96,6 +96,9 @@ class HeroBanner(
         if (items.isNotEmpty()) render(animate = false)
     }
 
+    /** La carátula en miniatura a la derecha solo va en TV. */
+    private fun miniatura() = !com.miiptv.app.util.DeviceMode.isMobile(b.root.context)
+
     private fun aplicarModo() {
         val d = b.root.resources.displayMetrics.density
         if (movil) {
@@ -113,7 +116,10 @@ class HeroBanner(
             lp.gravity = android.view.Gravity.BOTTOM
             b.ivHeroPoster.layoutParams = lp
             b.ivHeroPoster.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
-            b.ivHeroPoster.visibility = View.VISIBLE
+            // En móvil no hay espacio: solo se muestra en TV.
+            b.ivHeroPoster.visibility = if (miniatura()) View.VISIBLE else View.GONE
+            b.ivHeroPoster.setBackgroundResource(R.drawable.bg_chip_outline)
+            b.ivHeroPoster.clipToOutline = true
             b.heroContent.gravity = android.view.Gravity.BOTTOM
             b.heroContent.setPadding((20 * d).toInt(), (20 * d).toInt(), (20 * d).toInt(), (32 * d).toInt())
             b.tvHeroTitle.textSize = 26f
@@ -158,8 +164,10 @@ class HeroBanner(
 
         Picasso.get().cancelRequest(b.ivHeroPoster)
         Picasso.get().cancelRequest(b.ivHeroBackdrop)
-        Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
-            .resize(600, 0).onlyScaleDown().into(b.ivHeroPoster)
+        if (miniatura()) {
+            Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
+                .resize(600, 0).onlyScaleDown().into(b.ivHeroPoster)
+        }
         Picasso.get().load(item.icon).config(android.graphics.Bitmap.Config.RGB_565)
             .resize(if (movil) 1000 else 600, 0).onlyScaleDown().into(b.ivHeroBackdrop)
 
