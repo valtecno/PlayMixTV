@@ -104,8 +104,10 @@ class HeroBanner(
         if (movil) {
             b.heroBanner.background = null
             b.heroBanner.clipToOutline = false
-            b.ivHeroBackdrop.alpha = 1f
-            b.heroScrim.setBackgroundResource(R.drawable.bg_hero_scrim_mobile)
+            b.ivHeroBackdrop.alpha = 0.55f   // más transparente: deja ver el fondo violeta
+            b.heroScrim.setBackgroundResource(
+                if (miniatura()) R.drawable.bg_hero_scrim_glass_tv else R.drawable.bg_hero_scrim_glass_mobile
+            )
             // Carátula completa en miniatura a la derecha, acorde a la pantalla:
             // alto ~45 % de la pantalla, sin pasar del 38 % del ancho (relación 2:3).
             val dm = b.root.resources.displayMetrics
@@ -118,7 +120,7 @@ class HeroBanner(
             b.ivHeroPoster.scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
             // En móvil no hay espacio: solo se muestra en TV.
             b.ivHeroPoster.visibility = if (miniatura()) View.VISIBLE else View.GONE
-            b.ivHeroPoster.setBackgroundResource(R.drawable.bg_chip_outline)
+            b.ivHeroPoster.setBackgroundResource(R.drawable.bg_hero_poster)
             b.ivHeroPoster.clipToOutline = true
             b.heroContent.gravity = android.view.Gravity.BOTTOM
             b.heroContent.setPadding((20 * d).toInt(), (20 * d).toInt(), (20 * d).toInt(), (32 * d).toInt())
@@ -140,7 +142,10 @@ class HeroBanner(
         if (items.size > 1) ui.postDelayed(tick, delayMs)
     }
 
-    fun stop() = ui.removeCallbacks(tick)
+    fun stop() {
+        ui.removeCallbacks(tick)
+        b.ivHeroBackdrop.animate().cancel()
+    }
 
     fun hide() {
         stop()
@@ -172,10 +177,21 @@ class HeroBanner(
             .resize(if (movil) 1000 else 600, 0).onlyScaleDown().into(b.ivHeroBackdrop)
 
         if (animate && !gamaBaja) {
+            // Entrada: el panel de vidrio sube suavemente mientras aparece.
+            val d = b.root.resources.displayMetrics.density
             b.heroContent.alpha = 0f
-            b.heroContent.animate().alpha(1f).setDuration(350).start()
+            b.heroContent.translationY = 18f * d
+            b.heroContent.animate().alpha(1f).translationY(0f).setDuration(500)
+                .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+            // Zoom lento de la imagen (efecto cine) durante lo que dura la diapositiva.
+            b.ivHeroBackdrop.animate().cancel()
+            b.ivHeroBackdrop.scaleX = 1f
+            b.ivHeroBackdrop.scaleY = 1f
+            b.ivHeroBackdrop.animate().scaleX(1.07f).scaleY(1.07f).setDuration(delayMs + 1500)
+                .setInterpolator(android.view.animation.LinearInterpolator()).start()
         } else {
             b.heroContent.alpha = 1f
+            b.heroContent.translationY = 0f
         }
     }
 
