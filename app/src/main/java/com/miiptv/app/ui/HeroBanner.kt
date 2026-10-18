@@ -47,12 +47,8 @@ class HeroBanner(
     init {
         b.btnHeroPlay.setOnClickListener { items.getOrNull(index)?.let(onPlay) }
         b.btnHeroInfo.setOnClickListener { items.getOrNull(index)?.let(onInfo) }
-        listOf(b.btnHeroPlay, b.btnHeroInfo).forEach { boton ->
-            boton.setOnFocusChangeListener { v, tieneFoco ->
-                v.animate().scaleX(if (tieneFoco) 1.08f else 1f)
-                    .scaleY(if (tieneFoco) 1.08f else 1f).setDuration(120).start()
-            }
-        }
+        // Foco del control remoto: solo color (anillo blanco en el fondo con estados).
+        // Nada de escalar: deformaba el botón y desbordaba el panel de vidrio.
     }
 
     /** Ítems con carátula, películas y series alternadas, hasta [MAX]. */

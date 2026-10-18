@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botón principal del banner: con el control remoto encima se marca con anillo blanco, sin escalar. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <gradient android:type="linear" android:angle="0"
+                android:startColor="@color/brand_accent" android:endColor="@color/brand_primary" />
+            <corners android:radius="10dp" />
+            <stroke android:width="3dp" android:color="#FFFFFFFF" />
+        </shape>
+    </item>
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <gradient android:type="linear" android:angle="0"
+                android:startColor="@color/brand_accent" android:endColor="@color/brand_primary" />
+            <corners android:radius="10dp" />
+            <stroke android:width="3dp" android:color="#B3FFFFFF" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="linear" android:angle="0"
+                android:startColor="@color/brand_accent" android:endColor="@color/brand_primary" />
+            <corners android:radius="10dp" />
+            <stroke android:width="3dp" android:color="#00FFFFFF" />
+        </shape>
+    </item>
+</selector>
