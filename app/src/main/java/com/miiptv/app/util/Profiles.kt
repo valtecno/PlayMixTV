@@ -42,19 +42,31 @@ object Profiles {
         /** Color de fondo del círculo (ARGB hex). */
         val color: Int
     ) {
-        // 12 avatares con imagen de persona estilizada
-        A1  ("a1",  "avatar_p1",  "👤", 0xFF3D5AFE.toInt()),  // chico azul
-        A2  ("a2",  "avatar_p2",  "👤", 0xFFE91E63.toInt()),  // chica rosa
-        A3  ("a3",  "avatar_p3",  "👤", 0xFF00897B.toInt()),  // chico teal barba
-        A4  ("a4",  "avatar_p4",  "👤", 0xFF7B1FA2.toInt()),  // chica morado
-        A5  ("a5",  "avatar_p5",  "👤", 0xFFF57C00.toInt()),  // chico gorra
-        A6  ("a6",  "avatar_p6",  "👤", 0xFF0097A7.toInt()),  // chica cola
-        A7  ("a7",  "avatar_p7",  "👤", 0xFFC62828.toInt()),  // chico cresta
-        A8  ("a8",  "avatar_p8",  "👤", 0xFF558B2F.toInt()),  // chica moño
-        A9  ("a9",  "avatar_p9",  "👤", 0xFF4527A0.toInt()),  // chico gafas
-        A10 ("a10", "avatar_p10", "👤", 0xFF00695C.toInt()),  // chica afro
-        A11 ("a11", "avatar_p11", "👤", 0xFFE65100.toInt()),  // chico capucha
-        A12 ("a12", "avatar_p12", "👤", 0xFF6A1B9A.toInt()),  // astronauta
+        // 24 avatares de personas en estilo caricatura (el último es un perrito)
+        A1 ("a1", "avatar_p1", "👤", 0xFFB9E4A6.toInt()),
+        A2 ("a2", "avatar_p2", "👤", 0xFFC9A6D8.toInt()),
+        A3 ("a3", "avatar_p3", "👤", 0xFFCDEBF0.toInt()),
+        A4 ("a4", "avatar_p4", "👤", 0xFFFFE3B0.toInt()),
+        A5 ("a5", "avatar_p5", "👤", 0xFF6FCFC3.toInt()),
+        A6 ("a6", "avatar_p6", "👤", 0xFFE58FB0.toInt()),
+        A7 ("a7", "avatar_p7", "👤", 0xFFD8EEF5.toInt()),
+        A8 ("a8", "avatar_p8", "👤", 0xFFFFE8B8.toInt()),
+        A9 ("a9", "avatar_p9", "👤", 0xFFBCD8F0.toInt()),
+        A10("a10", "avatar_p10", "👤", 0xFFF4A6C8.toInt()),
+        A11("a11", "avatar_p11", "👤", 0xFFCFEFF6.toInt()),
+        A12("a12", "avatar_p12", "👤", 0xFFF08A00.toInt()),
+        A13("a13", "avatar_p13", "👤", 0xFF9EB8D0.toInt()),
+        A14("a14", "avatar_p14", "👤", 0xFFC9A0DC.toInt()),
+        A15("a15", "avatar_p15", "👤", 0xFFC8E6C9.toInt()),
+        A16("a16", "avatar_p16", "👤", 0xFFFFCCBC.toInt()),
+        A17("a17", "avatar_p17", "👤", 0xFFB3E5FC.toInt()),
+        A18("a18", "avatar_p18", "👤", 0xFFFFF59D.toInt()),
+        A19("a19", "avatar_p19", "👤", 0xFFD1C4E9.toInt()),
+        A20("a20", "avatar_p20", "👤", 0xFF80CBC4.toInt()),
+        A21("a21", "avatar_p21", "👤", 0xFFFFAB91.toInt()),
+        A22("a22", "avatar_p22", "👤", 0xFFE1BEE7.toInt()),
+        A23("a23", "avatar_p23", "👤", 0xFFB0BEC5.toInt()),
+        A24("a24", "avatar_p24", "👤", 0xFFC5CAE9.toInt()),
         KIDS("kids", null,        "🧒", 0xFF4DB6AC.toInt()); // turquesa (Niños)
 
         companion object {
