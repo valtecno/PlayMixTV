@@ -328,7 +328,38 @@ class MainActivity : AppCompatActivity() {
             ).show()
         }
 
-        mostrarAvisoVencimientoSiCorresponde()
+        refrescarVencimiento()
+    }
+
+    /**
+     * Pide al panel la fecha de vencimiento actual y recién entonces decide si
+     * avisa. Antes se usaba la fecha guardada en el login, que no se volvía a
+     * tocar: si la cuenta se renovaba después, el aviso seguía saliendo hasta
+     * cerrar sesión y volver a entrar. Si no hay conexión se usa la guardada.
+     */
+    private fun refrescarVencimiento() {
+        val ctx = applicationContext
+        com.miiptv.app.api.Session.api(ctx)
+            .login(com.miiptv.app.api.Session.username(ctx), com.miiptv.app.api.Session.password(ctx))
+            .enqueue(object : retrofit2.Callback<com.miiptv.app.api.LoginResponse> {
+                override fun onResponse(
+                    call: retrofit2.Call<com.miiptv.app.api.LoginResponse>,
+                    response: retrofit2.Response<com.miiptv.app.api.LoginResponse>
+                ) {
+                    val info = response.body()?.userInfo
+                    if (response.isSuccessful && info?.auth == 1) {
+                        com.miiptv.app.api.Session.saveExpDate(ctx, info.expDate)
+                    }
+                    if (!isFinishing && !isDestroyed) mostrarAvisoVencimientoSiCorresponde()
+                }
+
+                override fun onFailure(
+                    call: retrofit2.Call<com.miiptv.app.api.LoginResponse>,
+                    t: Throwable
+                ) {
+                    if (!isFinishing && !isDestroyed) mostrarAvisoVencimientoSiCorresponde()
+                }
+            })
     }
 
     /**
