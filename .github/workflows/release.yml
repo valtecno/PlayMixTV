@@ -24,6 +24,7 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+          cache: gradle
 
       - name: Dar permisos a Gradle
         run: chmod +x gradlew
