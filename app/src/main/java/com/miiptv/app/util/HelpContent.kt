@@ -35,7 +35,7 @@ object HelpContent {
     )
 
     /** Número de WhatsApp de soporte (el mismo que usa "Enviar contacto"). */
-    const val WHATSAPP_SOPORTE = "56948714030"
+    const val WHATSAPP_SOPORTE = "56963246590"
 
     val preguntas: List<Pregunta> = listOf(
         // ---------------- Primeros pasos ----------------

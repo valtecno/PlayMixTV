@@ -11,6 +11,7 @@ import android.net.Uri
 import com.miiptv.app.util.DailyRefresh
 import com.miiptv.app.util.ErrorDiagnosis
 import com.miiptv.app.util.Epg
+import com.miiptv.app.util.HelpContent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -456,7 +457,7 @@ class MainActivity : AppCompatActivity() {
         // El mensaje que el usuario verá antes de elegir a quién mandarlo.
         // Al final incluye el enlace directo al chat con el número de contacto
         // de PlayMix, para que quien lo reciba pueda escribir con un solo toque.
-        val enlaceContacto = "https://wa.me/56948714030"
+        val enlaceContacto = "https://wa.me/${HelpContent.WHATSAPP_SOPORTE}"
         val mensaje = "Mira esta aplicación que uso para ver TV. Pide una prueba gratis a ver " +
             "si te gusta y te unes a la comunidad que vemos más por menos dinero. " +
             "Escríbele aquí: $enlaceContacto"
