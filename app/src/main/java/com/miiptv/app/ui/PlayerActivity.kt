@@ -271,10 +271,38 @@ class PlayerActivity : AppCompatActivity() {
 
     // ---------------- Ciclo de vida ----------------
 
+    /**
+     * Pantalla completa de verdad: oculta la barra de estado y la de navegación
+     * del teléfono y deja el video llegar hasta los bordes (también bajo la
+     * muesca de la cámara). Si el usuario desliza desde un borde, las barras
+     * aparecen un momento y vuelven a esconderse solas.
+     */
+    private fun pantallaCompleta() {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (android.os.Build.VERSION.SDK_INT >= 28) {
+            window.attributes = window.attributes.also {
+                it.layoutInDisplayCutoutMode =
+                    android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).apply {
+            systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    // Al volver de un diálogo o del selector de apps, Android devuelve las barras.
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) pantallaCompleta()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityPlayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        pantallaCompleta()
 
         streamUrl = intent.getStringExtra(EXTRA_URL) ?: return finish()
         contentTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
