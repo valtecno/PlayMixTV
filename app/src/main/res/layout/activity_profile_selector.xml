@@ -20,22 +20,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- Etiqueta "by @valtecno" junto al logo -->
-    <TextView
-        android:id="@+id/tvBrand"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/app_author"
-        android:textColor="#55FFFFFF"
-        android:textSize="10sp"
-        android:letterSpacing="0.08"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="2dp"
-        app:layout_constraintTop_toTopOf="@id/ivLogo"
-        app:layout_constraintBottom_toBottomOf="@id/ivLogo"
-        app:layout_constraintStart_toEndOf="@id/ivLogo" />
-
-    <!-- Título "¿Quién está viendo?" — centrado verticalmente en su zona -->
+<!-- Título "¿Quién está viendo?" — centrado verticalmente en su zona -->
     <TextView
         android:id="@+id/tvProfileTitle"
         android:layout_width="wrap_content"

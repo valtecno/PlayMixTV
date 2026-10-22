@@ -47,15 +47,6 @@
                     android:textStyle="bold"
                     android:textColor="@color/text_light" />
 
-                <TextView
-                    android:id="@+id/tvToolbarBy"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="-2dp"
-                    android:text="@string/app_author"
-                    android:textSize="10sp"
-                    android:letterSpacing="0.04"
-                    android:textColor="@color/text_muted" />
             </LinearLayout>
 
         </LinearLayout>
@@ -832,7 +823,7 @@
 
     </LinearLayout>
 
-</LinearLayout>
+            </LinearLayout>
 
 <!-- ===== Aviso de vencimiento próximo ===== -->
 <!-- Visible solo si faltan ≤3 días; desaparece solo a los 5 s (ver MainActivity). -->
@@ -859,6 +850,6 @@
         android:textSize="14sp"
         android:lineSpacingMultiplier="1.25" />
 
-</LinearLayout>
+            </LinearLayout>
 
 </FrameLayout>

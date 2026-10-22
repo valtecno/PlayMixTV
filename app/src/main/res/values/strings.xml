@@ -302,7 +302,6 @@
     <string name="mode_continue">Continuar</string>
     <string name="mode_changeable">Puedes cambiarlo cuando quieras desde Cuenta.</string>
     <string name="setting_device_mode">Modo de aplicación</string>
-    <string name="app_author">by @valtecno</string>
     <string name="setting_background">Seguir sonando en segundo plano</string>
     <string name="playback_channel">Reproducción</string>
     <string name="playback_channel_desc">Mantiene el audio sonando al salir de la app</string>

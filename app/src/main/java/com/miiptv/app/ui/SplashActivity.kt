@@ -129,7 +129,6 @@ class SplashActivity : AppCompatActivity() {
         val glow = binding.introGlow
         val logo = binding.ivLogoFallback
         val name = binding.tvAppName
-        val by = binding.tvSplashBy
 
         logo.scaleX = 0.88f
         logo.scaleY = 0.88f
@@ -153,14 +152,11 @@ class SplashActivity : AppCompatActivity() {
         nameFade.startDelay = 170
         nameSlide.startDelay = 170
 
-        val byFade = ObjectAnimator.ofFloat(by, View.ALPHA, 0f, 1f).setDuration(300)
-        byFade.startDelay = 330
-
         AnimatorSet().apply {
             playTogether(
                 glowIn, glowOut, glowX, glowY,
                 logoFade, logoZoomX, logoZoomY,
-                nameFade, nameSlide, byFade
+                nameFade, nameSlide
             )
             interpolator = DecelerateInterpolator()
             start()
