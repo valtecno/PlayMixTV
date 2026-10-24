@@ -9,7 +9,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -46,13 +45,9 @@ class RadioScene(private val b: ActivityPlayerBinding) {
     private var principal = rosa
     private var paletaPedida = 0
 
-    private val encajador = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-        b.radioColumns.post { encajarColumnas() }
-    }
-
     fun setup() {
-        // Los anillos laten por fuera de su caja y las columnas pueden achicarse
-        // con escala: nada de eso debe recortarse.
+        // Los anillos laten por fuera de su caja y las columnas (FitScaleLayout)
+        // pueden achicarse con escala: nada de eso debe recortarse.
         listOf<ViewGroup>(b.radioColumns, b.colRadioStation, b.colRadioClock, b.radioLogoBox)
             .forEach { it.clipChildren = false; it.clipToPadding = false }
 
@@ -65,8 +60,6 @@ class RadioScene(private val b: ActivityPlayerBinding) {
 
         aplicarColores(rosa)
         aplicarOrientacion()
-        b.radioColumns.removeOnLayoutChangeListener(encajador)
-        b.radioColumns.addOnLayoutChangeListener(encajador)
     }
 
     // ---------------- Colores ----------------
@@ -99,7 +92,7 @@ class RadioScene(private val b: ActivityPlayerBinding) {
         b.aurora1.background = radial(color, 0x8C, dp(280))
         b.aurora2.background = radial(naranja, 0x70, dp(260))
         b.aurora3.background = radial(violeta, 0x80, dp(230))
-        b.radioLogoBox.background = radial(color, 0x66, dp(95))
+        b.radioLogoBox.background = radial(color, 0x66, dp(85))
         b.colRadioClock.background = radial(violeta, 0x45, dp(220))
         b.radioRing1.background = anillo(naranja, 0xA0)
         b.radioRing2.background = anillo(color, 0x5A)
@@ -142,7 +135,6 @@ class RadioScene(private val b: ActivityPlayerBinding) {
             }
             lp.weight = 1f
             col.layoutParams = lp
-            col.setGravity(Gravity.CENTER)
         }
 
         val sep = b.radioDivider.layoutParams as LinearLayout.LayoutParams
@@ -156,32 +148,6 @@ class RadioScene(private val b: ActivityPlayerBinding) {
         b.radioDivider.layoutParams = sep
 
         b.tvRadioClock.setTextSize(TypedValue.COMPLEX_UNIT_SP, if (vertical) 84f else 104f)
-    }
-
-    /**
-     * Si una columna no cabe en el alto disponible (teléfono acostado, pantallas
-     * chicas), se achica entera con escala en vez de cortarse. En una TV no
-     * hace nada: hay espacio de sobra.
-     */
-    private fun encajarColumnas() {
-        listOf(b.colRadioStation, b.colRadioClock).forEach { col ->
-            val alto = col.height
-            val ancho = col.width
-            if (alto <= 0 || ancho <= 0) return@forEach
-            col.measure(
-                View.MeasureSpec.makeMeasureSpec(ancho, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-            )
-            val natural = col.measuredHeight
-            val disponible = if (b.radioColumns.orientation == LinearLayout.VERTICAL) alto
-                else b.radioColumns.height - b.radioColumns.paddingTop - b.radioColumns.paddingBottom
-            val escala = if (natural > disponible && natural > 0)
-                (disponible.toFloat() / natural).coerceIn(0.55f, 1f) else 1f
-            col.pivotX = ancho / 2f
-            col.pivotY = alto / 2f
-            col.scaleX = escala
-            col.scaleY = escala
-        }
     }
 
     // ---------------- "Sonando ahora" ----------------

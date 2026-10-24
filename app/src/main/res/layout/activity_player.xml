@@ -96,39 +96,45 @@
             android:paddingStart="24dp"
             android:paddingEnd="24dp">
 
-            <!-- ===== Columna de la emisora ===== -->
-            <LinearLayout
+            <!-- ===== Columna de la emisora =====
+                 FitScaleLayout mide el contenido a su tamaño natural y, si no
+                 cabe en el alto disponible, lo achica entero en vez de cortarlo. -->
+            <com.miiptv.app.ui.FitScaleLayout
                 android:id="@+id/colRadioStation"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="center">
+                android:gravity="center_horizontal">
 
                 <!-- Logo con halo y dos anillos que laten mientras suena -->
                 <!-- El halo de color es el fondo de este contenedor (RadioScene) -->
                 <FrameLayout
                     android:id="@+id/radioLogoBox"
-                    android:layout_width="190dp"
-                    android:layout_height="190dp"
+                    android:layout_width="170dp"
+                    android:layout_height="170dp"
                     android:clipChildren="false">
 
                     <View
                         android:id="@+id/radioRing2"
-                        android:layout_width="184dp"
-                        android:layout_height="184dp"
+                        android:layout_width="164dp"
+                        android:layout_height="164dp"
                         android:layout_gravity="center" />
 
                     <View
                         android:id="@+id/radioRing1"
-                        android:layout_width="152dp"
-                        android:layout_height="152dp"
+                        android:layout_width="136dp"
+                        android:layout_height="136dp"
                         android:layout_gravity="center" />
 
                     <FrameLayout
                         android:id="@+id/radioLogoHolder"
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
+                        android:layout_width="108dp"
+                        android:layout_height="108dp"
                         android:layout_gravity="center"
                         android:background="@drawable/bg_radio_glass_circle">
 
@@ -250,7 +256,7 @@
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
+                    android:layout_marginTop="14dp"
                     android:orientation="horizontal">
 
                     <LinearLayout
@@ -261,9 +267,9 @@
 
                         <ImageView
                             android:id="@+id/btnRadioHome"
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:padding="16dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:padding="13dp"
                             android:src="@drawable/ic_home"
                             android:focusable="true"
                             android:clickable="true"
@@ -288,9 +294,9 @@
 
                         <ImageView
                             android:id="@+id/btnRadioFavorite"
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:padding="16dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:padding="13dp"
                             android:background="@drawable/bg_radio_glass_button"
                             android:src="@drawable/ic_favorite"
                             android:focusable="true"
@@ -308,6 +314,7 @@
                     </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
+            </com.miiptv.app.ui.FitScaleLayout>
 
             <!-- Separador tenue entre columnas (horizontal en vertical) -->
             <View
@@ -322,13 +329,17 @@
               format24Hour fuerza 24 horas sin depender de la región.
             -->
             <!-- El resplandor violeta es el fondo de esta columna (RadioScene) -->
-            <LinearLayout
+            <com.miiptv.app.ui.FitScaleLayout
                 android:id="@+id/colRadioClock"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
+                android:layout_weight="1">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:gravity="center"
+                android:gravity="center_horizontal"
                 android:paddingTop="16dp"
                 android:paddingBottom="16dp">
 
@@ -377,6 +388,7 @@
                     tools:text="18°C"
                     tools:visibility="visible" />
             </LinearLayout>
+            </com.miiptv.app.ui.FitScaleLayout>
         </LinearLayout>
     </FrameLayout>
 
