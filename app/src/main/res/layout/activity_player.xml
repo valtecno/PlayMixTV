@@ -21,27 +21,51 @@
         app:repeat_toggle_modes="none" />
 
     <!--
-      ===== Fondo de la sección Radios =====
-      Las emisoras no traen imagen, así que la superficie de video quedaría
-      negra. Cuando lo que suena es una radio se oculta el PlayerView y se
-      muestra esto en su lugar: el fondo de marca, el logo de la emisora y un
-      ecualizador que se mueve solo mientras hay audio.
+      ===== Pantalla de Radios ("Aurora en vivo") =====
+      Las emisoras no traen imagen, así que en lugar del PlayerView se muestra
+      esto: un fondo de luces difusas con el color de la emisora, la ficha de
+      la emisora a un lado y el reloj, la fecha y la temperatura en grande al
+      otro. Las animaciones (aurora, anillos, onda) las maneja RadioScene y se
+      apagan solas en modo equipo débil, al pausar y al salir de la pantalla.
     -->
     <FrameLayout
         android:id="@+id/radioBackdrop"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="#0E0818"
         android:visibility="gone">
 
-        <!-- La imagen se carga por código solo en modo radio (ver PlayerActivity):
-             como src= se decodificaba entera (1920x1080, ~8 MB) al abrir CUALQUIER
-             video, aunque este contenedor esté oculto. -->
-        <ImageView
-            android:id="@+id/ivRadioBg"
+        <!-- Aurora: tres manchas de luz (degradados radiales armados por código)
+             que se desplazan muy lento. Solo se mueven, no se redibujan. -->
+        <FrameLayout
+            android:id="@+id/radioAurora"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:contentDescription="@null" />
+            android:layout_height="match_parent">
+
+            <View
+                android:id="@+id/aurora1"
+                android:layout_width="560dp"
+                android:layout_height="560dp"
+                android:layout_gravity="top|start"
+                android:layout_marginStart="-160dp"
+                android:layout_marginTop="-180dp" />
+
+            <View
+                android:id="@+id/aurora2"
+                android:layout_width="520dp"
+                android:layout_height="520dp"
+                android:layout_gravity="bottom|end"
+                android:layout_marginEnd="-140dp"
+                android:layout_marginBottom="-180dp" />
+
+            <View
+                android:id="@+id/aurora3"
+                android:layout_width="460dp"
+                android:layout_height="460dp"
+                android:layout_gravity="top|end"
+                android:layout_marginEnd="60dp"
+                android:layout_marginTop="-200dp" />
+        </FrameLayout>
 
         <!-- Oscurece el pie para que la barra de reproducción se despegue -->
         <View
@@ -51,63 +75,103 @@
             android:background="@drawable/bg_radio_scrim"
             android:rotation="180" />
 
-        <LinearLayout
+        <!-- Ondas finas sobre la barra de reproducción -->
+        <com.miiptv.app.ui.RadioWaveView
+            android:id="@+id/radioWave"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="32dp"
-            android:paddingEnd="32dp">
+            android:layout_height="56dp"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="62dp" />
 
-            <!-- Columna izquierda: la ficha de la emisora, igual que antes. -->
+        <!-- Dos columnas: emisora | reloj. En un teléfono vertical RadioScene
+             las apila (emisora arriba, reloj abajo). -->
+        <LinearLayout
+            android:id="@+id/radioColumns"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="64dp"
+            android:layout_marginBottom="96dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <!-- ===== Columna de la emisora ===== -->
             <LinearLayout
+                android:id="@+id/colRadioStation"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:gravity="center_horizontal">
+                android:gravity="center">
 
+                <!-- Logo con halo y dos anillos que laten mientras suena -->
+                <!-- El halo de color es el fondo de este contenedor (RadioScene) -->
                 <FrameLayout
-                    android:id="@+id/radioLogoHolder"
-                    android:layout_width="126dp"
-                    android:layout_height="126dp"
-                    android:background="@drawable/bg_radio_logo">
+                    android:id="@+id/radioLogoBox"
+                    android:layout_width="190dp"
+                    android:layout_height="190dp"
+                    android:clipChildren="false">
 
-                    <ImageView
-                        android:id="@+id/ivRadioLogo"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:padding="24dp"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/ic_radio"
-                        android:contentDescription="@string/section_radio" />
+                    <View
+                        android:id="@+id/radioRing2"
+                        android:layout_width="184dp"
+                        android:layout_height="184dp"
+                        android:layout_gravity="center" />
+
+                    <View
+                        android:id="@+id/radioRing1"
+                        android:layout_width="152dp"
+                        android:layout_height="152dp"
+                        android:layout_gravity="center" />
+
+                    <FrameLayout
+                        android:id="@+id/radioLogoHolder"
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:layout_gravity="center"
+                        android:background="@drawable/bg_radio_glass_circle">
+
+                        <ImageView
+                            android:id="@+id/ivRadioLogo"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="26dp"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_radio"
+                            android:contentDescription="@string/section_radio" />
+                    </FrameLayout>
                 </FrameLayout>
 
                 <TextView
                     android:id="@+id/tvRadioName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="6dp"
                     android:gravity="center"
                     android:maxLines="2"
                     android:ellipsize="end"
                     android:textColor="@color/text_light"
-                    android:textSize="21sp"
+                    android:textSize="24sp"
                     android:textStyle="bold" />
 
-                <!-- Ecualizador vivo + indicador de emisión en directo -->
+                <!-- Chip de vidrio: ecualizador + EN VIVO -->
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/bg_radio_glass_pill"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="5dp"
+                    android:paddingBottom="5dp"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
                     <LinearLayout
                         android:id="@+id/equalizer"
                         android:layout_width="wrap_content"
-                        android:layout_height="18dp"
+                        android:layout_height="14dp"
                         android:orientation="horizontal"
                         android:gravity="bottom">
 
@@ -121,7 +185,7 @@
                     <View
                         android:layout_width="7dp"
                         android:layout_height="7dp"
-                        android:layout_marginStart="14dp"
+                        android:layout_marginStart="10dp"
                         android:background="@drawable/bg_live_dot" />
 
                     <TextView
@@ -135,102 +199,180 @@
                         android:textStyle="bold" />
                 </LinearLayout>
 
+                <!-- Origen de la emisora. Ya no se muestra (la barra de abajo
+                     dice "Emisora X de N"), pero se conserva por el código. -->
                 <TextView
                     android:id="@+id/tvRadioMeta"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:maxLines="1"
-                    android:ellipsize="end"
-                    android:textColor="@color/text_muted"
-                    android:textSize="12sp" />
+                    android:visibility="gone" />
 
-                <!-- Botones de la emisora (Inicio + Favorito).
-                     Se apilan en vertical; layout_width="match_parent" + gravity="center"
-                     centra el conjunto ícono+texto dentro del botón sin recortes. -->
+                <!-- "Sonando ahora": artista y canción, solo si la emisora los
+                     envía. Oculta si no hay dato. -->
                 <LinearLayout
+                    android:id="@+id/radioNowCard"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_marginTop="22dp"
-                    android:layout_marginStart="0dp"
-                    android:layout_marginEnd="0dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/bg_radio_glass_card"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="9dp"
+                    android:paddingBottom="10dp"
                     android:orientation="vertical"
-                    android:gravity="center">
+                    android:visibility="gone">
 
                     <TextView
-                        android:id="@+id/btnRadioHome"
-                        style="@style/NavItem"
-                        android:layout_width="match_parent"
-                        android:layout_marginStart="0dp"
-                        android:layout_marginEnd="0dp"
-                        android:gravity="center"
-                        android:drawablePadding="8dp"
-                        android:text="@string/nav_home"
-                        android:drawableStart="@drawable/ic_home" />
+                        android:id="@+id/tvRadioNowLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:letterSpacing="0.08"
+                        android:text="@string/radio_now_playing"
+                        android:textColor="@color/brand_primary"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
 
                     <TextView
-                        android:id="@+id/btnRadioFavorite"
-                        style="@style/NavItem"
+                        android:id="@+id/tvRadioSong"
                         android:layout_width="match_parent"
-                        android:layout_marginStart="0dp"
-                        android:layout_marginEnd="0dp"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center"
-                        android:drawablePadding="8dp"
-                        android:text="@string/tab_favorites"
-                        android:drawableStart="@drawable/ic_favorite" />
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:singleLine="true"
+                        android:ellipsize="marquee"
+                        android:marqueeRepeatLimit="marquee_forever"
+                        android:textColor="@color/text_light"
+                        android:textSize="15sp" />
+                </LinearLayout>
+
+                <!-- Botones redondos: Inicio y Favorito -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal">
+
+                        <ImageView
+                            android:id="@+id/btnRadioHome"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:padding="16dp"
+                            android:src="@drawable/ic_home"
+                            android:focusable="true"
+                            android:clickable="true"
+                            android:contentDescription="@string/nav_home" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:text="@string/nav_home"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/radioFavGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="34dp"
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal">
+
+                        <ImageView
+                            android:id="@+id/btnRadioFavorite"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
+                            android:padding="16dp"
+                            android:background="@drawable/bg_radio_glass_button"
+                            android:src="@drawable/ic_favorite"
+                            android:focusable="true"
+                            android:clickable="true"
+                            android:contentDescription="@string/radio_fav_add" />
+
+                        <TextView
+                            android:id="@+id/tvRadioFavLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:text="@string/radio_fav_add"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Separador tenue entre columnas (horizontal en vertical) -->
+            <View
+                android:id="@+id/radioDivider"
+                android:layout_width="1dp"
+                android:layout_height="260dp"
+                android:background="#26FFFFFF" />
+
             <!--
-              Columna derecha: reloj grande. Con TextClock no hace falta código
-              ni Handler: el propio widget se refresca solo cada minuto (y cada
-              segundo el de abajo). android:format24Hour fuerza 24 horas sin
-              depender de la configuración regional del aparato.
+              ===== Columna del reloj (protagonista) =====
+              TextClock se refresca solo: no hace falta código ni Handler.
+              format24Hour fuerza 24 horas sin depender de la región.
             -->
+            <!-- El resplandor violeta es el fondo de esta columna (RadioScene) -->
             <LinearLayout
+                android:id="@+id/colRadioClock"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:orientation="vertical"
-                android:gravity="center">
+                android:gravity="center"
+                android:paddingTop="16dp"
+                android:paddingBottom="16dp">
 
                 <TextClock
                     android:id="@+id/tvRadioClock"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:format24Hour="HH:mm"
                     android:format12Hour="HH:mm"
-                    android:fontFamily="sans-serif-light"
+                    android:fontFamily="sans-serif-thin"
                     android:includeFontPadding="false"
-                    android:gravity="center"
                     android:maxLines="1"
                     android:textColor="@color/text_light"
-                    android:textSize="64sp" />
+                    android:textSize="104sp" />
 
                 <TextClock
                     android:id="@+id/tvRadioClockDate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
+                    android:layout_marginTop="4dp"
                     android:format24Hour="EEEE d 'de' MMMM"
                     android:format12Hour="EEEE d 'de' MMMM"
-                    android:textColor="@color/text_muted"
-                    android:textSize="15sp"
-                    android:letterSpacing="0.03" />
+                    android:fontFamily="sans-serif-light"
+                    android:textColor="#E6DEF5"
+                    android:textSize="22sp" />
+
+                <View
+                    android:layout_width="180dp"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="14dp"
+                    android:background="#33FFFFFF" />
 
                 <!-- Temperatura local del usuario (ver WeatherService) -->
                 <TextView
                     android:id="@+id/tvRadioTemp"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="12dp"
                     android:drawableStart="@drawable/ic_thermometer"
-                    android:drawablePadding="6dp"
+                    android:drawablePadding="10dp"
+                    android:fontFamily="sans-serif-light"
                     android:gravity="center_vertical"
-                    android:textColor="@color/text_muted"
-                    android:textSize="15sp"
+                    android:textColor="@color/text_light"
+                    android:textSize="34sp"
                     android:visibility="gone"
                     tools:text="18°C"
                     tools:visibility="visible" />

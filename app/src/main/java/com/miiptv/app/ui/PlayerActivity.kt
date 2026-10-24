@@ -11,7 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
-import android.graphics.drawable.GradientDrawable
+import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.os.Bundle
 import android.os.Handler
@@ -189,6 +189,8 @@ class PlayerActivity : AppCompatActivity() {
     private var radioSourceLabel: String? = null
     /** Animaciones del ecualizador; se cancelan al pausar y al salir. */
     private val eqAnimators = mutableListOf<ObjectAnimator>()
+    /** Fondo animado, reloj y "Sonando ahora" de la pantalla de radio. */
+    private var radioScene: RadioScene? = null
 
     private var playlistIndex = 0
 
@@ -196,6 +198,11 @@ class PlayerActivity : AppCompatActivity() {
     private val radioUiListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             updateRadioPlaybackState(isPlaying)
+        }
+
+        /** Muchas radios mandan "Artista - Canción" dentro del audio (ICY). */
+        override fun onMediaMetadataChanged(mediaMetadata: androidx.media3.common.MediaMetadata) {
+            if (isRadio) mostrarCancion(mediaMetadata)
         }
 
         /**
@@ -290,6 +297,12 @@ class PlayerActivity : AppCompatActivity() {
                 androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
         }
+    }
+
+    // Teléfono girado en la radio: emisora y reloj lado a lado o apilados.
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (isRadio) radioScene?.aplicarOrientacion()
     }
 
     // Al volver de un diálogo o del selector de apps, Android devuelve las barras.
@@ -1051,17 +1064,30 @@ class PlayerActivity : AppCompatActivity() {
         // Guardada: se rellena con el color de acento. Sin guardar: apagada.
         // El texto también cambia, porque un corazón encendido puede leerse
         // igual como "está guardada" que como "tocá acá para guardarla".
-        Appearance.applyLevel(
+        pintarBotonRadio(
             binding.btnRadioFavorite,
-            if (fav) Appearance.Level.PRIMARY else Appearance.Level.INACTIVE,
-            22f
+            if (fav) Appearance.gradientOval(this)
+            else ContextCompat.getDrawable(this, R.drawable.bg_radio_glass_button)!!
         )
-        binding.btnRadioFavorite.setText(
+        binding.btnRadioFavorite.setColorFilter(
+            if (fav) Color.WHITE else ContextCompat.getColor(this, R.color.heart_red_dim)
+        )
+        binding.tvRadioFavLabel.setText(
             if (fav) R.string.radio_fav_saved else R.string.radio_fav_add
         )
-        binding.btnRadioFavorite.compoundDrawablesRelative.forEach {
-            it?.mutate()?.setTint(binding.btnRadioFavorite.currentTextColor)
-        }
+    }
+
+    /** Fondo de un botón redondo de la radio, con el anillo de foco si hay control remoto. */
+    private fun pintarBotonRadio(boton: ImageView, normal: android.graphics.drawable.Drawable) {
+        boton.background = normal
+        if (RemoteControl.isEnabled(this)) RemoteControl.applyIconFocus(boton, true)
+    }
+
+    /** Título de la canción que manda la emisora; se ignora si es solo su nombre. */
+    private fun mostrarCancion(meta: androidx.media3.common.MediaMetadata?) {
+        val titulo = meta?.title?.toString()?.trim()
+            ?.takeIf { it.isNotEmpty() && !it.equals(contentTitle.trim(), ignoreCase = true) }
+        radioScene?.mostrarCancion(titulo)
     }
 
     // ---------------- Pistas: audio, subtítulos y resolución ----------------
@@ -1312,8 +1338,9 @@ class PlayerActivity : AppCompatActivity() {
         // identificadores internos de la librería.
         RemoteControl.applyIconFocusToTree(binding.playerView, true)
 
-        // btnBack, btnRadioHome y btnRadioFavorite no entran acá: llevan estilo
-        // NavItem y ya reciben su color de foco desde Appearance.applyLevel.
+        // btnBack no entra acá: lleva estilo NavItem y ya recibe su color de
+        // foco desde Appearance.applyLevel. Los botones redondos de la radio
+        // (Inicio, Favorito) lo reciben en pintarBotonRadio().
     }
 
     private fun setupRadioMode() {
@@ -1321,9 +1348,8 @@ class PlayerActivity : AppCompatActivity() {
 
         binding.playerView.visibility = View.GONE
         binding.radioBackdrop.visibility = View.VISIBLE
-        com.squareup.picasso.Picasso.get().load(R.drawable.bg_radio)
-            .fit().centerCrop().config(android.graphics.Bitmap.Config.RGB_565).into(binding.ivRadioBg)
         binding.radioBar.visibility = View.VISIBLE
+        radioScene = RadioScene(binding).also { it.setup() }
 
         // Sin video no hay subtítulos ni relación de aspecto que elegir
         // (btnVolume no hace falta tocarlo: setupVolumeControl() ya lo oculta
@@ -1333,22 +1359,14 @@ class PlayerActivity : AppCompatActivity() {
 
         val acento = Appearance.accent(this)
 
-        // Aro del logo grande, en el color de acento elegido en Personalizar
-        binding.radioLogoHolder.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(0xE60E0820.toInt())
-            setStroke(dp(2), acento)
-        }
         binding.btnRadioPlayPause.background = Appearance.gradientOval(this)
         for (i in 0 until binding.equalizer.childCount) {
             binding.equalizer.getChildAt(i).background?.mutate()?.setTint(acento)
         }
 
-        // Botón de inicio, con el mismo tratamiento que el del menú principal
-        Appearance.applyLevel(binding.btnRadioHome, Appearance.Level.PRIMARY, 22f)
-        binding.btnRadioHome.compoundDrawablesRelative.forEach {
-            it?.mutate()?.setTint(binding.btnRadioHome.currentTextColor)
-        }
+        // Botón redondo de inicio, con el degradado de la marca
+        pintarBotonRadio(binding.btnRadioHome, Appearance.gradientOval(this))
+        binding.btnRadioHome.setColorFilter(Color.WHITE)
         binding.btnRadioHome.setOnClickListener {
             startActivity(
                 Intent(this, MainActivity::class.java)
@@ -1360,7 +1378,7 @@ class PlayerActivity : AppCompatActivity() {
         // Favorito con etiqueta, al lado de Inicio. Hace lo mismo que la
         // estrella de la barra de arriba, que en una tele es diminuta y queda
         // lejos de la mano.
-        binding.btnRadioFavorite.visibility =
+        binding.radioFavGroup.visibility =
             if (favoriteItem == null) View.GONE else View.VISIBLE
         binding.btnRadioFavorite.setOnClickListener { toggleFavorite() }
 
@@ -1404,6 +1422,9 @@ class PlayerActivity : AppCompatActivity() {
             if (total > 1) "$it · $posicion" else it
         } ?: posicion
 
+        // Emisora nueva: la canción anterior ya no corresponde
+        radioScene?.mostrarCancion(null)
+
         loadRadioLogo(
             playlistIcons.getOrNull(playlistIndex)?.takeIf { it.isNotBlank() }
                 ?: intent.getStringExtra(EXTRA_ITEM_ICON)?.takeIf { it.isNotBlank() }
@@ -1433,15 +1454,29 @@ class PlayerActivity : AppCompatActivity() {
         val vistas = listOf(binding.ivRadioLogo, binding.ivBarLogo)
         if (url.isNullOrBlank()) {
             vistas.forEach { it.setImageResource(R.drawable.ic_radio) }
+            radioScene?.colorPorDefecto()
             return
         }
-        vistas.forEach { vista ->
-            Picasso.get()
-                .load(url)
-                .placeholder(R.drawable.ic_radio)
-                .error(R.drawable.ic_radio)
-                .into(vista)
-        }
+        Picasso.get()
+            .load(url)
+            .placeholder(R.drawable.ic_radio)
+            .error(R.drawable.ic_radio)
+            .into(binding.ivRadioLogo, object : com.squareup.picasso.Callback {
+                // El fondo de la pantalla toma el color del logo de la emisora
+                override fun onSuccess() {
+                    val bmp = (binding.ivRadioLogo.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                    radioScene?.colorDesdeLogo(bmp)
+                }
+
+                override fun onError(e: Exception?) {
+                    radioScene?.colorPorDefecto()
+                }
+            })
+        Picasso.get()
+            .load(url)
+            .placeholder(R.drawable.ic_radio)
+            .error(R.drawable.ic_radio)
+            .into(binding.ivBarLogo)
     }
 
     private fun changeStation(delta: Int) {
@@ -1478,7 +1513,13 @@ class PlayerActivity : AppCompatActivity() {
         binding.btnRadioPlayPause.setImageResource(
             if (playing) R.drawable.ic_radio_pause else R.drawable.ic_radio_play
         )
-        if (playing) startEqualizer() else stopEqualizer()
+        if (playing) {
+            startEqualizer()
+            radioScene?.start()
+        } else {
+            stopEqualizer()
+        }
+        mostrarCancion(player?.mediaMetadata)
     }
 
     /**
@@ -1513,6 +1554,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun stopEqualizer() {
+        radioScene?.stop()
         eqAnimators.forEach { it.cancel() }
         eqAnimators.clear()
         for (i in 0 until binding.equalizer.childCount) {

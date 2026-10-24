@@ -125,6 +125,7 @@
     <string name="radio_loading">Buscando emisoras…</string>
     <!-- Reproductor de radio -->
     <string name="radio_live">EN VIVO</string>
+    <string name="radio_now_playing">♪  SONANDO AHORA</string>
     <string name="radio_connecting">Conectando…</string>
     <string name="radio_prev_station">Emisora anterior</string>
     <string name="radio_next_station">Emisora siguiente</string>
