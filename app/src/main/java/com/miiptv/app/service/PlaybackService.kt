@@ -31,37 +31,77 @@ class PlaybackService : Service() {
         const val ACTION_TOGGLE = "com.miiptv.app.TOGGLE"
         const val ACTION_STOP = "com.miiptv.app.STOP"
 
+        /**
+         * true entre startForegroundService() y el momento en que el servicio
+         * llama a startForeground(). Android exige que ese llamado ocurra SÍ O
+         * SÍ: si se detiene el servicio antes (stopService), en Android 12+ la
+         * app se cierra con ForegroundServiceDidNotStartInTimeException.
+         */
+        @Volatile private var arrancando = false
+
         fun start(context: Context) {
-            ContextCompat.startForegroundService(
-                context, Intent(context, PlaybackService::class.java)
-            )
+            arrancando = true
+            try {
+                ContextCompat.startForegroundService(
+                    context, Intent(context, PlaybackService::class.java)
+                )
+            } catch (e: RuntimeException) {
+                arrancando = false   // no llegó a arrancar: nada que esperar
+                throw e
+            }
         }
 
         fun stop(context: Context) {
+            if (arrancando) {
+                // Todavía no llamó a startForeground(): en vez de cortarlo de
+                // golpe se le pide que se detenga él mismo, después de cumplir.
+                val pedido = Intent(context, PlaybackService::class.java).setAction(ACTION_STOP_SILENCIOSO)
+                val enviado = runCatching { context.startService(pedido) }.isSuccess
+                if (enviado) return
+            }
             context.stopService(Intent(context, PlaybackService::class.java))
         }
+
+        /** Detener sin soltar el reproductor (la pantalla lo retoma). */
+        private const val ACTION_STOP_SILENCIOSO = "com.miiptv.app.STOP_QUIET"
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Lo PRIMERO, pase lo que pase: pasar a primer plano. Si el servicio se
+        // arrancó con startForegroundService() y termina sin esto (porque el
+        // reproductor ya no existe, o porque se pidió detenerlo enseguida),
+        // Android cierra la app con ForegroundServiceDidNotStartInTimeException.
+        val enPrimerPlano = runCatching { pasarAPrimerPlano() }.isSuccess
+        arrancando = false
+
         when (intent?.action) {
             ACTION_TOGGLE -> PlaybackHolder.togglePlayPause()
             ACTION_STOP -> {
                 PlaybackHolder.release()
-                stopSelf()
+                detener()
+                return START_NOT_STICKY
+            }
+            ACTION_STOP_SILENCIOSO -> {
+                detener()
                 return START_NOT_STICKY
             }
         }
 
-        if (PlaybackHolder.player == null) {
-            stopSelf()
+        if (!enPrimerPlano || PlaybackHolder.player == null) {
+            detener()
             return START_NOT_STICKY
         }
 
+        // Refresca la notificación (p. ej. pausado/sonando tras ACTION_TOGGLE)
+        runCatching { pasarAPrimerPlano() }
+        return START_NOT_STICKY
+    }
+
+    private fun pasarAPrimerPlano() {
         createChannel()
         val notification = buildNotification()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
                 this, NOTIF_ID, notification,
@@ -70,7 +110,11 @@ class PlaybackService : Service() {
         } else {
             startForeground(NOTIF_ID, notification)
         }
-        return START_NOT_STICKY
+    }
+
+    private fun detener() {
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private fun createChannel() {
@@ -134,6 +178,7 @@ class PlaybackService : Service() {
         }
 
     override fun onDestroy() {
+        arrancando = false
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
