@@ -930,10 +930,14 @@ class MainActivity : AppCompatActivity() {
         }
         val exo = previewPlayer ?: buildPreviewPlayer().also { previewPlayer = it }
         binding.tvPreviewError.visibility = View.GONE
-        exo.setMediaItem(MediaItem.fromUri(Session.liveStreamUrl(this, item.id)))
+        previewReintentos = 0
+        PlayerFactory.cargar(exo, Session.liveStreamUrl(this, item.id))
         exo.prepare()
         exo.playWhenReady = true
     }
+
+    /** Reintentos automáticos de la vista previa tras un corte (se reinician al volver a verse). */
+    private var previewReintentos = 0
 
     private fun buildPreviewPlayer(): ExoPlayer {
         val exo = PlayerFactory.build(this)
@@ -944,6 +948,7 @@ class MainActivity : AppCompatActivity() {
                 binding.previewProgress.visibility =
                     if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
                 if (state == Player.STATE_READY) {
+                    previewReintentos = 0
                     // Recién con imagen se tapa el logo
                     binding.previewPlayer.visibility = View.VISIBLE
                     binding.ivPreviewLogo.visibility = View.GONE
@@ -953,6 +958,21 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 if (isFinishing || isDestroyed) return
+                // Quedó atrás del vivo tras un corte: vuelve al instante.
+                if (PlayerFactory.volverAlVivoSiQuedoAtras(exo, error)) return
+                // Un corte de red o del panel: se reintenta solo un par de veces
+                // antes de mostrar el aviso (antes quedaba en error al primer corte).
+                if (previewReintentos < 3 && !ErrorDiagnosis.esRechazoDefinitivo(error)) {
+                    previewReintentos++
+                    val item = previewItem
+                    binding.previewProgress.visibility = View.VISIBLE
+                    previewDelay.postDelayed({
+                        if (isFinishing || isDestroyed || previewPlayer !== exo || previewItem != item) return@postDelayed
+                        exo.prepare()
+                        exo.playWhenReady = true
+                    }, 1_500L * previewReintentos)
+                    return
+                }
                 showPreviewMessage(getString(R.string.preview_error))
             }
         })

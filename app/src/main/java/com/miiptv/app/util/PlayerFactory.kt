@@ -3,11 +3,19 @@ package com.miiptv.app.util
 import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.LoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
+import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import java.util.WeakHashMap
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
@@ -18,6 +26,85 @@ import com.miiptv.app.api.Session
  * contenedores, y que se identifican como "PlayMix TV - VIP".
  */
 object PlayerFactory {
+
+    /**
+     * Reintentos de descarga pensados para IPTV.
+     *
+     * Con los valores de ExoPlayer, una lista .m3u8 o un segmento que fallaba
+     * 3 veces seguidas (un panel lento, un corte de unos segundos) daba un
+     * error fatal: el reproductor se detenía, se perdía todo lo que ya estaba
+     * en el búfer y la pantalla reconectaba desde cero (corte visible).
+     *
+     * Mientras el canal ya está reproduciendo, se insiste bastante más y con
+     * esperas cortas: el búfer (15 s o más) cubre la espera y el corte del
+     * panel no se nota. Antes de que arranque se mantienen los valores de
+     * siempre, para no demorar el aviso de un canal que de verdad no anda.
+     */
+    class PoliticaErroresIptv : DefaultLoadErrorHandlingPolicy() {
+        @Volatile var reproduciendo = false
+
+        override fun getMinimumLoadableRetryCount(dataType: Int): Int {
+            if (!reproduciendo) return super.getMinimumLoadableRetryCount(dataType)
+            return when (dataType) {
+                C.DATA_TYPE_MANIFEST -> 10
+                C.DATA_TYPE_MEDIA, C.DATA_TYPE_MEDIA_PROGRESSIVE_LIVE -> 10
+                else -> super.getMinimumLoadableRetryCount(dataType)
+            }
+        }
+
+        override fun getRetryDelayMsFor(loadErrorInfo: LoadErrorHandlingPolicy.LoadErrorInfo): Long {
+            val base = super.getRetryDelayMsFor(loadErrorInfo)
+            if (base == C.TIME_UNSET || !reproduciendo) return base
+            return minOf(loadErrorInfo.errorCount * 700L, 2_500L)
+        }
+    }
+
+    /** Política de cada reproductor creado acá (para las fuentes armadas a mano). */
+    private val politicas = WeakHashMap<Player, PoliticaErroresIptv>()
+
+    private fun httpFactory(lecturaMs: Int = 15_000): DefaultHttpDataSource.Factory =
+        DefaultHttpDataSource.Factory()
+            .setUserAgent(Session.USER_AGENT)
+            .setAllowCrossProtocolRedirects(true)   // muchos servidores redirigen http <-> https
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(lecturaMs)
+
+    /** ¿Es un canal en vivo por .ts (formato Xtream: /live/usuario/clave/123.ts)? */
+    fun esVivoTs(url: String): Boolean = VIVO_TS.containsMatchIn(url)
+
+    private val VIVO_TS = Regex("/live/[^/]+/[^/]+/\\d+\\.ts(\\?.*)?$")
+
+    /**
+     * Carga [url] en [exo]. Los canales .ts en vivo van con
+     * [DataSourceVivoContinuo] (sobrevive a los cortes del panel); todo lo
+     * demás, como siempre. [posicionMs] = C.TIME_UNSET para la posición por
+     * defecto (el vivo, o el principio).
+     */
+    fun cargar(exo: ExoPlayer, url: String, posicionMs: Long = C.TIME_UNSET) {
+        if (esVivoTs(url)) {
+            // Lectura de 8 s: si la conexión queda colgada sin datos, se nota
+            // antes y se reconecta en vez de congelar la imagen 15 s.
+            val http = httpFactory(lecturaMs = 8_000)
+            val fuente: MediaSource = ProgressiveMediaSource.Factory({ DataSourceVivoContinuo(http) }, extractors())
+                .setLoadErrorHandlingPolicy(politicas[exo] ?: PoliticaErroresIptv())
+                .createMediaSource(MediaItem.fromUri(url))
+            exo.setMediaSource(fuente, posicionMs)
+        } else {
+            exo.setMediaItem(MediaItem.fromUri(url), posicionMs)
+        }
+    }
+
+    /**
+     * El canal quedó atrás de lo que el panel todavía guarda (pasa tras un
+     * corte largo): se vuelve al vivo al instante, sin rearmar nada. Devuelve
+     * true si era ese caso.
+     */
+    fun volverAlVivoSiQuedoAtras(exo: ExoPlayer, error: PlaybackException): Boolean {
+        if (error.errorCode != PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW) return false
+        exo.seekToDefaultPosition()
+        exo.prepare()
+        return true
+    }
 
     /**
      * Extractores configurados para streams IPTV reales:
@@ -64,11 +151,8 @@ object PlayerFactory {
         applyLanguagePrefs: Boolean = false,
         applyAudioPref: Boolean = false
     ): ExoPlayer {
-        val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent(Session.USER_AGENT)
-            .setAllowCrossProtocolRedirects(true)   // muchos servidores redirigen http <-> https
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(15_000)
+        val http = httpFactory()
+        val politica = PoliticaErroresIptv()
 
         /**
          * PREFER_EXTENSION + decoderFallback:
@@ -109,7 +193,9 @@ object PlayerFactory {
 
         val builder = ExoPlayer.Builder(context, renderers)
             .setTrackSelector(trackSelector)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory, extractors()))
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(http, extractors()).setLoadErrorHandlingPolicy(politica)
+            )
             // Salto de los botones adelantar/retroceder del reproductor (10s).
             // No es un atributo del layout: se define acá, a nivel de reproductor.
             .setSeekForwardIncrementMs(10_000)
@@ -118,6 +204,19 @@ object PlayerFactory {
         builder.setLoadControl(loadControl ?: loadControlAcotado(context))
 
         return builder.build().apply {
+            politicas[this] = politica
+            // La política se pone paciente recién cuando el contenido ya se ve.
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_READY -> politica.reproduciendo = true
+                        Player.STATE_IDLE -> politica.reproduciendo = false
+                    }
+                }
+                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                    politica.reproduciendo = false
+                }
+            })
             // Con la pantalla apagada (radio y audio en segundo plano) el CPU y el
             // Wi-Fi entran en ahorro y el stream se cortaba. WAKE_LOCK ya estaba
             // declarado en el manifest, pero nunca se usaba.

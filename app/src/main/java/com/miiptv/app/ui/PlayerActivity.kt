@@ -31,7 +31,6 @@ import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.media3.common.C
-import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
@@ -154,7 +153,33 @@ class PlayerActivity : AppCompatActivity() {
     private var contentTitle: String = ""
     private var favoriteItem: ContentItem? = null
     private var retries = 0
-    private var endedReconnects = 0
+
+    /** Reconexiones por fin de transmisión: hasta 6 cada 3 minutos (ver onPlaybackStateChanged). */
+    private val reconexionesPorFin = ArrayDeque<Long>()
+
+    private fun puedeReconectarPorFin(): Boolean {
+        val ahora = android.os.SystemClock.elapsedRealtime()
+        while (reconexionesPorFin.isNotEmpty() && ahora - reconexionesPorFin.first() > 3 * 60_000L) {
+            reconexionesPorFin.removeFirst()
+        }
+        if (reconexionesPorFin.size >= 6) return false
+        reconexionesPorFin.addLast(ahora)
+        return true
+    }
+
+    /** Vueltas al vivo tras quedar atrás: libres, salvo que se repitan en bucle. */
+    private val vueltasAlVivo = LimiteVentana(maximo = 4, ventanaMs = 60_000L)
+
+    private class LimiteVentana(private val maximo: Int, private val ventanaMs: Long) {
+        private val marcas = ArrayDeque<Long>()
+        fun permitir(): Boolean {
+            val ahora = android.os.SystemClock.elapsedRealtime()
+            while (marcas.isNotEmpty() && ahora - marcas.first() > ventanaMs) marcas.removeFirst()
+            if (marcas.size >= maximo) return false
+            marcas.addLast(ahora)
+            return true
+        }
+    }
     /** Evita repetir el aviso de audio incompatible en cada cambio de pistas. */
     private var audioAvisado = false
     /**
@@ -1781,7 +1806,7 @@ class PlayerActivity : AppCompatActivity() {
             val retomar = if (isRadio || itemType == ContentType.LIVE)
                 androidx.media3.common.C.TIME_UNSET else exo.currentPosition
             exo.stop()
-            exo.setMediaItem(MediaItem.fromUri(url), retomar)
+            PlayerFactory.cargar(exo, url, retomar)
             exo.prepare()
             exo.playWhenReady = true
         }, esperaMs)
@@ -1817,7 +1842,7 @@ class PlayerActivity : AppCompatActivity() {
             binding.playerView.player = exo
             exo.volume = volumenReproductor()
             PlaybackHolder.attach(exo, url, contentTitle)
-            exo.setMediaItem(MediaItem.fromUri(url))
+            PlayerFactory.cargar(exo, url)
             exo.prepare()
             if (resumeAtMs > 0) exo.seekTo(resumeAtMs)
             exo.playWhenReady = true
@@ -1917,25 +1942,36 @@ class PlayerActivity : AppCompatActivity() {
                     // Canal en vivo o radio cuyo servidor corta el stream de forma
                     // limpia: no hay error que reintentar, el player queda congelado
                     // en el último cuadro. Se reconecta igual que tras un error.
-                    // Con pausa de 2 s y tope de 3 por pantalla: un servidor que corta
-                    // el stream a propósito (tope de conexiones) no debe provocar una
-                    // cadena de conexiones nuevas, cada una contada por el panel.
+                    // (Los canales .ts ya no llegan acá por un corte: los
+                    // empalma DataSourceVivoContinuo.)
+                    // Antes había un tope de 3 reconexiones por pantalla que nunca
+                    // se reiniciaba: al cuarto corte el canal quedaba detenido para
+                    // siempre. Ahora el tope es por tiempo (6 en 3 minutos), así un
+                    // panel que rechaza a propósito no recibe una cadena de
+                    // conexiones, pero un canal que se corta de vez en cuando
+                    // sigue reconectando siempre.
                     if (state == Player.STATE_ENDED && (isRadio || itemType == ContentType.LIVE) &&
-                        PlayerPrefs.getAutoReconnect(this@PlayerActivity) && endedReconnects < 3
+                        PlayerPrefs.getAutoReconnect(this@PlayerActivity) && puedeReconectarPorFin()
                     ) {
-                        endedReconnects++
                         binding.progressBar.visibility = View.VISIBLE
                         ui.postDelayed({
                             if (isFinishing || isDestroyed || player !== exo) return@postDelayed
                             exo.stop()
-                            exo.setMediaItem(MediaItem.fromUri(url))
+                            PlayerFactory.cargar(exo, url)
                             exo.prepare()
                             exo.playWhenReady = true
-                        }, 2_000L)
+                        }, 700L)
                     }
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
+                    // Canal que quedó atrás de lo que el panel guarda (tras un
+                    // corte largo): se vuelve al vivo al instante, sin aviso ni
+                    // gastar reintentos. Antes mostraba "Reconectando…" y
+                    // rearmaba todo.
+                    if (error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW &&
+                        vueltasAlVivo.permitir() && PlayerFactory.volverAlVivoSiQuedoAtras(exo, error)
+                    ) return
                     // La vía alternativa (buscando más idiomas de audio) ni
                     // siquiera conecta: mejor volver a la que sí funcionaba
                     // que dejar el canal caído.
@@ -1947,7 +1983,7 @@ class PlayerActivity : AppCompatActivity() {
                             retries = 0
                             binding.progressBar.visibility = View.VISIBLE
                             exo.stop()
-                            exo.setMediaItem(MediaItem.fromUri(original))
+                            PlayerFactory.cargar(exo, original)
                             exo.prepare()
                             exo.playWhenReady = true
                             Toast.makeText(

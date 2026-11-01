@@ -13,7 +13,6 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -91,6 +90,10 @@ class MultiScreenActivity : AppCompatActivity() {
 
     /** Canal asignado a cada recuadro. Sobrevive al ciclo onStop/onStart. */
     private val assigned = arrayOfNulls<ContentItem>(SLOTS)
+
+    /** Reintentos automáticos de cada recuadro tras un corte (se reinician al volver a verse). */
+    private val reintentos = IntArray(SLOTS)
+    private val reintentoHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     /** Canales de la categoría abierta ahora mismo: es la base del buscador. */
     private var channels: List<ContentItem> = emptyList()
@@ -216,6 +219,7 @@ class MultiScreenActivity : AppCompatActivity() {
     override fun onDestroy() {
         picker?.dismiss()
         picker = null
+        reintentoHandler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
@@ -344,8 +348,9 @@ class MultiScreenActivity : AppCompatActivity() {
         progressViews[slot].visibility = View.VISIBLE
 
         val url = Session.liveStreamUrl(this, item.id, FORMATS[formatIndex])
+        reintentos[slot] = 0
         players[slot]?.apply {
-            setMediaItem(MediaItem.fromUri(url))
+            PlayerFactory.cargar(this, url)
             prepare()
             playWhenReady = true
         }
@@ -356,11 +361,29 @@ class MultiScreenActivity : AppCompatActivity() {
             if (isFinishing || isDestroyed) return
             progressViews[slot].visibility =
                 if (state == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
-            if (state == Player.STATE_READY) errorViews[slot].visibility = View.GONE
+            if (state == Player.STATE_READY) {
+                errorViews[slot].visibility = View.GONE
+                reintentos[slot] = 0
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
             if (isFinishing || isDestroyed) return
+            val exo = players[slot] ?: return
+            if (PlayerFactory.volverAlVivoSiQuedoAtras(exo, error)) return
+            // Corte pasajero: reintento automático (no si el panel rechazó por
+            // límite de conexiones: con cuatro recuadros eso solo empeoraría).
+            if (reintentos[slot] < 3 && !ErrorDiagnosis.esRechazoDefinitivo(error)) {
+                reintentos[slot]++
+                progressViews[slot].visibility = View.VISIBLE
+                val item = assigned[slot]
+                reintentoHandler.postDelayed({
+                    if (isFinishing || isDestroyed || players[slot] !== exo || assigned[slot] != item) return@postDelayed
+                    exo.prepare()
+                    exo.playWhenReady = true
+                }, 1_500L * reintentos[slot])
+                return
+            }
             progressViews[slot].visibility = View.GONE
             errorViews[slot].text = explain(error)
             errorViews[slot].visibility = View.VISIBLE

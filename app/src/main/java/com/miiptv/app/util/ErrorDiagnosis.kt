@@ -78,6 +78,19 @@ object ErrorDiagnosis {
         return if (esErrorDeRed) Causa.SERVIDOR_LENTO else Causa.DESCONOCIDA
     }
 
+    /**
+     * Errores en los que reintentar solo no sirve: el panel rechazó (cuenta
+     * vencida o tope de conexiones, cada intento cuenta como otra conexión),
+     * el canal no existe, o el contenido no se puede leer/decodificar.
+     */
+    fun esRechazoDefinitivo(error: PlaybackException): Boolean {
+        val causa = error.cause
+        if (causa is HttpDataSource.InvalidResponseCodeException) {
+            return causa.responseCode in setOf(401, 403, 404, 410, 512)
+        }
+        return error.errorCode in 3000..4999 // contenido mal formado o decodificador
+    }
+
     /** Mensaje en español, listo para mostrar, para cualquier [Causa]. */
     fun mensaje(context: Context, causa: Causa): String = context.getString(
         when (causa) {
