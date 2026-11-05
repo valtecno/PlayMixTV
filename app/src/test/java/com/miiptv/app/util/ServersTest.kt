@@ -102,4 +102,16 @@ class ServersTest {
         val servers = Servers.parse(config)
         assertNull(servers.firstOrNull { it.url == "http://otro.tv:8080" })
     }
+
+    @Test
+    fun `byLabel encuentra el servidor por la etiqueta del panel sin distinguir mayusculas`() {
+        val servers = Servers.parse(
+            "l|Sistema L|http://l.example.tv:8080;xl|Sistema XL|http://xl.example.tv:8080"
+        )
+        assertEquals("xl", Servers.byLabel(" sistema xl ", servers)?.id)
+        assertEquals("l", Servers.byLabel("Sistema L", servers)?.id)
+        assertNull(Servers.byLabel("Sistema Z", servers))
+        assertNull(Servers.byLabel(null, servers))
+        assertNull(Servers.byLabel("   ", servers))
+    }
 }

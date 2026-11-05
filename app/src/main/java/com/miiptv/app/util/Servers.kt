@@ -6,7 +6,7 @@ import com.miiptv.app.api.Session
 
 /**
  * Servidores propios de PlayMix TV. El usuario nunca ve ni escribe la URL:
- * elige "Sistema L" o "Sistema XL" y listo.
+ * el código de acceso asigna "Sistema L" o "Sistema XL" y listo.
  *
  * ---------------------------------------------------------------------------
  * DÓNDE SE EDITA LA LISTA
@@ -106,6 +106,13 @@ object Servers {
     }
 
     fun byId(id: String): Server? = all.firstOrNull { it.id == id }
+
+    /** Servidor cuya etiqueta coincide con la que informa el panel ("Sistema L", "Sistema XL"...). */
+    fun byLabel(label: String?, lista: List<Server> = all): Server? {
+        val buscada = label?.trim().orEmpty()
+        if (buscada.isEmpty()) return null
+        return lista.firstOrNull { it.label.equals(buscada, ignoreCase = true) }
+    }
 
     /** Servidor conectado ahora mismo, o null si la cuenta apunta a otro lado. */
     fun current(context: Context): Server? = byUrl(Session.server(context))

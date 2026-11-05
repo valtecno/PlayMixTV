@@ -4,8 +4,6 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.LinearLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.miiptv.app.R
@@ -14,7 +12,6 @@ import com.miiptv.app.api.LoginResponse
 import com.miiptv.app.api.PanelApi
 import com.miiptv.app.api.Session
 import com.miiptv.app.databinding.ActivityLoginBinding
-import com.miiptv.app.databinding.ItemServerChipBinding
 import com.miiptv.app.util.Accounts
 import com.miiptv.app.util.Appearance
 import com.miiptv.app.util.Catalog
@@ -37,8 +34,6 @@ class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
 
-    /** Chips creados, en el mismo orden que [Servers.all], para poder repintarlos. */
-    private val chips = mutableListOf<TextView>()
     private var selectedServer: Servers.Server? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,17 +46,18 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        buildServerChips()
+        verificarServidores()
 
-        // Si venimos de "Cambiar de cuenta", arrancamos en el servidor pedido
+        // Servidor de respaldo: solo se usa si el panel no informa el suyo. Si
+        // venimos de "Cambiar de cuenta", el pedido; si no, el primero.
         val preselect = intent.getStringExtra(EXTRA_SERVER_URL)
-        selectServer(preselect?.let { Servers.byUrl(it) } ?: Servers.default)
+        selectedServer = preselect?.let { Servers.byUrl(it) } ?: Servers.default
 
         // Sin preselección: al "Agregar otra cuenta" desde Ajustes esto
         // precargaba el usuario de la cuenta YA activa en los campos, como si
         // se estuviera editando esa misma cuenta en vez de cargar una nueva.
         // Los campos arrancan vacíos siempre; la única precarga real es la
-        // del servidor (selectServer, arriba), que si tiene sentido reusar.
+        // del servidor (arriba, como respaldo), que si tiene sentido reusar.
 
         binding.btnLogin.background = Appearance.withFocusState(
             this, Appearance.gradient(this, 12f), 12f
@@ -72,7 +68,7 @@ class LoginActivity : AppCompatActivity() {
         // existir — está oculto en el XML.
 
         if (RemoteControl.isEnabled(this)) {
-            RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
+            RemoteControl.focusWhenReady(binding.etPassword)
         }
     }
 
@@ -86,68 +82,22 @@ class LoginActivity : AppCompatActivity() {
         // corre una vez, así que esta pantalla necesita su propio resguardo
         // al volver a primer plano.
         if (RemoteControl.isEnabled(this) && currentFocus == null) {
-            RemoteControl.focusWhenReady(chips.getOrNull(indiceSeleccionado()))
+            RemoteControl.focusWhenReady(binding.etPassword)
         }
     }
 
-    private fun indiceSeleccionado(): Int =
-        Servers.all.indexOfFirst { it.id == selectedServer?.id }.coerceAtLeast(0)
-
     /**
-     * Dibuja un chip por cada servidor configurado, repartiendo el ancho en
-     * partes iguales.
-     *
-     * Antes los dos chips estaban escritos en el XML y referenciados por id, o
-     * sea que la app soportaba exactamente dos servidores: agregar un tercero
-     * pedía tocar el layout y esta clase. Ahora agregar servidores es editar
-     * una línea de gradle.properties.
+     * El sistema (L o XL) ya no se elige a mano: lo asigna el código al
+     * validarlo (ver attemptLogin). Acá solo se revisa que la compilación
+     * tenga servidores configurados.
      */
-    private fun buildServerChips() {
-        binding.serverChips.removeAllViews()
-        chips.clear()
-
-        val servidores = Servers.all
-        if (servidores.isEmpty()) {
+    private fun verificarServidores() {
+        if (Servers.all.isEmpty()) {
             // Solo pasa con una compilación mal configurada. Es preferible
             // avisarlo a que la pantalla quede muda y el botón no haga nada.
             binding.btnLogin.isEnabled = false
             Toast.makeText(this, R.string.login_sin_servidores, Toast.LENGTH_LONG).show()
-            return
         }
-
-        val margen = resources.getDimensionPixelSize(R.dimen.server_chip_gap)
-        servidores.forEachIndexed { i, servidor ->
-            val chip = ItemServerChipBinding.inflate(layoutInflater, binding.serverChips, false).root
-            chip.text = servidor.label
-            chip.layoutParams = LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
-            ).apply {
-                if (i > 0) marginStart = margen
-                if (i < servidores.lastIndex) marginEnd = margen
-            }
-            chip.setOnClickListener { selectServer(servidor) }
-            binding.serverChips.addView(chip)
-            chips += chip
-        }
-    }
-
-    private fun selectServer(server: Servers.Server?) {
-        selectedServer = server ?: Servers.default
-        val elegido = selectedServer
-        Servers.all.forEachIndexed { i, servidor ->
-            chips.getOrNull(i)?.let { highlightChip(it, servidor.id == elegido?.id) }
-        }
-    }
-
-    /**
-     * Antes se asignaba un drawable plano, sin estados: con el control remoto no
-     * había forma de ver sobre qué sistema estabas parado antes de pulsar OK.
-     * Appearance.applyChipState devuelve un fondo con estado enfocado incluido.
-     */
-    private fun highlightChip(chip: TextView, selected: Boolean) {
-        Appearance.applyChipState(chip, selected, cornerRadiusDp = 12f)
     }
 
     private fun attemptLogin() {
@@ -192,10 +142,14 @@ class LoginActivity : AppCompatActivity() {
 
                 val user = data.username!!
                 val pass = data.password!!
-                // El panel ya devuelve el servidor correcto para este código
-                // (dns_servidor). No hace falta que el usuario elija Sistema L
-                // o XL — el panel lo asigna según el código.
-                val urlFinal = data.server?.takeIf { it.isNotBlank() } ?: servidor.url
+                // El código determina el sistema: el panel devuelve su servidor
+                // (dns_servidor), que es la URL con la que se guarda la cuenta
+                // (favoritos y cambio de sistema dependen de esa URL, no la toques).
+                // Si no la informa, se usa el sistema que dice el panel ("Sistema L"
+                // o "Sistema XL") y, en último caso, el de respaldo.
+                val urlFinal = data.server?.takeIf { it.isNotBlank() }
+                    ?: Servers.byLabel(data.sistema)?.url
+                    ?: servidor.url
 
                 // Paso 2: con las credenciales reales, conectar al panel Xtream.
                 // invalidateApi() primero: si había una sesión anterior cacheada
