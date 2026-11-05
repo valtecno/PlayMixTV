@@ -36,6 +36,9 @@ class LoginActivity : AppCompatActivity() {
 
     private var selectedServer: Servers.Server? = null
 
+    /** Mientras se valida el código. Se usa en vez de deshabilitar el botón: un botón deshabilitado pierde el foco del control remoto. */
+    private var cargando = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Ver el mismo bloque en MainActivity.onCreate: si la app se cerró
@@ -101,6 +104,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun attemptLogin() {
+        if (cargando) return
         val servidor = selectedServer
         if (servidor == null) {
             Toast.makeText(this, R.string.login_sin_servidores, Toast.LENGTH_LONG).show()
@@ -222,8 +226,11 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setLoading(loading: Boolean) {
+        cargando = loading
         binding.progressBar.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.btnLogin.isEnabled = !loading && selectedServer != null
+        // No se deshabilita el botón al cargar: una vista deshabilitada pierde el
+        // foco y el control remoto queda sin dónde estar al terminar.
+        binding.btnLogin.isEnabled = selectedServer != null
     }
 
     /** Ver el comentario en MainActivity.mostrarCierreAnteriorSiHay: mismo mecanismo. */
